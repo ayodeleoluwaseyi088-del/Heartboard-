@@ -4,7 +4,6 @@ import {
   Settings, 
   Share2, 
   Camera, 
-  Copy,
   Search, 
   SlidersHorizontal, 
   Mic,
@@ -111,7 +110,6 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({ onPostClick, onF
   const [searchQuery, setSearchQuery] = useState('');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
 
   // Profile State
   const [userName, setUserName] = useState('Micky Mouse');
@@ -289,52 +287,51 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({ onPostClick, onF
               <span>Share</span>
             </button>
             <button 
-              onClick={() => {
-                navigator.clipboard.writeText(window.location.href);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 2000);
-              }}
+              onClick={() => setIsShareModalOpen(true)}
               className="bg-gray-50 hover:bg-gray-100 text-[#353849] px-4 py-2 rounded-full text-xs font-medium flex items-center gap-2 transition-all cursor-pointer"
             >
-              <Copy className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>{copied ? 'Copied!' : 'Copy link only'}</span>
+              <Camera className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span>Snapshot</span>
             </button>
           </div>
         </div>
       </div>
 
       {/* 3. Filter Sub-Tabs */}
-      <div className="flex items-center gap-3 mb-6">
-        <button
-          onClick={() => setActiveSubTab('board')}
-          className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
-            activeSubTab === 'board'
-              ? 'bg-[#1A1B25] text-white'
-              : 'bg-gray-25 text-[#A4ABB8] hover:bg-gray-50'
-          }`}
-        >
-          Board
-        </button>
-        <button
-          onClick={() => setActiveSubTab('tagged')}
-          className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
-            activeSubTab === 'tagged'
-              ? 'bg-[#1A1B25] text-white'
-              : 'bg-gray-25 text-[#A4ABB8] hover:bg-gray-50'
-          }`}
-        >
-          Tagged
-        </button>
-        <button
-          onClick={() => setActiveSubTab('hearts')}
-          className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
-            activeSubTab === 'hearts'
-              ? 'bg-[#1A1B25] text-white'
-              : 'bg-gray-25 text-[#A4ABB8] hover:bg-gray-50'
-          }`}
-        >
-          Hearts
-        </button>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-start gap-4 mb-6">
+        {/* Filter Sub-Tabs */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setActiveSubTab('board')}
+            className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
+              activeSubTab === 'board'
+                ? 'bg-[#1A1B25] text-white'
+                : 'bg-gray-25 text-[#A4ABB8] hover:bg-gray-50'
+            }`}
+          >
+            Board
+          </button>
+          <button
+            onClick={() => setActiveSubTab('tagged')}
+            className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
+              activeSubTab === 'tagged'
+                ? 'bg-[#1A1B25] text-white'
+                : 'bg-gray-25 text-[#A4ABB8] hover:bg-gray-50'
+            }`}
+          >
+            Tagged
+          </button>
+          <button
+            onClick={() => setActiveSubTab('hearts')}
+            className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
+              activeSubTab === 'hearts'
+                ? 'bg-[#1A1B25] text-white'
+                : 'bg-gray-25 text-[#A4ABB8] hover:bg-gray-50'
+            }`}
+          >
+            Hearts
+          </button>
+        </div>
       </div>
 
       {/* 4. Search Bar Row */}

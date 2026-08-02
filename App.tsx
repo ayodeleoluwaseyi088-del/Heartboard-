@@ -31,6 +31,7 @@ const INITIAL_MOCK_POSTS: (Post & {
   category?: 'tears' | 'vouch' | 'hype';
   statusBadge?: string;
   isBlurred?: boolean;
+  inactive?: boolean;
 })[] = [
   {
     id: 'b1',
@@ -46,7 +47,8 @@ const INITIAL_MOCK_POSTS: (Post & {
     theme: '#FAF0EC', // cozy peach
     mediaType: 'video',
     category: 'hype',
-    statusBadge: '🔥 PURE HYPE STATUS'
+    statusBadge: '🔥 PURE HYPE STATUS',
+    inactive: true
   },
   {
     id: 'cr7-note',
@@ -179,7 +181,7 @@ const TopNavigation: React.FC<TopNavigationProps> = ({ onFilterClick }) => {
         <input 
           type="text" 
           placeholder="Search name, location event..."
-          className="w-full bg-gray-25 border-0 rounded-full py-2.5 pl-12 pr-6 text-sm text-gray-800 placeholder:text-gray-400 focus:bg-white transition-all outline-none"
+          className="w-full bg-gray-25 border-0 rounded-full py-2.5 pl-12 pr-6 text-sm text-gray-800 placeholder:text-gray-400 focus:bg-gray-25 active:bg-gray-25 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 outline-none transition-none"
         />
       </div>
 
