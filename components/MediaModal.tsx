@@ -127,8 +127,8 @@ export const MediaModal: React.FC<MediaModalProps> = ({ post, onClose, onPrev, o
               </div>
             ) : post.mediaType === 'image' ? (
               <div className="flex flex-col items-end gap-3">
-                <div className="w-full h-40 rounded-2xl overflow-hidden border border-black/5">
-                  <img src={post.mediaUrl} className="w-full h-full object-cover" alt="Memory" referrerPolicy="no-referrer" />
+                <div className="w-full max-h-60 rounded-none overflow-hidden border border-black/5 bg-gray-50 flex items-center justify-center p-1">
+                  <img src={post.mediaUrl} className="max-w-full max-h-full w-auto h-auto object-contain rounded-none" alt="Memory" referrerPolicy="no-referrer" />
                 </div>
                 <p className="text-gray-800 handwriting text-xl leading-tight font-bold mt-2">
                   {post.content}

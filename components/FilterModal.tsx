@@ -21,37 +21,24 @@ export const FILTER_OPTIONS: FilterOption[] = [
   { id: 'promotion', label: 'Promotion', emoji: '🤝' },
 ];
 
-export const PRIVACY_FILTER_OPTIONS: FilterOption[] = [
-  { id: 'public', label: 'Public', emoji: '🌐' },
-  { id: 'only_recipient', label: 'Only Recipient', emoji: '🔒' },
-  { id: 'anonymous', label: 'Anonymous', emoji: '👤' },
-  { id: 'collaborative', label: 'Collaborative', emoji: '👥' },
-  { id: 'solo_mode', label: 'Solo Mode', emoji: '🛡️' },
-];
-
 interface FilterModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onApplyFilter?: (selectedOptionId: string, section?: 'event' | 'privacy') => void;
-  initialSection?: 'event' | 'privacy';
+  onApplyFilter?: (selectedOptionId: string) => void;
 }
 
 export const FilterModal: React.FC<FilterModalProps> = ({ 
   isOpen, 
   onClose, 
-  onApplyFilter,
-  initialSection = 'event' 
+  onApplyFilter 
 }) => {
-  const [activeSection, setActiveSection] = useState<'event' | 'privacy'>(initialSection);
   const [selectedId, setSelectedId] = useState<string>('moment');
 
   if (!isOpen) return null;
 
-  const currentOptions = activeSection === 'event' ? FILTER_OPTIONS : PRIVACY_FILTER_OPTIONS;
-
   const handleContinue = () => {
     if (onApplyFilter) {
-      onApplyFilter(selectedId, activeSection);
+      onApplyFilter(selectedId);
     }
     onClose();
   };
@@ -81,45 +68,9 @@ export const FilterModal: React.FC<FilterModalProps> = ({
             </button>
           </div>
 
-          {/* Toggle Switch Navigation (Event vs Privacy) */}
-          <div className="w-full bg-[#F4F5F8] p-1.5 rounded-full flex items-center relative mb-6">
-            <button
-              type="button"
-              onClick={() => setActiveSection('event')}
-              className={`relative z-10 flex-1 py-2.5 px-6 rounded-full text-sm font-semibold transition-colors duration-200 cursor-pointer text-center ${
-                activeSection === 'event' ? 'text-[#1A1B25] font-bold' : 'text-[#808897] hover:text-[#1A1B25]'
-              }`}
-            >
-              {activeSection === 'event' && (
-                <motion.div
-                  layoutId="modal-section-toggle-pill"
-                  className="absolute inset-0 bg-white rounded-full shadow-xs -z-10"
-                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                />
-              )}
-              Event
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveSection('privacy')}
-              className={`relative z-10 flex-1 py-2.5 px-6 rounded-full text-sm font-semibold transition-colors duration-200 cursor-pointer text-center ${
-                activeSection === 'privacy' ? 'text-[#1A1B25] font-bold' : 'text-[#808897] hover:text-[#1A1B25]'
-              }`}
-            >
-              {activeSection === 'privacy' && (
-                <motion.div
-                  layoutId="modal-section-toggle-pill"
-                  className="absolute inset-0 bg-white rounded-full shadow-xs -z-10"
-                  transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                />
-              )}
-              Privacy
-            </button>
-          </div>
-
           {/* Grid Options */}
           <div className="grid grid-cols-2 gap-3 mb-8">
-            {currentOptions.map((option) => {
+            {FILTER_OPTIONS.map((option) => {
               const isSelected = selectedId === option.id;
               return (
                 <div
@@ -131,7 +82,7 @@ export const FilterModal: React.FC<FilterModalProps> = ({
                   <div
                     className={`w-5 h-5 shrink-0 rounded-full flex items-center justify-center transition-all ${
                       isSelected 
-                        ? 'bg-[#4CB993] text-white shadow-sm' 
+                        ? 'bg-[#4CB993] text-[#F8F9FB] shadow-sm' 
                         : 'border-2 border-gray-300 bg-white'
                     }`}
                   >

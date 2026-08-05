@@ -34,6 +34,23 @@ export const moderateContent = async (text: string): Promise<ModerationResult> =
   }
 };
 
+export const refineText = async (text: string): Promise<string> => {
+  if (!text || !text.trim()) return text;
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `You are an expert editor for a heartfelt appreciation and recognition platform called Heartboard.
+Refine the following text to improve grammar, clarity, readability, and wording while preserving the user's original heartfelt intent and tone. Return ONLY the refined text without markdown quotes or explanation.
+
+Text to refine: "${text}"`,
+    });
+    return response.text?.trim().replace(/^["']|["']$/g, '') || text;
+  } catch (error) {
+    console.error("Refine text error:", error);
+    return text;
+  }
+};
+
 export const transcribeAudio = async (base64Audio: string): Promise<string> => {
   try {
     const response = await ai.models.generateContent({

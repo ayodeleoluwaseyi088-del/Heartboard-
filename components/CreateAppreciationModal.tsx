@@ -14,6 +14,7 @@ import {
   Heart,
   ChevronRight,
   ChevronLeft,
+  ChevronDown,
   Info,
   Sliders,
   Play,
@@ -21,11 +22,274 @@ import {
   Image as ImageIcon,
   Type,
   Palette,
-  Layout,
-  RectangleVertical,
-  RectangleHorizontal,
-  Upload
+  Upload,
+  Trash2,
+  AlignLeft,
+  AlignCenter,
+  AlignRight,
+  AlignJustify,
+  Loader2
 } from 'lucide-react';
+import { refineText } from '../services/geminiService';
+
+export interface CanvasElement {
+  id: string;
+  type: 'text' | 'image' | 'vector' | 'bg';
+  text?: string;
+  isCursive?: boolean;
+  fontFamily?: string;
+  color?: string;
+  align?: 'left' | 'center' | 'right' | 'justify';
+  imageUrl?: string;
+  emoji?: string;
+  label?: string;
+  bubbleColor?: string;
+  bgHex?: string;
+  frameName?: string;
+  x?: number;
+  y?: number;
+  scale?: number;
+  rotation?: number;
+}
+
+interface RenderCanvasElementProps {
+  el: CanvasElement;
+  isSelected: boolean;
+  onSelect: (id: string) => void;
+  onEdit: (id: string) => void;
+  onUpdate: (id: string, updates: Partial<CanvasElement>) => void;
+}
+
+const RenderCanvasElement: React.FC<RenderCanvasElementProps> = ({
+  el,
+  isSelected,
+  onSelect,
+  onEdit,
+  onUpdate,
+}) => {
+  const isDraggingRef = useRef(false);
+  const isScalingRef = useRef(false);
+  const isRotatingRef = useRef(false);
+
+  const lastTapRef = useRef<{ time: number; x: number; y: number }>({ time: 0, x: 0, y: 0 });
+
+  const startStateRef = useRef({
+    clientX: 0,
+    clientY: 0,
+    initX: 0,
+    initY: 0,
+    initScale: 1,
+    initRot: 0,
+  });
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    e.stopPropagation();
+    onSelect(el.id);
+
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch (_) {}
+
+    const now = Date.now();
+    const timeSinceLastTap = now - lastTapRef.current.time;
+    const dist = Math.hypot(e.clientX - lastTapRef.current.x, e.clientY - lastTapRef.current.y);
+
+    if (lastTapRef.current.time > 0 && timeSinceLastTap < 300 && dist < 25) {
+      lastTapRef.current = { time: 0, x: 0, y: 0 };
+      isDraggingRef.current = false;
+      try {
+        (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+      } catch (_) {}
+      onEdit(el.id);
+      return;
+    }
+
+    lastTapRef.current = { time: now, x: e.clientX, y: e.clientY };
+
+    isDraggingRef.current = true;
+    startStateRef.current = {
+      clientX: e.clientX,
+      clientY: e.clientY,
+      initX: el.x || 0,
+      initY: el.y || 0,
+      initScale: el.scale || 1,
+      initRot: el.rotation || 0,
+    };
+  };
+
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    isDraggingRef.current = false;
+    onEdit(el.id);
+  };
+
+  const handleScalePointerDown = (e: React.PointerEvent) => {
+    e.stopPropagation();
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch (_) {}
+
+    isScalingRef.current = true;
+    startStateRef.current = {
+      clientX: e.clientX,
+      clientY: e.clientY,
+      initX: el.x || 0,
+      initY: el.y || 0,
+      initScale: el.scale || 1,
+      initRot: el.rotation || 0,
+    };
+  };
+
+  const handleRotatePointerDown = (e: React.PointerEvent) => {
+    e.stopPropagation();
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch (_) {}
+
+    isRotatingRef.current = true;
+    startStateRef.current = {
+      clientX: e.clientX,
+      clientY: e.clientY,
+      initX: el.x || 0,
+      initY: el.y || 0,
+      initScale: el.scale || 1,
+      initRot: el.rotation || 0,
+    };
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    e.stopPropagation();
+    if (isDraggingRef.current) {
+      const deltaX = e.clientX - startStateRef.current.clientX;
+      const deltaY = e.clientY - startStateRef.current.clientY;
+      onUpdate(el.id, {
+        x: startStateRef.current.initX + deltaX,
+        y: startStateRef.current.initY + deltaY,
+      });
+    } else if (isScalingRef.current) {
+      const deltaX = e.clientX - startStateRef.current.clientX;
+      const deltaY = e.clientY - startStateRef.current.clientY;
+      const delta = (deltaX + deltaY) / 100;
+      const newScale = Math.max(0.4, Math.min(3.5, startStateRef.current.initScale + delta));
+      onUpdate(el.id, { scale: Number(newScale.toFixed(2)) });
+    } else if (isRotatingRef.current) {
+      const deltaX = e.clientX - startStateRef.current.clientX;
+      const newRot = Math.round((startStateRef.current.initRot + deltaX) % 360);
+      onUpdate(el.id, { rotation: newRot });
+    }
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    e.stopPropagation();
+    try {
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch (_) {}
+    isDraggingRef.current = false;
+    isScalingRef.current = false;
+    isRotatingRef.current = false;
+  };
+
+  return (
+    <div
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+      onDoubleClick={handleDoubleClick}
+      onClick={(e) => {
+        e.stopPropagation();
+        onSelect(el.id);
+      }}
+      style={{
+        transform: `translate3d(${el.x || 0}px, ${el.y || 0}px, 0) scale(${el.scale || 1}) rotate(${el.rotation || 0}deg)`,
+        touchAction: 'none',
+        userSelect: 'none',
+      }}
+      className={`absolute pointer-events-auto flex items-center justify-center cursor-grab active:cursor-grabbing transition-transform duration-75 select-none ${
+        isSelected ? 'ring-2 ring-[#FF6B4A] ring-offset-2 z-20' : 'hover:opacity-95 z-10'
+      }`}
+    >
+      {/* 1. Image Element */}
+      {el.type === 'image' && el.imageUrl && (
+        <img
+          src={el.imageUrl}
+          alt="Uploaded attachment"
+          draggable={false}
+          className="max-w-[220px] max-h-[220px] w-auto h-auto object-contain rounded-none shadow-xs pointer-events-none select-none"
+        />
+      )}
+
+      {/* 2. Vector / Sticker Element */}
+      {el.type === 'vector' && el.emoji && (
+        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-50/90 text-[#FF6B4A] shadow-2xs border border-orange-200/60 pointer-events-none select-none">
+          <span className="text-base leading-none">{el.emoji}</span>
+          {el.label && <span className="text-xs font-bold tracking-tight">{el.label}</span>}
+        </div>
+      )}
+
+      {/* 3. Text Element */}
+      {el.type === 'text' && el.text && (
+        <div className="w-full p-2 rounded-xl border border-transparent bg-orange-50/10 pointer-events-none select-none">
+          <p 
+            style={{ 
+              color: el.color || '#1A1B25',
+              fontFamily: el.fontFamily || (el.isCursive ? 'Playfair Display, cursive' : 'Nunito, sans-serif'),
+              textAlign: el.align || 'center'
+            }}
+            className={`font-bold leading-snug break-words ${
+              el.isCursive || el.fontFamily?.includes('Playfair') || el.fontFamily?.includes('Caveat') 
+                ? 'text-xl sm:text-2xl' 
+                : 'text-sm sm:text-base'
+            }`}
+          >
+            "{el.text}"
+          </p>
+        </div>
+      )}
+
+      {/* 4. Background Element */}
+      {el.type === 'bg' && (
+        <div 
+          style={{ backgroundColor: el.bgHex || '#FAF5E8' }}
+          className="w-24 h-16 rounded-xl border border-gray-200/80 shadow-2xs flex flex-col items-center justify-center p-2 text-center pointer-events-none select-none"
+        >
+          <span className="text-xs font-bold text-gray-700">{el.frameName || 'Background'}</span>
+        </div>
+      )}
+
+      {/* Handles when element is selected */}
+      {isSelected && (
+        <>
+          {/* Rotate Handle */}
+          <div
+            onPointerDown={handleRotatePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+            onClick={(e) => e.stopPropagation()}
+            className="absolute -top-3.5 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-[#FF6B4A] text-white flex items-center justify-center text-xs font-bold shadow-md cursor-grab active:cursor-grabbing hover:scale-110 transition-transform z-30"
+            title="Drag to rotate"
+          >
+            ↻
+          </div>
+
+          {/* Scale / Resize Handle */}
+          <div
+            onPointerDown={handleScalePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+            onClick={(e) => e.stopPropagation()}
+            className="absolute -bottom-2 -right-2 w-6 h-6 rounded-full bg-[#FF6B4A] text-white flex items-center justify-center text-xs font-bold shadow-md cursor-nwse-resize hover:scale-110 transition-transform z-30"
+            title="Drag to resize"
+          >
+            ↘
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
 import { moderateContent } from '../services/geminiService';
 import { EntityType, PostVisibility } from '../types';
 
@@ -133,6 +397,34 @@ const STICKER_LIST: StickerItem[] = [
   { id: 'party_celebrate', emoji: '🎉', label: 'Tribute horn' },
 ];
 
+const TEXT_TEMPLATES = [
+  "So proud of your hard work and dedication! 🌟",
+  "Thank you for inspiring our team every single day! 🙌",
+  "Happy Birthday! Wishing you endless joy and success! 🎉",
+  "You are an absolute legend in our workspace! 🏆",
+  "Grateful for your endless guidance, kindness, and support. ❤️",
+  "Brought so much positive energy to this milestone! ✨",
+  "Reliable, brilliant, and an absolute pleasure to work with!"
+];
+
+const FONT_OPTIONS = [
+  { id: 'nunito', name: 'Nunito (Clean Sans)', font: 'Nunito, sans-serif' },
+  { id: 'playfair', name: 'Playfair Display (Serif)', font: 'Playfair Display, serif' },
+  { id: 'caveat', name: 'Caveat (Handwritten)', font: 'Caveat, cursive' },
+  { id: 'courier', name: 'Courier Prime (Mono)', font: 'Courier Prime, monospace' },
+];
+
+const COLOR_OPTIONS = [
+  { hex: '#1A1B25', name: 'Charcoal' },
+  { hex: '#FF6B4A', name: 'Coral' },
+  { hex: '#4CB993', name: 'Mint' },
+  { hex: '#3B82F6', name: 'Blue' },
+  { hex: '#8B5CF6', name: 'Purple' },
+  { hex: '#EC4899', name: 'Pink' },
+  { hex: '#F59E0B', name: 'Amber' },
+  { hex: '#000000', name: 'Black' },
+];
+
 export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = ({ onClose, onPostCreated }) => {
   const [activeType, setActiveType] = useState<'text' | 'audio' | 'video'>('text');
   
@@ -145,8 +437,101 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
   const [selectedSticker, setSelectedSticker] = useState<StickerItem | null>(null);
   const [selectedHearts, setSelectedHearts] = useState<string[]>([]);
   const [isCursive, setIsCursive] = useState(true);
-  const [canvasAspectRatio, setCanvasAspectRatio] = useState<'portrait' | 'landscape'>('portrait');
+  const [canvasAspectRatio] = useState<'portrait'>('portrait');
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  // Dynamic Canvas Elements state
+  const [canvasElements, setCanvasElements] = useState<CanvasElement[]>([]);
+  const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
+  const [editingElementId, setEditingElementId] = useState<string | null>(null);
+
+  // Text Element Redesign states
+  const [activeAccordion, setActiveAccordion] = useState<'font' | 'color' | 'template' | null>(null);
+  const [isRefining, setIsRefining] = useState(false);
+
+  const toggleAccordion = (section: 'font' | 'color' | 'template') => {
+    setActiveAccordion(prev => prev === section ? null : section);
+  };
+
+  const hasElementContent = (el: CanvasElement) => {
+    if (el.type === 'text') return Boolean(el.text && el.text.trim());
+    if (el.type === 'image') return Boolean(el.imageUrl && el.imageUrl.trim());
+    if (el.type === 'vector') return Boolean(el.emoji && el.emoji.trim());
+    return false;
+  };
+
+  // Handlers for adding new elements on toolbar button clicks
+  const handleAddTextElement = () => {
+    const newEl: CanvasElement = {
+      id: 'text-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+      type: 'text',
+      text: '',
+      isCursive: isCursive,
+    };
+    setCanvasElements(prev => [...prev, newEl]);
+    setSelectedElementId(newEl.id);
+    setEditingElementId(newEl.id);
+  };
+
+  const handleAddImageElement = () => {
+    const newEl: CanvasElement = {
+      id: 'image-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+      type: 'image',
+      imageUrl: '',
+    };
+    setCanvasElements(prev => [...prev, newEl]);
+    setSelectedElementId(newEl.id);
+    setEditingElementId(newEl.id);
+    setTimeout(() => {
+      imageInputRef.current?.click();
+    }, 50);
+  };
+
+  const handleAddVectorElement = () => {
+    const newEl: CanvasElement = {
+      id: 'vector-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+      type: 'vector',
+      emoji: '',
+      label: '',
+    };
+    setCanvasElements(prev => [...prev, newEl]);
+    setSelectedElementId(newEl.id);
+    setEditingElementId(newEl.id);
+  };
+
+  const handleAddBgElement = () => {
+    const newEl: CanvasElement = {
+      id: 'bg-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+      type: 'bg',
+      bgHex: '#FAF5E8',
+      frameName: 'Soft Sunlight',
+    };
+    setCanvasElements(prev => [...prev, newEl]);
+    setSelectedElementId(newEl.id);
+    setEditingElementId(newEl.id);
+  };
+
+  const handleDeleteElement = (id: string) => {
+    setCanvasElements(prev => prev.filter(el => el.id !== id));
+    if (selectedElementId === id) {
+      setSelectedElementId(null);
+    }
+    if (editingElementId === id) {
+      setEditingElementId(null);
+    }
+  };
+
+  const updateCanvasElement = (id: string, updates: Partial<CanvasElement>) => {
+    setCanvasElements(prev => prev.map(el => el.id === id ? { ...el, ...updates } : el));
+  };
+
+  const updateEditingElement = (updates: Partial<CanvasElement>) => {
+    if (!editingElementId) return;
+    setCanvasElements(prev => prev.map(el => el.id === editingElementId ? { ...el, ...updates } : el));
+  };
+
+  const editingElement = canvasElements.find(el => el.id === editingElementId);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -159,22 +544,6 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
     }
   };
 
-  // Alternating preselection based on previous message's layout
-  useEffect(() => {
-    try {
-      const lastLayout = localStorage.getItem('heartboard_last_layout');
-      if (lastLayout === 'portrait') {
-        setCanvasAspectRatio('landscape');
-      } else if (lastLayout === 'landscape') {
-        setCanvasAspectRatio('portrait');
-      } else {
-        setCanvasAspectRatio('portrait');
-      }
-    } catch (e) {
-      setCanvasAspectRatio('portrait');
-    }
-  }, []);
-  
   // Advanced variables
   const [privacyLayer, setPrivacyLayer] = useState<PostVisibility>(PostVisibility.PUBLIC);
   const [isCollaborative, setIsCollaborative] = useState(false);
@@ -182,7 +551,7 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
   
   // Control States
   const [isExpanded, setIsExpanded] = useState(false);
-  const [expandedActiveTool, setExpandedActiveTool] = useState<'none' | 'image' | 'text' | 'vector' | 'bg' | 'frame'>('none');
+  const [expandedActiveTool, setExpandedActiveTool] = useState<'none' | 'image' | 'text' | 'vector' | 'bg'>('none');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isHeartsOnlyPickerOpen, setIsHeartsOnlyPickerOpen] = useState(false);
   const [isStickerPickerOpen, setIsStickerPickerOpen] = useState(false);
@@ -272,13 +641,6 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
 
       const finalRecipient = recipient.trim() || 'Curator Anchor (You)';
       
-      // Persist chosen layout so next message automatically alternates
-      try {
-        localStorage.setItem('heartboard_last_layout', canvasAspectRatio);
-      } catch (e) {
-        console.error(e);
-      }
-      
       const newPost: any = {
         id: 'post-' + Math.random().toString(36).substring(2, 11),
         authorName: authorName.trim() || 'Curator',
@@ -288,7 +650,7 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
         targetId: finalRecipient.replace('#', ''),
         targetType: isHashtagRecipient ? EntityType.WALL : EntityType.BOARD,
         reactions: 0,
-        aspectRatio: canvasAspectRatio,
+        aspectRatio: 'portrait',
         imageUrl: uploadedImage || undefined,
         createdAt: new Date().toISOString(),
         theme: selectedFrame.id === 'slate' ? 'bg-[#272835] text-white' : 
@@ -381,27 +743,57 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
         
         {/* A. Outer Cozy Peach / Color Fill Preview Frame (Fixed Aspect Ratios with Responsive Scaling) */}
         <div 
-          onClick={() => setIsExpanded(true)}
+          onClick={() => activeType === 'text' && setIsExpanded(true)}
           style={{ 
             backgroundColor: (activeType === 'audio' || activeType === 'video') ? '#ffffff' : selectedFrame.bgHex,
-            height: canvasAspectRatio === 'portrait' ? 'min(480px, 65vh)' : 'min(343px, 50vh)'
+            height: 'min(480px, 65vh)'
           }}
           className="relative w-full max-w-[461px] rounded-[2rem] sm:rounded-[2.5rem] transition-all duration-300 flex items-center justify-center p-4 sm:p-6 select-none border border-transparent cursor-pointer group hover:scale-[1.01] active:scale-[0.99]"
-          title="Click to expand into full workspace editor"
+          title={activeType === 'text' ? "Click to expand into full workspace editor" : undefined}
         >
 
           {/* B. Center vertical or horizontal white card */}
           <div 
-            className={`rounded-[1.8rem] sm:rounded-[2.2rem] bg-white flex flex-col justify-between relative p-4 sm:p-6 transition-all duration-300 max-w-full max-h-full ${
-              canvasAspectRatio === 'portrait' 
-                ? 'w-[254px] h-[350px]' 
-                : 'w-[360px] h-[235px]'
-            }`}
+            onClick={() => setSelectedElementId(null)}
+            className="rounded-[1.8rem] sm:rounded-[2.2rem] bg-white flex flex-col justify-between relative p-4 sm:p-6 transition-all duration-300 max-w-full max-h-full w-[254px] h-[350px] overflow-hidden shadow-xs cursor-default"
           >
-            {/* Recipient meta badge if recipient is filled, keeping it extremely subtle */}
-            <div className="w-full flex justify-end items-center pr-1 select-none">
-              {recipient.trim() ? (
-                <span className="text-[10px] font-extrabold text-[#A4ABB8] uppercase tracking-wider bg-gray-50 px-2.5 py-1 rounded-full border border-gray-100 max-w-[130px] truncate">
+            {/* Full Canvas Layer: Treats entire component as canvas area with zero internal clipping bounds */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none flex items-center justify-center z-10">
+              {activeType === 'text' && (
+                <>
+                  {(() => {
+                    const visibleElements = canvasElements.filter(hasElementContent);
+                    if (visibleElements.length === 0) {
+                      return (
+                        <div className="text-center w-full px-4 space-y-0.5 py-1 pointer-events-none">
+                          <h3 className="text-[15px] font-semibold text-gray-600 tracking-tight">
+                            Tap to create message
+                          </h3>
+                          <p className="text-[11px] text-[#808897] font-semibold">
+                            Create beautiful message with stunning visuals
+                          </p>
+                        </div>
+                      );
+                    }
+                    return visibleElements.map((el) => (
+                      <RenderCanvasElement
+                        key={el.id}
+                        el={el}
+                        isSelected={selectedElementId === el.id}
+                        onSelect={(id) => setSelectedElementId(id)}
+                        onEdit={(id) => setEditingElementId(id)}
+                        onUpdate={updateCanvasElement}
+                      />
+                    ));
+                  })()}
+                </>
+              )}
+            </div>
+
+            {/* Recipient meta badge if recipient is filled */}
+            <div className="w-full flex justify-end items-center pr-1 relative z-20 pointer-events-none select-none">
+              {activeType === 'text' && recipient.trim() ? (
+                <span className="text-[10px] font-extrabold text-[#A4ABB8] uppercase tracking-wider bg-gray-50 px-2.5 py-1 rounded-full border border-gray-100 max-w-[130px] truncate pointer-events-auto">
                   {recipient}
                 </span>
               ) : (
@@ -409,76 +801,8 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
               )}
             </div>
 
-            {/* Central expression space */}
-            <div className="flex-grow flex flex-col items-center justify-center text-center py-2 relative overflow-hidden">
-              {uploadedImage && (
-                <div className="relative w-full max-h-[140px] my-1 flex items-center justify-center overflow-hidden rounded-xl bg-gray-50 border border-gray-100 group/img">
-                  <img src={uploadedImage} alt="Uploaded attachment" className="w-full h-full object-cover rounded-xl" />
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setUploadedImage(null);
-                    }}
-                    className="absolute top-1.5 right-1.5 w-5 h-5 bg-black/60 hover:bg-black/80 text-white rounded-full flex items-center justify-center transition-all cursor-pointer shadow-xs"
-                    title="Remove image"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                </div>
-              )}
-
-              {/* Selected Vectors & Semantic Hearts Canvas Overlay */}
-              {(selectedHearts.length > 0 || selectedSticker) && (
-                <div className="flex flex-wrap items-center justify-center gap-1.5 my-1 z-10 max-w-full px-2">
-                  {selectedHearts.map((heartId) => {
-                    const h = SEMANTIC_HEARTS.find((item) => item.id === heartId);
-                    if (!h) return null;
-                    return (
-                      <div 
-                        key={h.id} 
-                        className="flex items-center gap-1 px-2.5 py-1 rounded-full shadow-2xs border border-black/5 animate-in zoom-in-90 duration-200"
-                        style={{ backgroundColor: `${h.bubbleColor}20`, color: h.bubbleColor }}
-                      >
-                        <span className="text-sm leading-none">{h.emoji}</span>
-                        <span className="text-[11px] font-bold tracking-tight">{h.label}</span>
-                      </div>
-                    );
-                  })}
-
-                  {selectedSticker && (
-                    <div 
-                      className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-50/90 text-[#FF6B4A] shadow-2xs border border-orange-200/60 animate-in zoom-in-90 duration-200"
-                    >
-                      <span className="text-sm leading-none">{selectedSticker.emoji}</span>
-                      <span className="text-[11px] font-bold tracking-tight">{selectedSticker.label}</span>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {activeType === 'text' && (
-                <div className="w-full">
-                  {content.trim() ? (
-                    <p className={`text-center font-bold text-gray-800 leading-snug break-words px-1 select-none ${isCursive ? 'handwriting text-2xl' : 'text-lg'}`}>
-                      "{content}"
-                    </p>
-                  ) : (
-                    !uploadedImage && (
-                      /* Content Placeholder Match exactly from Image */
-                      <div className="text-center w-full space-y-1">
-                        <h3 className="text-[15px] font-semibold text-gray-600 tracking-tight">
-                          Tap to create message
-                        </h3>
-                        <p className="text-[11px] text-[#808897] font-semibold">
-                          Create beautiful message with stunning visuals
-                        </p>
-                      </div>
-                    )
-                  )}
-                </div>
-              )}
-
+            {/* Central placeholder for audio/video if active */}
+            <div className="flex-grow flex flex-col items-center justify-center text-center py-2 relative z-0 w-full gap-2 pointer-events-none">
               {activeType === 'audio' && (
                 <div className="w-full flex flex-col items-center justify-center gap-2 select-none">
                   <div className="p-1 mb-1">
@@ -511,23 +835,27 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
             </div>
 
             {/* Pristine clean footer: absolutely no borders, lines, or metadata unless there are active hearts */}
-            <div className="w-full flex justify-between items-center select-none pt-1">
-              <span className="text-[9px] font-extrabold text-gray-300 uppercase tracking-widest">
-                {authorName.trim() ? `By ${authorName}` : ''}
-              </span>
-              
-              <div className="flex gap-1 items-center">
-                {selectedHearts.length > 0 && (
-                  <div className="flex gap-1 bg-gray-50/70 p-1.5 rounded-full">
-                    {selectedHearts.map(id => (
-                      <span key={id} className="text-sm scale-110 active:scale-125 transition-transform" title={SEMANTIC_HEARTS.find(h => h.id === id)?.label}>
-                        {SEMANTIC_HEARTS.find(h => h.id === id)?.emoji}
-                      </span>
-                    ))}
-                  </div>
-                )}
+            {activeType === 'text' ? (
+              <div className="w-full flex justify-between items-center select-none pt-1">
+                <span className="text-[9px] font-extrabold text-gray-300 uppercase tracking-widest">
+                  {authorName.trim() ? `By ${authorName}` : ''}
+                </span>
+                
+                <div className="flex gap-1 items-center">
+                  {selectedHearts.length > 0 && (
+                    <div className="flex gap-1 bg-gray-50/70 p-1.5 rounded-full">
+                      {selectedHearts.map(id => (
+                        <span key={id} className="text-sm scale-110 active:scale-125 transition-transform" title={SEMANTIC_HEARTS.find(h => h.id === id)?.label}>
+                          {SEMANTIC_HEARTS.find(h => h.id === id)?.emoji}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="h-4" />
+            )}
           </div>
         </div>
 
@@ -957,37 +1285,6 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
             </button>
 
             <div className="flex items-center gap-2.5">
-              {/* Layout Switcher Selector (Portrait / Landscape) - Icons-only beside Save button */}
-              <div className="h-9 flex items-center gap-0.5 bg-white p-1 rounded-full text-xs font-bold select-none mr-1">
-                <button
-                  type="button"
-                  onClick={() => setCanvasAspectRatio('portrait')}
-                  className={`w-7 h-7 rounded-full transition-all cursor-pointer flex items-center justify-center ${
-                    canvasAspectRatio === 'portrait' 
-                      ? 'bg-gray-100 text-[#1A1B25] font-bold' 
-                      : 'text-[#808897] hover:text-[#1A1B25]'
-                  }`}
-                  title="Portrait Layout"
-                  aria-label="Portrait Layout"
-                >
-                  <RectangleVertical className="w-4 h-4" />
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setCanvasAspectRatio('landscape')}
-                  className={`w-7 h-7 rounded-full transition-all cursor-pointer flex items-center justify-center ${
-                    canvasAspectRatio === 'landscape' 
-                      ? 'bg-gray-100 text-[#1A1B25] font-bold' 
-                      : 'text-[#808897] hover:text-[#1A1B25]'
-                  }`}
-                  title="Landscape Layout"
-                  aria-label="Landscape Layout"
-                >
-                  <RectangleHorizontal className="w-4 h-4" />
-                </button>
-              </div>
-
               {/* Save button */}
               <button 
                 onClick={() => setIsExpanded(false)}
@@ -1005,21 +1302,52 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
             <div 
               style={{ 
                 backgroundColor: (activeType === 'audio' || activeType === 'video') ? '#ffffff' : selectedFrame.bgHex,
-                height: canvasAspectRatio === 'portrait' ? 'min(500px, 60vh)' : 'min(343px, 45vh)'
+                height: 'min(500px, 60vh)'
               }}
-              className={`relative w-full rounded-[2rem] sm:rounded-[2.5rem] transition-all duration-300 flex items-center justify-center p-4 sm:p-6 select-none shadow-sm ${
-                canvasAspectRatio === 'portrait' ? 'max-w-[380px]' : 'max-w-[480px]'
-              }`}
+              className="relative w-full rounded-[2rem] sm:rounded-[2.5rem] transition-all duration-300 flex items-center justify-center p-4 sm:p-6 select-none shadow-sm max-w-[380px]"
             >
               {/* Inner white card canvas */}
-              <div className={`rounded-[1.8rem] sm:rounded-[2.2rem] bg-white flex flex-col justify-between relative p-4 sm:p-6 transition-all duration-300 shadow-xs max-w-full max-h-full ${
-                canvasAspectRatio === 'portrait' ? 'w-[254px] h-[360px]' : 'w-[380px] h-[235px]'
-              }`}>
-                
+              <div 
+                onClick={() => setSelectedElementId(null)}
+                className="rounded-[1.8rem] sm:rounded-[2.2rem] bg-white flex flex-col justify-between relative p-4 sm:p-6 transition-all duration-300 shadow-xs max-w-full max-h-full w-[254px] h-[360px] overflow-hidden cursor-default"
+              >
+                {/* Full Canvas Layer: Treats entire component as canvas area with zero internal clipping bounds */}
+                <div className="absolute inset-0 overflow-hidden pointer-events-none flex items-center justify-center z-10">
+                  {activeType === 'text' && (
+                    <>
+                      {(() => {
+                        const visibleElements = canvasElements.filter(hasElementContent);
+                        if (visibleElements.length === 0) {
+                          return (
+                            <div className="text-center w-full px-4 space-y-0.5 py-1 pointer-events-none">
+                              <h3 className="text-[15px] font-semibold text-gray-600 tracking-tight">
+                                Tap to create message
+                              </h3>
+                              <p className="text-[11px] text-[#808897] font-semibold">
+                                Create beautiful message with stunning visuals
+                              </p>
+                            </div>
+                          );
+                        }
+                        return visibleElements.map((el) => (
+                          <RenderCanvasElement
+                            key={el.id}
+                            el={el}
+                            isSelected={selectedElementId === el.id}
+                            onSelect={(id) => setSelectedElementId(id)}
+                            onEdit={(id) => setEditingElementId(id)}
+                            onUpdate={updateCanvasElement}
+                          />
+                        ));
+                      })()}
+                    </>
+                  )}
+                </div>
+
                 {/* Recipient tag */}
-                <div className="w-full flex justify-end items-center pr-1 select-none">
-                  {recipient.trim() ? (
-                    <span className="text-[10px] font-extrabold text-[#A4ABB8] uppercase tracking-wider bg-gray-50 px-2.5 py-1 rounded-full border border-gray-100 max-w-[130px] truncate">
+                <div className="w-full flex justify-end items-center pr-1 relative z-20 pointer-events-none select-none">
+                  {activeType === 'text' && recipient.trim() ? (
+                    <span className="text-[10px] font-extrabold text-[#A4ABB8] uppercase tracking-wider bg-gray-50 px-2.5 py-1 rounded-full border border-gray-100 max-w-[130px] truncate pointer-events-auto">
                       {recipient}
                     </span>
                   ) : (
@@ -1027,66 +1355,8 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                   )}
                 </div>
 
-                {/* Central message edit/display area */}
-                <div className="flex-grow flex flex-col items-center justify-center text-center py-2 relative overflow-hidden">
-                  {uploadedImage && (
-                    <div className="relative w-full max-h-[140px] my-1 flex items-center justify-center overflow-hidden rounded-xl bg-gray-50 border border-gray-100 group/img">
-                      <img src={uploadedImage} alt="Uploaded attachment" className="w-full h-full object-cover rounded-xl" />
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setUploadedImage(null);
-                        }}
-                        className="absolute top-1.5 right-1.5 w-5 h-5 bg-black/60 hover:bg-black/80 text-white rounded-full flex items-center justify-center transition-all cursor-pointer shadow-xs z-10"
-                        title="Remove image"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Selected Vectors & Semantic Hearts Canvas Overlay */}
-                  {(selectedHearts.length > 0 || selectedSticker) && (
-                    <div className="flex flex-wrap items-center justify-center gap-1.5 my-1 z-10 max-w-full px-2">
-                      {selectedHearts.map((heartId) => {
-                        const h = SEMANTIC_HEARTS.find((item) => item.id === heartId);
-                        if (!h) return null;
-                        return (
-                          <div 
-                            key={h.id} 
-                            className="flex items-center gap-1 px-2.5 py-1 rounded-full shadow-2xs border border-black/5 animate-in zoom-in-90 duration-200"
-                            style={{ backgroundColor: `${h.bubbleColor}20`, color: h.bubbleColor }}
-                          >
-                            <span className="text-sm leading-none">{h.emoji}</span>
-                            <span className="text-[11px] font-bold tracking-tight">{h.label}</span>
-                          </div>
-                        );
-                      })}
-
-                      {selectedSticker && (
-                        <div 
-                          className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-orange-50/90 text-[#FF6B4A] shadow-2xs border border-orange-200/60 animate-in zoom-in-90 duration-200"
-                        >
-                          <span className="text-sm leading-none">{selectedSticker.emoji}</span>
-                          <span className="text-[11px] font-bold tracking-tight">{selectedSticker.label}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {activeType === 'text' && (
-                    <div className="w-full">
-                      <textarea
-                        value={content}
-                        onChange={(e) => setContent(e.target.value.slice(0, 180))}
-                        placeholder={uploadedImage ? "Add a caption..." : "Tap to create message\nCreate beautiful message with stunning visuals"}
-                        className={`w-full text-center border-none focus:outline-none focus:ring-0 outline-none bg-transparent resize-none leading-snug break-words ${isCursive ? 'handwriting text-xl sm:text-2xl text-gray-800' : 'text-sm sm:text-base font-semibold text-gray-800'} placeholder:text-gray-400 placeholder:text-sm placeholder:font-normal placeholder:text-center`}
-                        rows={uploadedImage ? 2 : 4}
-                      />
-                    </div>
-                  )}
-
+                {/* Central placeholder for audio/video if active */}
+                <div className="flex-grow flex flex-col items-center justify-center text-center py-2 relative z-0 w-full gap-2 pointer-events-none">
                   {activeType === 'audio' && (
                     <div className="w-full flex flex-col items-center justify-center gap-2 select-none">
                       <Mic className="w-12 h-12 stroke-[1.5]" style={{ color: '#EED8CE' }} />
@@ -1103,20 +1373,24 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                 </div>
 
                 {/* Card footer */}
-                <div className="w-full flex justify-between items-center select-none pt-1">
-                  <span className="text-[9px] font-extrabold text-gray-300 uppercase tracking-widest">
-                    {authorName.trim() ? `By ${authorName}` : ''}
-                  </span>
-                  {selectedHearts.length > 0 && (
-                    <div className="flex gap-1 bg-gray-50/70 p-1.5 rounded-full">
-                      {selectedHearts.map(id => (
-                        <span key={id} className="text-xs">
-                          {SEMANTIC_HEARTS.find(h => h.id === id)?.emoji}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                {activeType === 'text' ? (
+                  <div className="w-full flex justify-between items-center select-none pt-1 relative z-20 pointer-events-none">
+                    <span className="text-[9px] font-extrabold text-gray-300 uppercase tracking-widest">
+                      {authorName.trim() ? `By ${authorName}` : ''}
+                    </span>
+                    {selectedHearts.length > 0 && (
+                      <div className="flex gap-1 bg-gray-50/70 p-1.5 rounded-full">
+                        {selectedHearts.map(id => (
+                          <span key={id} className="text-xs">
+                            {SEMANTIC_HEARTS.find(h => h.id === id)?.emoji}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="h-4" />
+                )}
               </div>
             </div>
 
@@ -1126,15 +1400,14 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
           {activeType === 'text' && (
             <div className="w-full pb-8 pt-2 px-6 flex flex-col items-center gap-3 shrink-0">
               
-              {/* Row of 5 tool buttons: Image | Text | Vector | BG | Frame */}
+              {/* Row of 4 tool buttons: Image | Text | Vector | BG */}
               <div className="flex items-center justify-center gap-3 md:gap-4 max-w-full overflow-x-auto py-1 px-2">
                 {/* 1. Image */}
                 <button
                   type="button"
-                  onClick={() => setExpandedActiveTool('image')}
-                  className={`bg-white border border-dashed rounded-2xl w-[64px] h-[58px] flex flex-col items-center justify-center gap-1 cursor-pointer transition-all active:scale-95 ${
-                    expandedActiveTool === 'image' ? 'border-[#FF6B4A] bg-orange-50/50' : 'border-gray-200/80 hover:bg-gray-50'
-                  }`}
+                  onClick={handleAddImageElement}
+                  className="bg-white border border-dashed border-gray-200/80 hover:bg-gray-50 rounded-2xl w-[64px] h-[58px] flex flex-col items-center justify-center gap-1 cursor-pointer transition-all active:scale-95"
+                  title="Add new Image element"
                 >
                   <ImageIcon className="w-4 h-4 text-[#1A1B25]" />
                   <span className="text-[11px] font-medium text-gray-700">Image</span>
@@ -1143,10 +1416,9 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                 {/* 2. Text */}
                 <button
                   type="button"
-                  onClick={() => setExpandedActiveTool('text')}
-                  className={`bg-white border border-dashed rounded-2xl w-[64px] h-[58px] flex flex-col items-center justify-center gap-1 cursor-pointer transition-all active:scale-95 ${
-                    expandedActiveTool === 'text' ? 'border-[#FF6B4A] bg-orange-50/50' : 'border-gray-200/80 hover:bg-gray-50'
-                  }`}
+                  onClick={handleAddTextElement}
+                  className="bg-white border border-dashed border-gray-200/80 hover:bg-gray-50 rounded-2xl w-[64px] h-[58px] flex flex-col items-center justify-center gap-1 cursor-pointer transition-all active:scale-95"
+                  title="Add new Text element"
                 >
                   <Type className="w-4 h-4 text-[#1A1B25]" />
                   <span className="text-[11px] font-medium text-gray-700">Text</span>
@@ -1155,10 +1427,9 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                 {/* 3. Vector */}
                 <button
                   type="button"
-                  onClick={() => setExpandedActiveTool('vector')}
-                  className={`bg-white border border-dashed rounded-2xl w-[64px] h-[58px] flex flex-col items-center justify-center gap-1 cursor-pointer transition-all active:scale-95 ${
-                    expandedActiveTool === 'vector' ? 'border-[#FF6B4A] bg-orange-50/50' : 'border-gray-200/80 hover:bg-gray-50'
-                  }`}
+                  onClick={handleAddVectorElement}
+                  className="bg-white border border-dashed border-gray-200/80 hover:bg-gray-50 rounded-2xl w-[64px] h-[58px] flex flex-col items-center justify-center gap-1 cursor-pointer transition-all active:scale-95"
+                  title="Add new Vector element"
                 >
                   <Sparkles className="w-4 h-4 text-[#1A1B25]" />
                   <span className="text-[11px] font-medium text-gray-700">Vector</span>
@@ -1167,121 +1438,335 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                 {/* 4. BG */}
                 <button
                   type="button"
-                  onClick={() => setExpandedActiveTool('bg')}
-                  className={`bg-white border border-dashed rounded-2xl w-[64px] h-[58px] flex flex-col items-center justify-center gap-1 cursor-pointer transition-all active:scale-95 ${
-                    expandedActiveTool === 'bg' ? 'border-[#FF6B4A] bg-orange-50/50' : 'border-gray-200/80 hover:bg-gray-50'
-                  }`}
+                  onClick={handleAddBgElement}
+                  className="bg-white border border-dashed border-gray-200/80 hover:bg-gray-50 rounded-2xl w-[64px] h-[58px] flex flex-col items-center justify-center gap-1 cursor-pointer transition-all active:scale-95"
+                  title="Add new BG element"
                 >
                   <Palette className="w-4 h-4 text-[#1A1B25]" />
                   <span className="text-[11px] font-medium text-gray-700">BG</span>
-                </button>
-
-                {/* 5. Frame */}
-                <button
-                  type="button"
-                  onClick={() => setExpandedActiveTool('frame')}
-                  className={`bg-white border border-dashed rounded-2xl w-[64px] h-[58px] flex flex-col items-center justify-center gap-1 cursor-pointer transition-all active:scale-95 ${
-                    expandedActiveTool === 'frame' ? 'border-[#FF6B4A] bg-orange-50/50' : 'border-gray-200/80 hover:bg-gray-50'
-                  }`}
-                >
-                  <Layout className="w-4 h-4 text-[#1A1B25]" />
-                  <span className="text-[11px] font-medium text-gray-700">Frame</span>
                 </button>
               </div>
 
             </div>
           )}
 
-          {/* TOOL MODAL POP-UP OVERLAY matching exact design */}
-          {expandedActiveTool !== 'none' && (
+          {/* EDIT ELEMENT POP-UP MODAL */}
+          {editingElement && (
             <div 
-              className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in"
+              className="fixed inset-0 z-[4000] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in"
               onClick={(e) => {
-                if (e.target === e.currentTarget) setExpandedActiveTool('none');
+                if (e.target === e.currentTarget) setEditingElementId(null);
               }}
             >
-              <div className="bg-white rounded-[2rem] max-w-md w-full p-6 shadow-2xl flex flex-col gap-5 relative animate-in zoom-in-95 duration-200 border border-gray-100">
+              <div className="bg-white rounded-[2rem] sm:rounded-[2.5rem] max-w-md w-full h-[580px] max-h-[85vh] p-6 shadow-2xl flex flex-col relative animate-in zoom-in-95 duration-200 border border-gray-100 font-sans overflow-hidden">
                 
                 {/* Header */}
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between pb-3 flex-shrink-0">
                   <h3 className="text-xl font-bold text-[#1A1B25]">
-                    {expandedActiveTool === 'image' && 'Image'}
-                    {expandedActiveTool === 'text' && 'Text'}
-                    {expandedActiveTool === 'vector' && 'Vector Art'}
-                    {expandedActiveTool === 'bg' && 'Background'}
-                    {expandedActiveTool === 'frame' && 'Frame Layout'}
+                    {editingElement.type === 'text' ? 'Text' : editingElement.type === 'bg' ? 'Background' : editingElement.type.charAt(0).toUpperCase() + editingElement.type.slice(1)}
                   </h3>
-                  <button
-                    type="button"
-                    onClick={() => setExpandedActiveTool('none')}
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-[#1A1B25] hover:bg-gray-100 transition-all cursor-pointer"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteElement(editingElement.id)}
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-red-500 hover:bg-red-50 transition-all cursor-pointer"
+                      title="Delete element"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingElementId(null)}
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-gray-700 hover:text-[#1A1B25] hover:bg-gray-100 transition-all cursor-pointer"
+                      title="Close"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
 
-                {/* Content based on tool */}
-                {expandedActiveTool === 'image' && (
+                <div className="w-full h-px bg-gray-100/80 -mt-1 mb-3 flex-shrink-0" />
+
+                {/* Content based on element type - scrollable body */}
+                <div className="flex-1 overflow-y-auto pr-1 space-y-3.5 scrollbar-thin">
+                  {editingElement.type === 'text' && (
+                    <div className="flex flex-col gap-3.5">
+                      {/* Main Text Input Box with internal Template & Refine toolbar */}
+                      <div className="bg-[#F6F8FA] rounded-2xl p-4 flex flex-col justify-between min-h-[210px] relative border border-transparent focus-within:border-gray-200/80 transition-all">
+                        <textarea
+                          value={editingElement.text || ''}
+                          onChange={(e) => {
+                            const txt = e.target.value.slice(0, 250);
+                            updateEditingElement({ text: txt });
+                            setContent(txt);
+                          }}
+                          placeholder="Type here......"
+                          style={{
+                            fontFamily: editingElement.fontFamily || (editingElement.isCursive ? 'Playfair Display, cursive' : 'Nunito, sans-serif'),
+                            color: editingElement.color || '#1A1B25',
+                            textAlign: editingElement.align || 'left',
+                          }}
+                          className="w-full h-28 bg-transparent text-[#1A1B25] text-base font-medium placeholder:text-gray-400 placeholder:font-normal focus:outline-none resize-none border-none p-0"
+                        />
+
+                        {/* Templates Popup Drawer */}
+                        {activeAccordion === 'template' && (
+                          <div className="absolute inset-x-2 top-2 bottom-12 bg-white/95 backdrop-blur-md rounded-xl p-3 shadow-lg z-20 flex flex-col border border-gray-100 animate-in fade-in zoom-in-95 duration-150">
+                            <div className="flex items-center justify-between pb-2 mb-1 border-b border-gray-100">
+                              <span className="text-xs font-bold text-gray-800">Choose Text Template</span>
+                              <button
+                                type="button"
+                                onClick={() => setActiveAccordion(null)}
+                                className="text-gray-400 hover:text-gray-700 p-0.5 rounded-full"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                            <div className="flex-grow overflow-y-auto space-y-1.5 pr-1">
+                              {TEXT_TEMPLATES.map((tmpl, idx) => (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  onClick={() => {
+                                    updateEditingElement({ text: tmpl });
+                                    setContent(tmpl);
+                                    setActiveAccordion(null);
+                                  }}
+                                  className="w-full text-left p-2 rounded-lg text-xs font-medium text-gray-800 hover:bg-orange-50 hover:text-[#FF6B4A] transition-colors cursor-pointer border border-transparent hover:border-orange-100"
+                                >
+                                  "{tmpl}"
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Bottom Toolbar inside Text Area */}
+                        <div className="flex items-center justify-between pt-2 border-t border-gray-200/50">
+                          <button
+                            type="button"
+                            onClick={() => toggleAccordion('template')}
+                            className={`bg-white hover:bg-gray-50 text-[#1A1B25] font-semibold text-xs px-4 py-1.5 rounded-full shadow-2xs border transition-all cursor-pointer ${
+                              activeAccordion === 'template' ? 'border-[#FF6B4A] text-[#FF6B4A]' : 'border-gray-200/80'
+                            }`}
+                          >
+                            Template
+                          </button>
+
+                          <button
+                            type="button"
+                            disabled={isRefining || !editingElement.text?.trim()}
+                            onClick={async () => {
+                              if (!editingElement.text?.trim()) return;
+                              setIsRefining(true);
+                              try {
+                                const refined = await refineText(editingElement.text);
+                                if (refined) {
+                                  updateEditingElement({ text: refined });
+                                  setContent(refined);
+                                }
+                              } catch (err) {
+                                console.error("Refine error:", err);
+                              } finally {
+                                setIsRefining(false);
+                              }
+                            }}
+                            className="bg-white hover:bg-rose-50 text-[#1A1B25] font-bold text-xs px-3.5 py-1.5 rounded-full shadow-2xs border border-rose-200/80 flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 active:scale-95 text-rose-600"
+                          >
+                            {isRefining ? (
+                              <Loader2 className="w-3.5 h-3.5 text-[#FF6B4A] animate-spin" />
+                            ) : (
+                              <Sparkles className="w-3.5 h-3.5 text-[#FF6B4A]" />
+                            )}
+                            <span>{isRefining ? 'Refining...' : 'Refine'}</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Select Font Accordion Card */}
+                      <div className="bg-[#F6F8FA] rounded-2xl p-4 flex flex-col gap-2 transition-all">
+                        <div 
+                          onClick={() => toggleAccordion('font')}
+                          className="flex items-center justify-between cursor-pointer select-none"
+                        >
+                          <span className="text-sm font-bold text-[#1A1B25]">Select Font</span>
+                          <div className="flex items-center gap-2">
+                            <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${activeAccordion === 'font' ? 'rotate-180' : ''}`} />
+                          </div>
+                        </div>
+
+                        {activeAccordion === 'font' && (
+                          <div className="grid grid-cols-2 gap-2 pt-2.5 border-t border-gray-200/60 animate-in fade-in duration-150">
+                            {FONT_OPTIONS.map((f) => (
+                              <button
+                                key={f.id}
+                                type="button"
+                                onClick={() => {
+                                  const isCurs = f.id === 'playfair' || f.id === 'caveat';
+                                  updateEditingElement({ fontFamily: f.font, isCursive: isCurs });
+                                  setIsCursive(isCurs);
+                                }}
+                                style={{ fontFamily: f.font }}
+                                className={`p-2.5 rounded-xl text-xs font-bold text-center transition-all border cursor-pointer ${
+                                  editingElement.fontFamily === f.font || (!editingElement.fontFamily && f.id === 'nunito')
+                                    ? 'bg-white border-[#FF6B4A] text-[#FF6B4A] shadow-2xs'
+                                    : 'bg-white/60 border-transparent text-gray-700 hover:bg-white'
+                                }`}
+                              >
+                                {f.name}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Alignment Option Card */}
+                      <div className="bg-[#F6F8FA] rounded-2xl p-4 flex items-center justify-between">
+                        <span className="text-sm font-bold text-[#1A1B25]">Alignment</span>
+                        <div className="flex items-center gap-1.5 bg-gray-200/40 p-1 rounded-xl">
+                          <button
+                            type="button"
+                            onClick={() => updateEditingElement({ align: 'left' })}
+                            className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                              (editingElement.align || 'left') === 'left' ? 'bg-white text-[#1A1B25] shadow-xs' : 'text-gray-400 hover:text-gray-700'
+                            }`}
+                            title="Left Align"
+                          >
+                            <AlignLeft className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updateEditingElement({ align: 'center' })}
+                            className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                              editingElement.align === 'center' ? 'bg-white text-[#1A1B25] shadow-xs' : 'text-gray-400 hover:text-gray-700'
+                            }`}
+                            title="Center Align"
+                          >
+                            <AlignCenter className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updateEditingElement({ align: 'right' })}
+                            className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                              editingElement.align === 'right' ? 'bg-white text-[#1A1B25] shadow-xs' : 'text-gray-400 hover:text-gray-700'
+                            }`}
+                            title="Right Align"
+                          >
+                            <AlignRight className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => updateEditingElement({ align: 'justify' })}
+                            className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                              editingElement.align === 'justify' ? 'bg-white text-[#1A1B25] shadow-xs' : 'text-gray-400 hover:text-gray-700'
+                            }`}
+                            title="Justify Align"
+                          >
+                            <AlignJustify className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Choose Colour Accordion Card */}
+                      <div className="bg-[#F6F8FA] rounded-2xl p-4 flex flex-col gap-2 transition-all">
+                        <div 
+                          onClick={() => toggleAccordion('color')}
+                          className="flex items-center justify-between cursor-pointer select-none"
+                        >
+                          <span className="text-sm font-bold text-[#1A1B25]">Choose Colour</span>
+                          <div className="flex items-center gap-2">
+                            <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${activeAccordion === 'color' ? 'rotate-180' : ''}`} />
+                          </div>
+                        </div>
+
+                        {activeAccordion === 'color' && (
+                          <div className="grid grid-cols-4 gap-2.5 pt-2.5 border-t border-gray-200/60 animate-in fade-in duration-150">
+                            {COLOR_OPTIONS.map((col) => (
+                              <button
+                                key={col.hex}
+                                type="button"
+                                onClick={() => updateEditingElement({ color: col.hex })}
+                                className={`h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer border ${
+                                  editingElement.color === col.hex ? 'border-[#FF6B4A] scale-105 shadow-xs' : 'border-gray-200 hover:scale-102'
+                                }`}
+                                style={{ backgroundColor: col.hex }}
+                                title={col.name}
+                              >
+                                {editingElement.color === col.hex && (
+                                  <Check className={`w-4 h-4 ${col.hex === '#FFFFFF' ? 'text-black' : 'text-white'}`} />
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {editingElement.type === 'image' && (
                   <div className="flex flex-col gap-4">
-                    <div className="bg-[#F8F9FB] rounded-2xl h-[220px] sm:h-[260px] flex flex-col items-center justify-center p-4 text-center overflow-hidden relative">
-                      {uploadedImage ? (
-                        <img src={uploadedImage} alt="Uploaded" className="max-h-full max-w-full object-contain rounded-xl shadow-xs" />
+                    <div className="bg-[#F8F9FB] rounded-2xl h-[220px] flex flex-col items-center justify-center p-4 text-center overflow-hidden relative">
+                      {editingElement.imageUrl ? (
+                        <img src={editingElement.imageUrl} alt="Uploaded" className="max-h-full max-w-full object-contain rounded-xl shadow-xs" />
                       ) : (
                         <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
-                          <ImageIcon className="w-7 h-7 stroke-[1.5]" />
-                          <span className="text-sm font-medium text-gray-400">Preview image here</span>
+                          <ImageIcon className="w-8 h-8 stroke-[1.5]" />
+                          <span className="text-sm font-medium text-gray-400">No image uploaded yet</span>
                         </div>
                       )}
                     </div>
-
                     <label className="w-full py-3.5 bg-[#F6F8FA] hover:bg-gray-100 text-[#1A1B25] font-bold text-sm rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-[0.99]">
                       <Upload className="w-4 h-4 text-[#1A1B25]" />
-                      <span>{uploadedImage ? 'Change Image' : 'Upload Image'}</span>
+                      <span>{editingElement.imageUrl ? 'Change Image' : 'Upload Image'}</span>
                       <input 
                         type="file" 
                         accept="image/*" 
-                        onChange={handleImageUpload} 
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                              const imgUrl = reader.result as string;
+                              updateEditingElement({ imageUrl: imgUrl });
+                              setUploadedImage(imgUrl);
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }} 
                         className="hidden" 
                       />
                     </label>
-                  </div>
-                )}
-
-                {expandedActiveTool === 'text' && (
-                  <div className="flex flex-col gap-4">
-                    <textarea
-                      value={content}
-                      onChange={(e) => setContent(e.target.value)}
-                      placeholder="Type your appreciation message here..."
-                      className="w-full h-32 p-4 bg-[#F8F9FB] rounded-2xl border-none text-[#1A1B25] text-sm focus:outline-none focus:ring-0 outline-none resize-none font-medium placeholder:text-gray-400"
-                    />
-
-                    <div className="flex items-center justify-between bg-[#F8F9FB] p-3 rounded-xl border-none">
-                      <span className="text-xs font-bold text-gray-600">Font Style</span>
+                    <div className="flex gap-2 pt-2">
                       <button
                         type="button"
-                        onClick={() => setIsCursive(!isCursive)}
-                        className="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-[#1A1B25] text-white hover:bg-black cursor-pointer"
+                        onClick={() => handleDeleteElement(editingElement.id)}
+                        className="w-1/3 py-3 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-sm rounded-2xl transition-all cursor-pointer text-center"
                       >
-                        {isCursive ? 'Cursive Font' : 'Sans Font'}
+                        Delete
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingElementId(null)}
+                        className="flex-grow py-3 bg-[#FF6B4A] hover:bg-[#ff5833] active:bg-[#e05234] text-white font-bold text-sm rounded-2xl transition-all cursor-pointer shadow-sm active:scale-[0.99] text-center"
+                      >
+                        Done
                       </button>
                     </div>
                   </div>
                 )}
 
-                {expandedActiveTool === 'vector' && (
+                {editingElement.type === 'vector' && (
                   <div className="flex flex-col gap-3">
-                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Select Stickers & Hearts</span>
-                    <div className="grid grid-cols-4 gap-3 max-h-56 overflow-y-auto p-1">
+                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Select Sticker / Heart</span>
+                    <div className="grid grid-cols-3 gap-3 max-h-60 overflow-y-auto p-1">
                       {SEMANTIC_HEARTS.map((h) => (
                         <button
                           key={h.id}
                           type="button"
-                          onClick={() => handleHeartToggle(h.id)}
+                          onClick={() => updateEditingElement({ emoji: h.emoji, label: h.label, bubbleColor: h.bubbleColor })}
                           className={`p-3 rounded-xl flex flex-col items-center justify-center gap-1 transition-all border ${
-                            selectedHearts.includes(h.id) ? 'bg-orange-50 border-[#FF6B4A] scale-105 shadow-xs' : 'bg-[#F8F9FB] border-transparent hover:bg-gray-100'
+                            editingElement.emoji === h.emoji ? 'bg-orange-50 border-[#FF6B4A] scale-105 shadow-xs' : 'bg-[#F8F9FB] border-transparent hover:bg-gray-100'
                           }`}
-                          title={h.label}
                         >
                           <span className="text-2xl">{h.emoji}</span>
                           <span className="text-[10px] font-bold text-gray-600 truncate max-w-full">{h.label}</span>
@@ -1291,89 +1776,115 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                         <button
                           key={s.id}
                           type="button"
-                          onClick={() => setSelectedSticker(selectedSticker?.id === s.id ? null : s)}
+                          onClick={() => updateEditingElement({ emoji: s.emoji, label: s.label })}
                           className={`p-3 rounded-xl flex flex-col items-center justify-center gap-1 transition-all border ${
-                            selectedSticker?.id === s.id ? 'bg-orange-50 border-[#FF6B4A] scale-105 shadow-xs' : 'bg-[#F8F9FB] border-transparent hover:bg-gray-100'
+                            editingElement.emoji === s.emoji ? 'bg-orange-50 border-[#FF6B4A] scale-105 shadow-xs' : 'bg-[#F8F9FB] border-transparent hover:bg-gray-100'
                           }`}
-                          title={s.label}
                         >
                           <span className="text-2xl">{s.emoji}</span>
                           <span className="text-[10px] font-bold text-gray-600 truncate max-w-full">{s.label}</span>
                         </button>
                       ))}
                     </div>
+                    <div className="flex gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteElement(editingElement.id)}
+                        className="w-1/3 py-3 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-sm rounded-2xl transition-all cursor-pointer text-center"
+                      >
+                        Delete
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingElementId(null)}
+                        className="flex-grow py-3 bg-[#FF6B4A] hover:bg-[#ff5833] active:bg-[#e05234] text-white font-bold text-sm rounded-2xl transition-all cursor-pointer shadow-sm active:scale-[0.99] text-center"
+                      >
+                        Done
+                      </button>
+                    </div>
                   </div>
                 )}
 
-                {expandedActiveTool === 'bg' && (
+                {editingElement.type === 'bg' && (
                   <div className="flex flex-col gap-3">
                     <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Select Canvas Theme</span>
-                    <div className="grid grid-cols-4 gap-3 p-1">
+                    <div className="grid grid-cols-2 gap-3 p-1">
                       {FRAME_TEMPLATES.map((frame) => (
                         <button
                           key={frame.id}
                           type="button"
-                          onClick={() => setSelectedFrame(frame)}
+                          onClick={() => {
+                            updateEditingElement({ bgHex: frame.bgHex, frameName: frame.name });
+                            setSelectedFrame(frame);
+                          }}
                           className={`h-16 rounded-2xl transition-all border-2 flex flex-col items-center justify-center p-2 cursor-pointer ${
-                            selectedFrame.id === frame.id ? 'border-[#FF6B4A] scale-105 shadow-md' : 'border-transparent hover:scale-102'
+                            (editingElement.bgHex || selectedFrame.bgHex) === frame.bgHex ? 'border-[#FF6B4A] scale-105 shadow-md' : 'border-transparent hover:scale-102'
                           }`}
                           style={{ backgroundColor: frame.bgHex }}
-                          title={frame.name}
                         >
-                          <span className={`text-[10px] font-bold ${frame.id === 'slate' ? 'text-white' : 'text-gray-800'}`}>{frame.name}</span>
+                          <span className={`text-xs font-bold ${frame.id === 'slate' ? 'text-white' : 'text-gray-800'}`}>{frame.name}</span>
                         </button>
                       ))}
                     </div>
-                  </div>
-                )}
-
-                {expandedActiveTool === 'frame' && (
-                  <div className="flex flex-col gap-3">
-                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Select Aspect Layout</span>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="flex gap-2 pt-2">
                       <button
                         type="button"
-                        onClick={() => setCanvasAspectRatio('portrait')}
-                        className={`py-4 px-3 rounded-2xl text-xs font-bold transition-all flex flex-col items-center justify-center gap-2 border-2 cursor-pointer ${
-                          canvasAspectRatio === 'portrait' 
-                            ? 'bg-orange-50 border-[#FF6B4A] text-[#FF6B4A] shadow-xs' 
-                            : 'bg-[#F8F9FB] border-transparent text-gray-600 hover:bg-gray-100'
-                        }`}
+                        onClick={() => handleDeleteElement(editingElement.id)}
+                        className="w-1/3 py-3 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-sm rounded-2xl transition-all cursor-pointer text-center"
                       >
-                        <RectangleVertical className="w-6 h-6" />
-                        <span>Portrait Layout</span>
+                        Delete
                       </button>
                       <button
                         type="button"
-                        onClick={() => setCanvasAspectRatio('landscape')}
-                        className={`py-4 px-3 rounded-2xl text-xs font-bold transition-all flex flex-col items-center justify-center gap-2 border-2 cursor-pointer ${
-                          canvasAspectRatio === 'landscape' 
-                            ? 'bg-orange-50 border-[#FF6B4A] text-[#FF6B4A] shadow-xs' 
-                            : 'bg-[#F8F9FB] border-transparent text-gray-600 hover:bg-gray-100'
-                        }`}
+                        onClick={() => setEditingElementId(null)}
+                        className="flex-grow py-3 bg-[#FF6B4A] hover:bg-[#ff5833] active:bg-[#e05234] text-white font-bold text-sm rounded-2xl transition-all cursor-pointer shadow-sm active:scale-[0.99] text-center"
                       >
-                        <RectangleHorizontal className="w-6 h-6" />
-                        <span>Landscape Layout</span>
+                        Done
                       </button>
                     </div>
                   </div>
                 )}
 
-                {/* Continue Action */}
-                <button
-                  type="button"
-                  onClick={() => setExpandedActiveTool('none')}
-                  className="w-full py-3.5 bg-[#FF6B4A] hover:bg-[#ff5833] active:bg-[#e05234] text-white font-bold text-base rounded-2xl transition-all cursor-pointer shadow-sm active:scale-[0.99] text-center"
-                >
-                  Continue
-                </button>
+                </div>
 
+                {/* Fixed Footer for Text */}
+                {editingElement.type === 'text' && (
+                  <div className="bg-[#F9F5F3] -mx-6 -mb-6 p-6 rounded-b-[2rem] sm:rounded-b-[2.5rem] mt-auto flex-shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setEditingElementId(null)}
+                      className="w-full py-3.5 bg-[#FF6B4A] hover:bg-[#ff5833] active:scale-[0.99] text-white font-bold text-base rounded-full shadow-md transition-all cursor-pointer text-center"
+                    >
+                      Continue
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}
 
         </div>
       )}
+
+      {/* Hidden file input for image tool button */}
+      <input 
+        ref={imageInputRef}
+        type="file" 
+        accept="image/*" 
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              const imgUrl = reader.result as string;
+              updateEditingElement({ imageUrl: imgUrl });
+              setUploadedImage(imgUrl);
+            };
+            reader.readAsDataURL(file);
+          }
+        }} 
+        className="hidden" 
+      />
 
     </div>
   );

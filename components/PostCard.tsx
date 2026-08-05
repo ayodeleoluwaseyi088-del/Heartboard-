@@ -96,12 +96,12 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick, disabled }) =
           )}
 
           {/* Central content / Rasterized Image created by curator */}
-          <div className="flex-grow flex flex-col justify-center my-2 relative overflow-hidden rounded-xl">
+          <div className="flex-grow flex flex-col justify-center my-2 relative overflow-hidden rounded-none">
             {post.mediaUrl ? (
-              <div className="relative w-full h-full min-h-[160px] rounded-2xl overflow-hidden bg-gray-50">
+              <div className="relative w-full h-full min-h-[160px] rounded-none overflow-hidden bg-gray-50 flex items-center justify-center p-1">
                 <img 
                   src={post.mediaUrl} 
-                  className="w-full h-full object-cover" 
+                  className="max-w-full max-h-full w-auto h-auto object-contain rounded-none" 
                   alt={post.content || 'Curated tribute'} 
                   referrerPolicy="no-referrer" 
                 />
