@@ -31,6 +31,8 @@ import {
   Loader2
 } from 'lucide-react';
 import { refineText } from '../services/geminiService';
+import { VectorPicker, PHOSPHOR_VECTORS } from './VectorPicker';
+import { ChooseColor } from './ColorPicker';
 
 export interface CanvasElement {
   id: string;
@@ -41,6 +43,12 @@ export interface CanvasElement {
   color?: string;
   align?: 'left' | 'center' | 'right' | 'justify';
   imageUrl?: string;
+  strokeEnabled?: boolean;
+  strokeColor?: string;
+  strokeWidth?: number;
+  cornerRadius?: number;
+  vectorId?: string;
+  vectorName?: string;
   emoji?: string;
   label?: string;
   bubbleColor?: string;
@@ -215,15 +223,29 @@ const RenderCanvasElement: React.FC<RenderCanvasElementProps> = ({
           src={el.imageUrl}
           alt="Uploaded attachment"
           draggable={false}
-          className="max-w-[220px] max-h-[220px] w-auto h-auto object-contain rounded-none shadow-xs pointer-events-none select-none"
+          style={{
+            borderRadius: `${el.cornerRadius || 0}px`,
+            border: el.strokeEnabled ? `${el.strokeWidth ?? 3}px solid ${el.strokeColor || '#FF6B4A'}` : 'none',
+          }}
+          className="max-w-[220px] max-h-[220px] w-auto h-auto object-contain shadow-xs pointer-events-none select-none transition-all"
         />
       )}
 
       {/* 2. Vector / Sticker Element */}
-      {el.type === 'vector' && el.emoji && (
-        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-50/90 text-[#FF6B4A] shadow-2xs border border-orange-200/60 pointer-events-none select-none">
-          <span className="text-base leading-none">{el.emoji}</span>
-          {el.label && <span className="text-xs font-bold tracking-tight">{el.label}</span>}
+      {el.type === 'vector' && (
+        <div className="p-1 pointer-events-none select-none flex items-center justify-center">
+          {(() => {
+            const match = PHOSPHOR_VECTORS.find(v => v.id === (el.vectorId || 'heart'));
+            const color = el.vectorColor || '#272835';
+            if (match) {
+              const IconComp = match.Icon;
+              return <IconComp size={48} weight={match.weight || 'fill'} style={{ color }} className="drop-shadow-xs" />;
+            }
+            if (el.emoji) {
+              return <span className="text-4xl leading-none">{el.emoji}</span>;
+            }
+            return <Heart className="w-10 h-10 drop-shadow-xs" style={{ color }} />;
+          })()}
         </div>
       )}
 
@@ -379,6 +401,11 @@ const FRAME_TEMPLATES: FrameTemplate[] = [
   { id: 'slate', name: 'Cosmic Slate', bgHex: '#272835', pillBg: '#353849', pillText: '#DFE1E6' },
   { id: 'sunset', name: 'Soft Sunlight', bgHex: '#FAF5E8', pillBg: '#FAF5E8', pillText: '#806840' },
   { id: 'lavender', name: 'Dreamy Lavender', bgHex: '#EEF1FA', pillBg: '#EEF1FA', pillText: '#5A60A0' },
+  { id: 'blush', name: 'Blush Rose', bgHex: '#FDE8E8', pillBg: '#FDE8E8', pillText: '#9B1C1C' },
+  { id: 'sky', name: 'Sky Azure', bgHex: '#E0F2FE', pillBg: '#E0F2FE', pillText: '#0369A1' },
+  { id: 'emerald', name: 'Sage Emerald', bgHex: '#E6F4EA', pillBg: '#E6F4EA', pillText: '#137333' },
+  { id: 'amber', name: 'Warm Amber', bgHex: '#FEF3C7', pillBg: '#FEF3C7', pillText: '#92400E' },
+  { id: 'lilac', name: 'Soft Lilac', bgHex: '#F3E8FF', pillBg: '#F3E8FF', pillText: '#6B21A8' },
 ];
 
 // Stickers selection
@@ -423,6 +450,11 @@ const COLOR_OPTIONS = [
   { hex: '#EC4899', name: 'Pink' },
   { hex: '#F59E0B', name: 'Amber' },
   { hex: '#000000', name: 'Black' },
+  { hex: '#4F46E5', name: 'Indigo' },
+  { hex: '#D946EF', name: 'Fuchsia' },
+  { hex: '#047857', name: 'Emerald' },
+  { hex: '#0284C7', name: 'Sky' },
+  { hex: '#A855F7', name: 'Violet' },
 ];
 
 export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = ({ onClose, onPostCreated }) => {
@@ -457,7 +489,7 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
   const hasElementContent = (el: CanvasElement) => {
     if (el.type === 'text') return Boolean(el.text && el.text.trim());
     if (el.type === 'image') return Boolean(el.imageUrl && el.imageUrl.trim());
-    if (el.type === 'vector') return Boolean(el.emoji && el.emoji.trim());
+    if (el.type === 'vector') return Boolean(el.vectorId || el.emoji);
     return false;
   };
 
@@ -479,6 +511,10 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
       id: 'image-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
       type: 'image',
       imageUrl: '',
+      strokeEnabled: false,
+      strokeColor: '#FF6B4A',
+      strokeWidth: 3,
+      cornerRadius: 0,
     };
     setCanvasElements(prev => [...prev, newEl]);
     setSelectedElementId(newEl.id);
@@ -489,11 +525,16 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
   };
 
   const handleAddVectorElement = () => {
+    const defaultVector = PHOSPHOR_VECTORS[0];
     const newEl: CanvasElement = {
       id: 'vector-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
       type: 'vector',
-      emoji: '',
-      label: '',
+      vectorId: defaultVector.id,
+      vectorName: defaultVector.name,
+      x: 0,
+      y: 0,
+      scale: 1,
+      rotation: 0,
     };
     setCanvasElements(prev => [...prev, newEl]);
     setSelectedElementId(newEl.id);
@@ -1030,7 +1071,7 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
             <div className="grid grid-cols-2 gap-4 pt-1">
               <div className="space-y-2">
                 <span className="text-xs font-extrabold text-gray-500 uppercase tracking-widest pl-0.5 block">Frame Frame</span>
-                <div className="flex gap-2.5 items-center">
+                <div className="flex gap-2 items-center flex-wrap">
                   {FRAME_TEMPLATES.map((tmpl) => (
                     <button
                       key={tmpl.id}
@@ -1453,12 +1494,32 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
           {/* EDIT ELEMENT POP-UP MODAL */}
           {editingElement && (
             <div 
-              className="fixed inset-0 z-[4000] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in"
+              className="fixed inset-0 z-[4000] bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-fade-in"
               onClick={(e) => {
                 if (e.target === e.currentTarget) setEditingElementId(null);
               }}
             >
-              <div className="bg-white rounded-[2rem] sm:rounded-[2.5rem] max-w-md w-full h-[580px] max-h-[85vh] p-6 shadow-2xl flex flex-col relative animate-in zoom-in-95 duration-200 border border-gray-100 font-sans overflow-hidden">
+              {editingElement.type === 'vector' ? (
+                <VectorPicker
+                  selectedIconId={editingElement.vectorId || 'heart'}
+                  vectorColor={editingElement.vectorColor || '#272835'}
+                  onSelectVector={(item) => {
+                    updateEditingElement({
+                      vectorId: item.id,
+                      vectorName: item.name,
+                    });
+                  }}
+                  onColorChange={(color) => {
+                    updateEditingElement({
+                      vectorColor: color,
+                    });
+                  }}
+                  onDelete={() => handleDeleteElement(editingElement.id)}
+                  onClose={() => setEditingElementId(null)}
+                  onContinue={() => setEditingElementId(null)}
+                />
+              ) : (
+                <div className="bg-white rounded-[1.8rem] sm:rounded-[2.5rem] max-w-md w-full max-h-[90dvh] sm:max-h-[85vh] p-4 sm:p-6 shadow-2xl flex flex-col relative animate-in zoom-in-95 duration-200 font-sans overflow-hidden my-auto">
                 
                 {/* Header */}
                 <div className="flex items-center justify-between pb-3 flex-shrink-0">
@@ -1668,46 +1729,30 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                       </div>
 
                       {/* Choose Colour Accordion Card */}
-                      <div className="bg-[#F6F8FA] rounded-2xl p-4 flex flex-col gap-2 transition-all">
-                        <div 
-                          onClick={() => toggleAccordion('color')}
-                          className="flex items-center justify-between cursor-pointer select-none"
-                        >
-                          <span className="text-sm font-bold text-[#1A1B25]">Choose Colour</span>
-                          <div className="flex items-center gap-2">
-                            <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${activeAccordion === 'color' ? 'rotate-180' : ''}`} />
-                          </div>
-                        </div>
-
-                        {activeAccordion === 'color' && (
-                          <div className="grid grid-cols-4 gap-2.5 pt-2.5 border-t border-gray-200/60 animate-in fade-in duration-150">
-                            {COLOR_OPTIONS.map((col) => (
-                              <button
-                                key={col.hex}
-                                type="button"
-                                onClick={() => updateEditingElement({ color: col.hex })}
-                                className={`h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer border ${
-                                  editingElement.color === col.hex ? 'border-[#FF6B4A] scale-105 shadow-xs' : 'border-gray-200 hover:scale-102'
-                                }`}
-                                style={{ backgroundColor: col.hex }}
-                                title={col.name}
-                              >
-                                {editingElement.color === col.hex && (
-                                  <Check className={`w-4 h-4 ${col.hex === '#FFFFFF' ? 'text-black' : 'text-white'}`} />
-                                )}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                      <ChooseColor
+                        label="Choose Colour"
+                        selectedColor={editingElement.color || '#1A1B25'}
+                        onChangeColor={(hex) => updateEditingElement({ color: hex })}
+                        isOpen={activeAccordion === 'color'}
+                        onToggleOpen={() => toggleAccordion('color')}
+                      />
                     </div>
                   )}
 
                   {editingElement.type === 'image' && (
-                  <div className="flex flex-col gap-4">
-                    <div className="bg-[#F8F9FB] rounded-2xl h-[220px] flex flex-col items-center justify-center p-4 text-center overflow-hidden relative">
+                  <div className="flex flex-col gap-3.5">
+                    {/* Image Preview Box */}
+                    <div className="bg-[#F8F9FB] rounded-2xl h-[180px] flex flex-col items-center justify-center p-3 text-center overflow-hidden relative">
                       {editingElement.imageUrl ? (
-                        <img src={editingElement.imageUrl} alt="Uploaded" className="max-h-full max-w-full object-contain rounded-xl shadow-xs" />
+                        <img 
+                          src={editingElement.imageUrl} 
+                          alt="Uploaded" 
+                          style={{
+                            borderRadius: `${editingElement.cornerRadius || 0}px`,
+                            border: editingElement.strokeEnabled ? `${editingElement.strokeWidth ?? 3}px solid ${editingElement.strokeColor || '#FF6B4A'}` : 'none',
+                          }}
+                          className="max-h-full max-w-full object-contain shadow-xs transition-all" 
+                        />
                       ) : (
                         <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
                           <ImageIcon className="w-8 h-8 stroke-[1.5]" />
@@ -1715,7 +1760,84 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                         </div>
                       )}
                     </div>
-                    <label className="w-full py-3.5 bg-[#F6F8FA] hover:bg-gray-100 text-[#1A1B25] font-bold text-sm rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-[0.99]">
+
+                    {/* Image Controls Section */}
+                    <div className="flex flex-col gap-3 bg-[#F6F8FA] p-3.5 rounded-2xl">
+                      
+                      {/* 1. Corner Radius Control */}
+                      <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-[#1A1B25]">Corner Radius</span>
+                          <span className="text-xs font-bold text-gray-600 bg-white px-2 py-0.5 rounded-md shadow-2xs">
+                            {editingElement.cornerRadius || 0}px
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="40"
+                          value={editingElement.cornerRadius || 0}
+                          onChange={(e) => updateEditingElement({ cornerRadius: Number(e.target.value) })}
+                          className="w-full accent-[#FF6B4A] cursor-pointer h-1.5 bg-gray-200 rounded-lg appearance-none"
+                        />
+                      </div>
+
+                      <div className="w-full h-px bg-gray-200/60" />
+
+                      {/* 2. Stroke / Outline Control */}
+                      <div className="flex flex-col gap-2.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-[#1A1B25]">Stroke / Outline</span>
+                          <button
+                            type="button"
+                            onClick={() => updateEditingElement({ strokeEnabled: !editingElement.strokeEnabled })}
+                            className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors cursor-pointer ${
+                              editingElement.strokeEnabled ? 'bg-[#FF6B4A]' : 'bg-gray-300'
+                            }`}
+                          >
+                            <span
+                              className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                                editingElement.strokeEnabled ? 'translate-x-5' : 'translate-x-1'
+                              }`}
+                            />
+                          </button>
+                        </div>
+
+                        {editingElement.strokeEnabled && (
+                          <div className="flex flex-col gap-2.5 pt-1 animate-in fade-in duration-150">
+                            {/* Stroke Color Picker */}
+                            <ChooseColor
+                              label="Stroke Color"
+                              selectedColor={editingElement.strokeColor || '#FF6B4A'}
+                              onChangeColor={(hex) => updateEditingElement({ strokeColor: hex })}
+                              isAccordion={false}
+                            />
+
+                            {/* Stroke Weight Slider */}
+                            <div className="flex flex-col gap-1.5">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[11px] font-semibold text-gray-500">Stroke Weight</span>
+                                <span className="text-xs font-bold text-gray-600 bg-white px-2 py-0.5 rounded-md shadow-2xs">
+                                  {editingElement.strokeWidth ?? 3}px
+                                </span>
+                              </div>
+                              <input
+                                type="range"
+                                min="1"
+                                max="16"
+                                value={editingElement.strokeWidth ?? 3}
+                                onChange={(e) => updateEditingElement({ strokeWidth: Number(e.target.value) })}
+                                className="w-full accent-[#FF6B4A] cursor-pointer h-1.5 bg-gray-200 rounded-lg appearance-none"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                    </div>
+
+                    {/* Change / Upload Image */}
+                    <label className="w-full py-3 bg-[#ffffff] border border-[#F6F8FA] outline outline-1 outline-[#F6F8FA] hover:bg-gray-50 text-[#1A1B25] font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-[0.99] shadow-2xs">
                       <Upload className="w-4 h-4 text-[#1A1B25]" />
                       <span>{editingElement.imageUrl ? 'Change Image' : 'Upload Image'}</span>
                       <input 
@@ -1736,57 +1858,9 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                         className="hidden" 
                       />
                     </label>
-                    <div className="flex gap-2 pt-2">
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteElement(editingElement.id)}
-                        className="w-1/3 py-3 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-sm rounded-2xl transition-all cursor-pointer text-center"
-                      >
-                        Delete
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditingElementId(null)}
-                        className="flex-grow py-3 bg-[#FF6B4A] hover:bg-[#ff5833] active:bg-[#e05234] text-white font-bold text-sm rounded-2xl transition-all cursor-pointer shadow-sm active:scale-[0.99] text-center"
-                      >
-                        Done
-                      </button>
-                    </div>
-                  </div>
-                )}
 
-                {editingElement.type === 'vector' && (
-                  <div className="flex flex-col gap-3">
-                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Select Sticker / Heart</span>
-                    <div className="grid grid-cols-3 gap-3 max-h-60 overflow-y-auto p-1">
-                      {SEMANTIC_HEARTS.map((h) => (
-                        <button
-                          key={h.id}
-                          type="button"
-                          onClick={() => updateEditingElement({ emoji: h.emoji, label: h.label, bubbleColor: h.bubbleColor })}
-                          className={`p-3 rounded-xl flex flex-col items-center justify-center gap-1 transition-all border ${
-                            editingElement.emoji === h.emoji ? 'bg-orange-50 border-[#FF6B4A] scale-105 shadow-xs' : 'bg-[#F8F9FB] border-transparent hover:bg-gray-100'
-                          }`}
-                        >
-                          <span className="text-2xl">{h.emoji}</span>
-                          <span className="text-[10px] font-bold text-gray-600 truncate max-w-full">{h.label}</span>
-                        </button>
-                      ))}
-                      {STICKER_LIST.map((s) => (
-                        <button
-                          key={s.id}
-                          type="button"
-                          onClick={() => updateEditingElement({ emoji: s.emoji, label: s.label })}
-                          className={`p-3 rounded-xl flex flex-col items-center justify-center gap-1 transition-all border ${
-                            editingElement.emoji === s.emoji ? 'bg-orange-50 border-[#FF6B4A] scale-105 shadow-xs' : 'bg-[#F8F9FB] border-transparent hover:bg-gray-100'
-                          }`}
-                        >
-                          <span className="text-2xl">{s.emoji}</span>
-                          <span className="text-[10px] font-bold text-gray-600 truncate max-w-full">{s.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                    <div className="flex gap-2 pt-2">
+                    {/* Action Buttons */}
+                    <div className="flex gap-2 pt-1">
                       <button
                         type="button"
                         onClick={() => handleDeleteElement(editingElement.id)}
@@ -1860,6 +1934,7 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                   </div>
                 )}
               </div>
+            )}
             </div>
           )}
 
