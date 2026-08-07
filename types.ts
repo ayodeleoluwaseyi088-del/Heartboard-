@@ -31,6 +31,7 @@ export interface Post {
   targetId: string;
   targetType: EntityType;
   reactions: number;
+  canvasElements?: any[];
 }
 
 export interface AppreciationEntity {

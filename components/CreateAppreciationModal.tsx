@@ -28,11 +28,14 @@ import {
   AlignCenter,
   AlignRight,
   AlignJustify,
-  Loader2
+  Loader2,
+  PartyPopper
 } from 'lucide-react';
 import { refineText } from '../services/geminiService';
 import { VectorPicker, PHOSPHOR_VECTORS } from './VectorPicker';
 import { ChooseColor } from './ColorPicker';
+import { ConfettiOverlay, ConfettiType } from './ConfettiOverlay';
+import { ConfettiPickerModal } from './ConfettiPickerModal';
 
 export interface CanvasElement {
   id: string;
@@ -312,6 +315,206 @@ const RenderCanvasElement: React.FC<RenderCanvasElementProps> = ({
     </div>
   );
 };
+
+export interface RenderCanvasElementReadOnlyProps {
+  el: CanvasElement;
+}
+
+export const RenderCanvasElementReadOnly: React.FC<RenderCanvasElementReadOnlyProps> = ({ el }) => {
+  return (
+    <div
+      style={{
+        transform: `translate3d(${el.x || 0}px, ${el.y || 0}px, 0) scale(${el.scale || 1}) rotate(${el.rotation || 0}deg)`,
+        userSelect: 'none',
+      }}
+      className="absolute pointer-events-none flex items-center justify-center select-none transition-transform duration-75 z-10"
+    >
+      {/* 1. Image Element */}
+      {el.type === 'image' && el.imageUrl && (
+        <img
+          src={el.imageUrl}
+          alt="Uploaded attachment"
+          draggable={false}
+          style={{
+            borderRadius: `${el.cornerRadius || 0}px`,
+            border: el.strokeEnabled ? `${el.strokeWidth ?? 3}px solid ${el.strokeColor || '#FF6B4A'}` : 'none',
+          }}
+          className="max-w-[220px] max-h-[220px] w-auto h-auto object-contain shadow-xs pointer-events-none select-none transition-all"
+        />
+      )}
+
+      {/* 2. Vector / Sticker Element */}
+      {el.type === 'vector' && (
+        <div className="p-1 pointer-events-none select-none flex items-center justify-center">
+          {(() => {
+            const match = PHOSPHOR_VECTORS.find(v => v.id === (el.vectorId || 'heart'));
+            const color = el.vectorColor || '#272835';
+            if (match) {
+              const IconComp = match.Icon;
+              return <IconComp size={48} weight={match.weight || 'fill'} style={{ color }} className="drop-shadow-xs" />;
+            }
+            if (el.emoji) {
+              return <span className="text-4xl leading-none">{el.emoji}</span>;
+            }
+            return <Heart className="w-10 h-10 drop-shadow-xs" style={{ color }} />;
+          })()}
+        </div>
+      )}
+
+      {/* 3. Text Element */}
+      {el.type === 'text' && el.text && (
+        <div className="w-full p-2 rounded-xl border border-transparent bg-orange-50/10 pointer-events-none select-none">
+          <p 
+            style={{ 
+              color: el.color || '#1A1B25',
+              fontFamily: el.fontFamily || (el.isCursive ? 'Playfair Display, cursive' : 'Nunito, sans-serif'),
+              textAlign: el.align || 'center'
+            }}
+            className={`font-bold leading-snug break-words ${
+              el.isCursive || el.fontFamily?.includes('Playfair') || el.fontFamily?.includes('Caveat') 
+                ? 'text-xl sm:text-2xl' 
+                : 'text-sm sm:text-base'
+            }`}
+          >
+            "{el.text}"
+          </p>
+        </div>
+      )}
+
+      {/* 4. Background Element */}
+      {el.type === 'bg' && (
+        <div 
+          style={{ backgroundColor: el.bgHex || '#FAF5E8' }}
+          className="w-24 h-16 rounded-xl border border-gray-200/80 shadow-2xs flex flex-col items-center justify-center p-2 text-center pointer-events-none select-none"
+        >
+          <span className="text-xs font-bold text-gray-700">{el.frameName || 'Background'}</span>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export interface CanvasReadOnlyCardProps {
+  canvasElements: CanvasElement[];
+  selectedConfetti?: ConfettiType;
+  content?: string;
+  uploadedImage?: string | null;
+  authorName?: string;
+  recipient?: string;
+  selectedHearts?: string[];
+  activeType?: 'text' | 'audio' | 'video';
+}
+
+export const CanvasReadOnlyCard: React.FC<CanvasReadOnlyCardProps> = ({
+  canvasElements = [],
+  selectedConfetti,
+  content,
+  uploadedImage,
+  authorName,
+  recipient,
+  selectedHearts = [],
+  activeType = 'text',
+}) => {
+  const visibleElements = canvasElements.filter(el => {
+    if (el.type === 'text') return Boolean(el.text && el.text.trim());
+    if (el.type === 'image') return Boolean(el.imageUrl && el.imageUrl.trim());
+    if (el.type === 'vector') return Boolean(el.vectorId || el.emoji);
+    return false;
+  });
+
+  const hasCanvasContent = visibleElements.length > 0;
+  const fallbackText = content?.trim();
+
+  return (
+    <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-xs w-full max-w-[254px] aspect-[254/304] max-h-full flex flex-col justify-between relative overflow-hidden shrink-0">
+      {/* Confetti Animation Overlay */}
+      <ConfettiOverlay type={selectedConfetti || null} />
+
+      {/* Full Canvas Layer: Treats entire component as canvas area with zero internal clipping bounds */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none flex items-center justify-center z-10">
+        {activeType === 'text' && (
+          <>
+            {hasCanvasContent ? (
+              visibleElements.map((el) => (
+                <RenderCanvasElementReadOnly key={el.id} el={el} />
+              ))
+            ) : (
+              <div className="flex flex-col items-center justify-center w-full h-full p-4 pointer-events-none my-auto">
+                {uploadedImage && (
+                  <img src={uploadedImage} alt="Uploaded attachment" className="max-w-[200px] max-h-[140px] rounded-xl object-contain shadow-xs my-auto" />
+                )}
+                {fallbackText ? (
+                  <div className="w-full p-2 my-auto text-center">
+                    <p className="text-sm sm:text-base font-bold leading-snug break-words text-[#1A1B25]" style={{ fontFamily: 'Playfair Display, cursive' }}>
+                      "{fallbackText}"
+                    </p>
+                  </div>
+                ) : !uploadedImage && (
+                  <div className="text-center w-full px-4 space-y-0.5 py-1 pointer-events-none">
+                    <h3 className="text-[15px] font-semibold text-gray-600 tracking-tight">
+                      Message Card
+                    </h3>
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Recipient tag */}
+      <div className="w-full flex justify-end items-center pr-1 relative z-20 pointer-events-none select-none">
+        {activeType === 'text' && recipient?.trim() ? (
+          <span className="text-[10px] font-extrabold text-[#A4ABB8] uppercase tracking-wider bg-gray-50 px-2.5 py-1 rounded-full border border-gray-100 max-w-[130px] truncate">
+            {recipient}
+          </span>
+        ) : (
+          <div className="h-6" />
+        )}
+      </div>
+
+      {/* Central placeholder for audio/video if active */}
+      {activeType !== 'text' && (
+        <div className="flex-grow flex flex-col items-center justify-center text-center py-2 relative z-0 w-full gap-2 pointer-events-none">
+          {activeType === 'audio' && (
+            <div className="w-full flex flex-col items-center justify-center gap-2 select-none">
+              <Mic className="w-12 h-12 stroke-[1.5]" style={{ color: '#EED8CE' }} />
+              <h3 className="text-base font-semibold text-[#272835]">Audio tribute</h3>
+            </div>
+          )}
+
+          {activeType === 'video' && (
+            <div className="w-full flex flex-col items-center justify-center gap-2 select-none">
+              <Video className="w-12 h-12 stroke-[1.5]" style={{ color: '#EED8CE' }} />
+              <h3 className="text-base font-semibold text-[#272835]">Video tribute</h3>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Card footer */}
+      {activeType === 'text' ? (
+        <div className="w-full flex justify-between items-center select-none pt-1 relative z-20 pointer-events-none">
+          <span className="text-[9px] font-extrabold text-gray-300 uppercase tracking-widest">
+            {authorName?.trim() ? `By ${authorName}` : ''}
+          </span>
+          {selectedHearts.length > 0 && (
+            <div className="flex gap-1 bg-gray-50/70 p-1.5 rounded-full">
+              {selectedHearts.map(id => (
+                <span key={id} className="text-xs">
+                  {SEMANTIC_HEARTS.find(h => h.id === id)?.emoji}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="h-4" />
+      )}
+    </div>
+  );
+};
+
 import { moderateContent } from '../services/geminiService';
 import { EntityType, PostVisibility } from '../types';
 
@@ -434,6 +637,19 @@ const TEXT_TEMPLATES = [
   "Reliable, brilliant, and an absolute pleasure to work with!"
 ];
 
+const EVENT_TYPES = [
+  'Graduation',
+  'Wedding',
+  'Birthday',
+  'Anniversary',
+  'Appreciation',
+  'Congratulations',
+  'Condolence',
+  'Friendship',
+  'Love',
+  'Other',
+];
+
 const FONT_OPTIONS = [
   { id: 'nunito', name: 'Nunito (Clean Sans)', font: 'Nunito, sans-serif' },
   { id: 'playfair', name: 'Playfair Display (Serif)', font: 'Playfair Display, serif' },
@@ -467,6 +683,8 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
   
   const [selectedFrame, setSelectedFrame] = useState<FrameTemplate>(FRAME_TEMPLATES[0]);
   const [selectedSticker, setSelectedSticker] = useState<StickerItem | null>(null);
+  const [selectedConfetti, setSelectedConfetti] = useState<ConfettiType>(null);
+  const [isConfettiPickerOpen, setIsConfettiPickerOpen] = useState(false);
   const [selectedHearts, setSelectedHearts] = useState<string[]>([]);
   const [isCursive, setIsCursive] = useState(true);
   const [canvasAspectRatio] = useState<'portrait'>('portrait');
@@ -590,6 +808,17 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
   const [isCollaborative, setIsCollaborative] = useState(false);
   const [isPremiumUnlocked, setIsPremiumUnlocked] = useState(false);
   
+  // Preview Page State
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [caption, setCaption] = useState('');
+  const [selectedEventType, setSelectedEventType] = useState<string>('');
+  const [isEventDropdownOpen, setIsEventDropdownOpen] = useState(false);
+  const [recipients, setRecipients] = useState<string[]>(['@you']);
+  const [newRecipientInput, setNewRecipientInput] = useState('');
+  const [boardCapacity, setBoardCapacity] = useState<'collaborative' | 'solo'>('collaborative');
+  const [isCapacityModalOpen, setIsCapacityModalOpen] = useState(false);
+  const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
+
   // Control States
   const [isExpanded, setIsExpanded] = useState(false);
   const [expandedActiveTool, setExpandedActiveTool] = useState<'none' | 'image' | 'text' | 'vector' | 'bg'>('none');
@@ -661,12 +890,11 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
   };
 
   const handlePublish = async () => {
-    const textToWrite = content.trim();
-    if (!textToWrite && activeType === 'text') {
-      setIsDrawerOpen(true); // Open settings to fill message
-      return;
-    }
+    setIsPreviewOpen(true);
+  };
 
+  const handleFinalSubmitMessage = async () => {
+    const textToWrite = caption.trim() || content.trim() || (canvasElements.find(el => el.type === 'text')?.text) || '';
     setIsModerating(true);
     setModerationError(null);
 
@@ -680,15 +908,19 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
         return;
       }
 
-      const finalRecipient = recipient.trim() || 'Curator Anchor (You)';
+      const finalRecipientsString = recipients.join(', ') || '@you';
       
       const newPost: any = {
         id: 'post-' + Math.random().toString(36).substring(2, 11),
-        authorName: authorName.trim() || 'Curator',
+        authorName: privacyLayer === PostVisibility.ANONYMOUS ? (authorName.trim().split(' ')[0] || 'Anonymous') : (authorName.trim() || 'Curator'),
         content: safeTextCheck,
+        caption: caption.trim() || undefined,
+        eventType: selectedEventType || undefined,
+        recipients: recipients,
+        boardCapacity: boardCapacity,
         type: activeType,
         mediaType: activeType === 'text' ? 'note' : activeType,
-        targetId: finalRecipient.replace('#', ''),
+        targetId: finalRecipientsString.replace('#', ''),
         targetType: isHashtagRecipient ? EntityType.WALL : EntityType.BOARD,
         reactions: 0,
         aspectRatio: 'portrait',
@@ -699,7 +931,9 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                selectedFrame.id === 'sunset' ? 'bg-[#FAF5E8]' :
                selectedFrame.id === 'lavender' ? 'bg-[#EEF1FA]' : 'bg-[#FAF0EC]',
         sticker: selectedSticker ? selectedSticker.id : undefined,
-        sponsor: isCollaborative ? "Community Coauthored" : undefined,
+        confetti: selectedConfetti || undefined,
+        sponsor: boardCapacity === 'collaborative' ? "Community Coauthored" : undefined,
+        canvasElements: canvasElements.filter(hasElementContent),
       };
 
       // Enrich content with semantic hearts if set
@@ -709,6 +943,7 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
       }
 
       onPostCreated(newPost);
+      setIsPreviewOpen(false);
       onClose();
     } catch (e) {
       console.error(e);
@@ -900,63 +1135,7 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
           </div>
         </div>
 
-        {/* C. Send Heart Custom Accordion (Only in Text section) */}
-        {activeType === 'text' && (
-          <div 
-            className="w-[461px] max-w-full rounded-[1.8rem] transition-all duration-300 ease-out select-none overflow-hidden"
-            style={{ backgroundColor: selectedFrame.bgHex }}
-          >
-            {/* Accordion header */}
-            <div 
-              className="w-full px-6 py-4 flex items-center justify-between cursor-default select-none"
-            >
-              <span className="text-sm font-semibold text-gray-500 select-none">
-                Send a heart
-              </span>
-              <div className="text-xs font-bold text-[#666D80] select-none opacity-80">
-                {isHeartsOnlyPickerOpen ? (
-                  <Minus className="w-4 h-4 stroke-[2.5]" />
-                ) : (
-                  <Plus className="w-4 h-4 stroke-[2.5]" />
-                )}
-              </div>
-            </div>
 
-            {/* Accordion content - custom Grid of 6 white cards with Speech bubbles style */}
-            {isHeartsOnlyPickerOpen && (
-              <div className="px-4 pb-4 animate-fade-in-slow">
-                <div className="grid grid-cols-3 gap-3">
-                  {SEMANTIC_HEARTS.map((heart) => {
-                    const isSelected = selectedHearts.includes(heart.id);
-                    return (
-                      <div
-                        key={heart.id}
-                        className={`bg-white rounded-[1.25rem] p-3 flex flex-col items-center justify-between cursor-default select-none transition-all duration-150 ${
-                          isSelected 
-                            ? 'ring-2 ring-orange-400 font-bold bg-orange-50/20' 
-                            : ''
-                        }`}
-                        title={heart.details}
-                      >
-                        {/* Custom smiley speech bubble of precise color */}
-                        <div className="py-2.5 flex items-center justify-center">
-                          <HeartBubbleSvg color={heart.bubbleColor} />
-                        </div>
-                        
-                        {/* Name label text */}
-                        <span className={`text-[10px] font-extrabold text-center tracking-tight leading-tight select-none mt-1 ${
-                          isSelected ? 'text-[#FE6349]' : 'text-[#666D80]'
-                        }`}>
-                          {heart.label}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
 
 
 
@@ -1114,6 +1293,22 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
               </div>
             </div>
 
+            {/* Confetti Effect Trigger */}
+            <div className="space-y-2 pt-1">
+              <span className="text-xs font-extrabold text-gray-500 uppercase tracking-widest pl-0.5 block">Confetti Animation</span>
+              <button
+                type="button"
+                onClick={() => setIsConfettiPickerOpen(true)}
+                className="w-full py-2.5 bg-gray-50 hover:bg-gray-100 rounded-xl text-xs font-bold transition-all text-[#1A1B25] flex justify-between px-3.5 items-center cursor-pointer border border-transparent hover:border-gray-200"
+              >
+                <span className="flex items-center gap-2">
+                  <PartyPopper className="w-4 h-4 text-[#FE6349]" />
+                  <span>Add Confetti Animation</span>
+                </span>
+                <ChevronRight className="w-4 h-4 text-gray-400" />
+              </button>
+            </div>
+
             {/* E. FONT */}
             <div>
               <div className="space-y-2">
@@ -1260,59 +1455,21 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
         <div className="fixed inset-0 z-[3000] bg-[#FCF9F8] flex flex-col font-sans select-none overflow-hidden animate-fade-in-slow">
           
           {/* A. TOP HEADER */}
-          <div className="bg-white px-6 pt-5 pb-3 border-b border-gray-100 flex flex-col items-center relative shrink-0">
+          <div className="bg-white px-6 py-4 border-b border-gray-100 flex items-center justify-between relative shrink-0">
             {/* Top row: Close X button on left, Title in center */}
-            <div className="w-full flex items-center justify-between">
-              <button 
-                onClick={() => setIsExpanded(false)}
-                className="text-[#1A1B25] hover:bg-black/5 p-2 rounded-full transition-all active:scale-95 cursor-pointer"
-                aria-label="Close expanded editor"
-              >
-                <X className="w-6 h-6 stroke-[2]" />
-              </button>
+            <button 
+              onClick={() => setIsExpanded(false)}
+              className="text-[#1A1B25] hover:bg-black/5 p-2 rounded-full transition-all active:scale-95 cursor-pointer"
+              aria-label="Close expanded editor"
+            >
+              <X className="w-6 h-6 stroke-[2]" />
+            </button>
 
-              <h2 className="text-xl font-bold text-[#1A1B25] tracking-tight">
-                Drop a message
-              </h2>
+            <h2 className="text-xl font-bold text-[#1A1B25] tracking-tight">
+              Drop a message
+            </h2>
 
-              <div className="w-10" />
-            </div>
-
-            {/* Tabs row: Text | Audio | Video */}
-            <div className="flex gap-12 mt-4">
-              <button 
-                onClick={() => setActiveType('text')}
-                className={`flex items-center gap-2 pb-2 px-1 transition-all text-sm font-semibold relative cursor-pointer ${activeType === 'text' ? 'text-[#1A1B25]' : 'text-[#A4ABB8] hover:text-[#666D80]'}`}
-              >
-                <PenLine className="w-4 h-4" />
-                <span>Text</span>
-                {activeType === 'text' && (
-                  <div className="absolute bottom-[-1px] left-0 right-0 h-[2.5px] bg-[#1A1B25] rounded-full" />
-                )}
-              </button>
-
-              <button 
-                onClick={() => setActiveType('audio')}
-                className={`flex items-center gap-2 pb-2 px-1 transition-all text-sm font-semibold relative cursor-pointer ${activeType === 'audio' ? 'text-[#1A1B25]' : 'text-[#A4ABB8] hover:text-[#666D80]'}`}
-              >
-                <Mic className="w-4 h-4" />
-                <span>Audio</span>
-                {activeType === 'audio' && (
-                  <div className="absolute bottom-[-1px] left-0 right-0 h-[2.5px] bg-[#1A1B25] rounded-full" />
-                )}
-              </button>
-
-              <button 
-                onClick={() => setActiveType('video')}
-                className={`flex items-center gap-2 pb-2 px-1 transition-all text-sm font-semibold relative cursor-pointer ${activeType === 'video' ? 'text-[#1A1B25]' : 'text-[#A4ABB8] hover:text-[#666D80]'}`}
-              >
-                <Video className="w-4 h-4" />
-                <span>Video</span>
-                {activeType === 'video' && (
-                  <div className="absolute bottom-[-1px] left-0 right-0 h-[2.5px] bg-[#1A1B25] rounded-full" />
-                )}
-              </button>
-            </div>
+            <div className="w-10" />
           </div>
 
           {/* B. SUB-HEADER / ACTION CONTROL BAR */}
@@ -1352,6 +1509,8 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                 onClick={() => setSelectedElementId(null)}
                 className="rounded-[1.8rem] sm:rounded-[2.2rem] bg-white flex flex-col justify-between relative p-4 sm:p-6 transition-all duration-300 shadow-xs max-w-full max-h-full w-[254px] h-[360px] overflow-hidden cursor-default"
               >
+                {/* Confetti Animation Overlay */}
+                <ConfettiOverlay type={selectedConfetti} />
                 {/* Full Canvas Layer: Treats entire component as canvas area with zero internal clipping bounds */}
                 <div className="absolute inset-0 overflow-hidden pointer-events-none flex items-center justify-center z-10">
                   {activeType === 'text' && (
@@ -1359,16 +1518,7 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                       {(() => {
                         const visibleElements = canvasElements.filter(hasElementContent);
                         if (visibleElements.length === 0) {
-                          return (
-                            <div className="text-center w-full px-4 space-y-0.5 py-1 pointer-events-none">
-                              <h3 className="text-[15px] font-semibold text-gray-600 tracking-tight">
-                                Tap to create message
-                              </h3>
-                              <p className="text-[11px] text-[#808897] font-semibold">
-                                Create beautiful message with stunning visuals
-                              </p>
-                            </div>
-                          );
+                          return null;
                         }
                         return visibleElements.map((el) => (
                           <RenderCanvasElement
@@ -1485,6 +1635,19 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                 >
                   <Palette className="w-4 h-4 text-[#1A1B25]" />
                   <span className="text-[11px] font-medium text-gray-700">BG</span>
+                </button>
+
+                {/* 5. Confetti */}
+                <button
+                  type="button"
+                  onClick={() => setIsConfettiPickerOpen(true)}
+                  className="bg-white border border-dashed border-gray-200/80 hover:bg-gray-50 rounded-2xl w-[64px] h-[58px] flex flex-col items-center justify-center gap-1 cursor-pointer transition-all active:scale-95 shrink-0 text-[#1A1B25]"
+                  title="Choose Confetti Animation"
+                >
+                  <PartyPopper className="w-4 h-4 text-[#1A1B25]" />
+                  <span className="text-[11px] font-medium text-gray-700">
+                    Confetti
+                  </span>
                 </button>
               </div>
 
@@ -1960,6 +2123,372 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
         }} 
         className="hidden" 
       />
+
+      {/* CONFETTI PICKER POP-UP MODAL */}
+      {isConfettiPickerOpen && (
+        <ConfettiPickerModal
+          selectedConfetti={selectedConfetti}
+          onSelectConfetti={(type) => setSelectedConfetti(type)}
+          onClose={() => setIsConfettiPickerOpen(false)}
+        />
+      )}
+
+      {/* 6. MESSAGE PREVIEW PAGE (Matches attached design image) */}
+      {isPreviewOpen && (
+        <div className="fixed inset-0 z-[5000] bg-[#FCF9F8] flex flex-col font-sans select-none overflow-hidden animate-fade-in antialiased h-full">
+          {/* Top Header */}
+          <div className="bg-white px-6 py-4 border-b border-gray-100/80 flex items-center justify-between shrink-0 sticky top-0 z-10">
+            <button
+              type="button"
+              onClick={() => setIsPreviewOpen(false)}
+              className="text-[#1A1B25] hover:bg-gray-100 p-2 rounded-full transition-all cursor-pointer active:scale-95"
+              aria-label="Close preview"
+            >
+              <X className="w-6 h-6 stroke-[2]" />
+            </button>
+
+            <h2 className="text-xl font-bold text-[#1A1B25] tracking-tight">
+              Message Preview
+            </h2>
+
+            <div className="w-10" />
+          </div>
+
+          {/* Body content wrapper */}
+          <div className="flex-1 w-full flex flex-col items-center justify-center p-2 sm:p-6 overflow-hidden my-auto">
+            <div className="max-w-[420px] w-full h-full max-h-[calc(100vh-80px)] bg-white rounded-[2rem] sm:rounded-[2.5rem] shadow-sm border border-gray-100 flex flex-col font-sans relative overflow-hidden">
+              
+              {/* Scrollable Content Body */}
+              <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-3.5 scrollbar-none">
+                {/* Message Visual Card Frame */}
+                <div
+                  style={{ backgroundColor: selectedFrame.bgHex }}
+                  className="w-full aspect-[380/474] sm:h-[404px] sm:aspect-auto rounded-[1.5rem] sm:rounded-[2rem] p-6 sm:p-8 flex items-center justify-center relative overflow-hidden shadow-2xs transition-all shrink-0"
+                >
+                  <CanvasReadOnlyCard
+                    canvasElements={canvasElements}
+                    selectedConfetti={selectedConfetti}
+                    content={content}
+                    uploadedImage={uploadedImage}
+                    authorName={authorName}
+                    recipient={recipient}
+                    selectedHearts={selectedHearts}
+                    activeType={activeType}
+                  />
+                </div>
+
+                {/* 1. Caption Input */}
+                <div className="bg-[#F6F8FA] rounded-2xl px-4 py-3 flex items-center border border-transparent focus-within:border-gray-200 transition-all">
+                  <input
+                    type="text"
+                    value={caption}
+                    onChange={(e) => setCaption(e.target.value)}
+                    placeholder="Caption"
+                    className="w-full bg-transparent text-sm text-[#1A1B25] placeholder:text-gray-400 focus:outline-none border-none p-0 font-normal"
+                  />
+                </div>
+
+                {/* 2. Select Event Dropdown Accordion */}
+                <div className="bg-[#F6F8FA] rounded-2xl overflow-hidden transition-all duration-200 border border-transparent">
+                  <button
+                    type="button"
+                    onClick={() => setIsEventDropdownOpen(!isEventDropdownOpen)}
+                    className="w-full px-4 py-3.5 flex items-center justify-between transition-colors cursor-pointer text-left hover:bg-gray-100/50"
+                  >
+                    <span className={`text-sm ${selectedEventType ? 'text-[#1A1B25] font-medium' : 'text-gray-400 font-normal'}`}>
+                      {selectedEventType || 'Select event'}
+                    </span>
+                    <ChevronRight className={`w-4 h-4 text-gray-400 shrink-0 transition-transform duration-200 ${isEventDropdownOpen ? 'rotate-90' : ''}`} />
+                  </button>
+
+                  {isEventDropdownOpen && (
+                    <div className="px-3 pb-3 pt-1 border-t border-gray-200/50 grid grid-cols-2 gap-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                      {EVENT_TYPES.map((evt) => {
+                        const isSelected = selectedEventType === evt;
+                        return (
+                          <button
+                            key={evt}
+                            type="button"
+                            onClick={() => {
+                              setSelectedEventType(isSelected ? '' : evt);
+                              setIsEventDropdownOpen(false);
+                            }}
+                            className="bg-white rounded-2xl p-3 flex items-center gap-2.5 transition-all cursor-pointer border-0 text-left shadow-2xs hover:bg-gray-50/80 active:scale-[0.98]"
+                          >
+                            {isSelected ? (
+                              <div className="w-5 h-5 rounded-full bg-[#38A169] text-white flex items-center justify-center shrink-0">
+                                <Check className="w-3.5 h-3.5 stroke-[3]" />
+                              </div>
+                            ) : (
+                              <div className="w-5 h-5 rounded-full border-2 border-gray-300 shrink-0" />
+                            )}
+                            <span className={`text-xs font-medium ${isSelected ? 'text-[#1A1B25] font-semibold' : 'text-gray-700'}`}>
+                              {evt}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* 3. Recipients Input Tag Box */}
+                <div className="bg-[#F6F8FA] rounded-2xl px-4 py-3 flex items-center justify-between gap-2 border border-transparent focus-within:border-gray-200 transition-all">
+                  <input
+                    type="text"
+                    value={newRecipientInput}
+                    onChange={(e) => setNewRecipientInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && newRecipientInput.trim()) {
+                        e.preventDefault();
+                        const val = newRecipientInput.trim();
+                        const tag = val.startsWith('@') || val.startsWith('#') ? val : `@${val}`;
+                        if (!recipients.includes(tag)) {
+                          setRecipients([...recipients, tag]);
+                        }
+                        setNewRecipientInput('');
+                      }
+                    }}
+                    placeholder="Add more recipient or #tag"
+                    className="flex-1 bg-transparent text-sm text-[#1A1B25] placeholder:text-gray-400 focus:outline-none border-none p-0 font-normal min-w-[100px]"
+                  />
+                  <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+                    {recipients.map((rec) => (
+                      <span
+                        key={rec}
+                        className="bg-white text-xs font-medium text-[#1A1B25] px-2.5 py-1 rounded-full border border-gray-200/60 flex items-center gap-1 shadow-2xs"
+                      >
+                        {rec}
+                        {rec !== '@you' && (
+                          <button
+                            type="button"
+                            onClick={() => setRecipients(recipients.filter(r => r !== rec))}
+                            className="text-gray-400 hover:text-gray-600 p-0.5 rounded-full"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 4. Select Board Capacity Accordion */}
+                <div className="bg-[#F6F8FA] rounded-2xl overflow-hidden transition-all duration-200 border border-transparent">
+                  <button
+                    type="button"
+                    onClick={() => setIsCapacityModalOpen(!isCapacityModalOpen)}
+                    className="w-full px-4 py-3.5 flex items-center justify-between transition-colors cursor-pointer text-left hover:bg-gray-100/50"
+                  >
+                    <span className="text-sm font-normal text-[#1A1B25]">Select board capacity</span>
+                    <span className="text-sm font-normal text-gray-500 flex items-center gap-1">
+                      {boardCapacity === 'collaborative' ? '20 Curation' : 'Only me'}
+                      <ChevronRight className={`w-4 h-4 text-gray-400 shrink-0 transition-transform duration-200 ${isCapacityModalOpen ? 'rotate-90' : ''}`} />
+                    </span>
+                  </button>
+
+                  {isCapacityModalOpen && (
+                    <div className="px-3 pb-3 pt-1 border-t border-gray-200/50 flex flex-col gap-2.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                      {/* Option 1: Only me */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBoardCapacity('solo');
+                          setIsCapacityModalOpen(false);
+                        }}
+                        className="w-full bg-white rounded-2xl p-3.5 flex items-center justify-between transition-all cursor-pointer border-0 text-left hover:bg-gray-50/80 active:scale-[0.99] shadow-2xs"
+                      >
+                        <div className="flex items-center gap-3">
+                          {boardCapacity === 'solo' ? (
+                            <div className="w-5 h-5 rounded-full bg-[#38A169] text-white flex items-center justify-center shrink-0">
+                              <Check className="w-3.5 h-3.5 stroke-[3]" />
+                            </div>
+                          ) : (
+                            <div className="w-5 h-5 rounded-full border-2 border-gray-300 shrink-0" />
+                          )}
+                          <span className="text-sm font-medium text-[#1A1B25]">Only me</span>
+                        </div>
+                      </button>
+
+                      {/* Option 2: 20 contributors */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBoardCapacity('collaborative');
+                          setIsCapacityModalOpen(false);
+                        }}
+                        className="w-full bg-white rounded-2xl p-3.5 flex items-center justify-between transition-all cursor-pointer border-0 text-left hover:bg-gray-50/80 active:scale-[0.99] shadow-2xs"
+                      >
+                        <div className="flex items-center gap-3">
+                          {boardCapacity === 'collaborative' ? (
+                            <div className="w-5 h-5 rounded-full bg-[#38A169] text-white flex items-center justify-center shrink-0">
+                              <Check className="w-3.5 h-3.5 stroke-[3]" />
+                            </div>
+                          ) : (
+                            <div className="w-5 h-5 rounded-full border-2 border-gray-300 shrink-0" />
+                          )}
+                          <span className="text-sm font-medium text-[#1A1B25]">20 contributors</span>
+                        </div>
+                        <span className="text-xs font-semibold text-[#1A1B25]">Free</span>
+                      </button>
+
+                      {/* Option 3: 200 contributors (Coming soon) */}
+                      <div className="w-full bg-white rounded-2xl p-3.5 flex items-center justify-between border-0 text-left shadow-2xs opacity-80">
+                        <div className="flex items-center gap-3">
+                          <div className="w-5 h-5 rounded-full border-2 border-gray-300 shrink-0" />
+                          <span className="text-sm font-medium text-gray-400">200 contributors</span>
+                        </div>
+                        <span className="bg-[#ECEFF3] text-[#666D80] text-[11px] font-semibold px-2.5 py-1 rounded-full">Coming soon</span>
+                      </div>
+
+                      {/* Option 4: 1000 contributors (Coming soon) */}
+                      <div className="w-full bg-white rounded-2xl p-3.5 flex items-center justify-between border-0 text-left shadow-2xs opacity-80">
+                        <div className="flex items-center gap-3">
+                          <div className="w-5 h-5 rounded-full border-2 border-gray-300 shrink-0" />
+                          <span className="text-sm font-medium text-gray-400">1000 contributors</span>
+                        </div>
+                        <span className="bg-[#ECEFF3] text-[#666D80] text-[11px] font-semibold px-2.5 py-1 rounded-full">Coming soon</span>
+                      </div>
+
+                      {/* Option 5: 1000 curation (Coming soon) */}
+                      <div className="w-full bg-white rounded-2xl p-3.5 flex items-center justify-between border-0 text-left shadow-2xs opacity-80">
+                        <div className="flex items-center gap-3">
+                          <div className="w-5 h-5 rounded-full border-2 border-gray-300 shrink-0" />
+                          <span className="text-sm font-medium text-gray-400">1000 curation</span>
+                        </div>
+                        <span className="bg-[#ECEFF3] text-[#666D80] text-[11px] font-semibold px-2.5 py-1 rounded-full">Coming soon</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* 5. Privacy Settings Accordion */}
+                <div className="bg-[#F6F8FA] rounded-2xl overflow-hidden transition-all duration-200 border border-transparent">
+                  <button
+                    type="button"
+                    onClick={() => setIsPrivacyModalOpen(!isPrivacyModalOpen)}
+                    className="w-full px-4 py-3.5 flex items-center justify-between transition-colors cursor-pointer text-left hover:bg-gray-100/50"
+                  >
+                    <span className="text-sm font-normal text-[#1A1B25]">Privacy</span>
+                    <span className="text-sm font-normal text-gray-500 flex items-center gap-1">
+                      {privacyLayer === PostVisibility.PUBLIC ? 'Public' :
+                       privacyLayer === PostVisibility.PRIVATE ? 'Recipient Only' : 'Public (Anonymous)'}
+                      <ChevronRight className={`w-4 h-4 text-gray-400 shrink-0 transition-transform duration-200 ${isPrivacyModalOpen ? 'rotate-90' : ''}`} />
+                    </span>
+                  </button>
+
+                  {isPrivacyModalOpen && (
+                    <div className="px-3 pb-3 pt-1 border-t border-gray-200/50 flex flex-col gap-2.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                      {/* Public */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPrivacyLayer(PostVisibility.PUBLIC);
+                          setIsPrivacyModalOpen(false);
+                        }}
+                        className="w-full bg-white rounded-2xl p-3.5 flex items-center justify-between transition-all cursor-pointer border-0 text-left hover:bg-gray-50/80 active:scale-[0.99] shadow-2xs"
+                      >
+                        <div className="flex items-center gap-3">
+                          {privacyLayer === PostVisibility.PUBLIC ? (
+                            <div className="w-5 h-5 rounded-full bg-[#38A169] text-white flex items-center justify-center shrink-0">
+                              <Check className="w-3.5 h-3.5 stroke-[3]" />
+                            </div>
+                          ) : (
+                            <div className="w-5 h-5 rounded-full border-2 border-gray-300 shrink-0" />
+                          )}
+                          <div>
+                            <p className="text-sm font-medium text-[#1A1B25]">Public</p>
+                            <p className="text-xs text-gray-400 mt-0.5">Visible to everyone.</p>
+                          </div>
+                        </div>
+                      </button>
+
+                      {/* Recipient Only */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPrivacyLayer(PostVisibility.PRIVATE);
+                          setIsPrivacyModalOpen(false);
+                        }}
+                        className="w-full bg-white rounded-2xl p-3.5 flex items-center justify-between transition-all cursor-pointer border-0 text-left hover:bg-gray-50/80 active:scale-[0.99] shadow-2xs"
+                      >
+                        <div className="flex items-center gap-3">
+                          {privacyLayer === PostVisibility.PRIVATE ? (
+                            <div className="w-5 h-5 rounded-full bg-[#38A169] text-white flex items-center justify-center shrink-0">
+                              <Check className="w-3.5 h-3.5 stroke-[3]" />
+                            </div>
+                          ) : (
+                            <div className="w-5 h-5 rounded-full border-2 border-gray-300 shrink-0" />
+                          )}
+                          <div>
+                            <p className="text-sm font-medium text-[#1A1B25]">Recipient Only</p>
+                            <p className="text-xs text-gray-400 mt-0.5">Only tagged recipients can view it.</p>
+                          </div>
+                        </div>
+                      </button>
+
+                      {/* Public (Anonymous) */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPrivacyLayer(PostVisibility.ANONYMOUS);
+                          setIsPrivacyModalOpen(false);
+                        }}
+                        className="w-full bg-white rounded-2xl p-3.5 flex items-center justify-between transition-all cursor-pointer border-0 text-left hover:bg-gray-50/80 active:scale-[0.99] shadow-2xs"
+                      >
+                        <div className="flex items-center gap-3">
+                          {privacyLayer === PostVisibility.ANONYMOUS ? (
+                            <div className="w-5 h-5 rounded-full bg-[#38A169] text-white flex items-center justify-center shrink-0">
+                              <Check className="w-3.5 h-3.5 stroke-[3]" />
+                            </div>
+                          ) : (
+                            <div className="w-5 h-5 rounded-full border-2 border-gray-300 shrink-0" />
+                          )}
+                          <div>
+                            <p className="text-sm font-medium text-[#1A1B25]">Public (Anonymous)</p>
+                            <p className="text-xs text-gray-400 mt-0.5">Visible to everyone, but hide creator's surname.</p>
+                          </div>
+                        </div>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Error reporting */}
+                {moderationError && (
+                  <p className="text-center text-xs font-extrabold text-red-500 animate-pulse bg-red-50 p-2.5 rounded-xl border border-red-100">
+                    {moderationError}
+                  </p>
+                )}
+              </div>
+
+              {/* Fixed CTA Footer Section */}
+              <div className="p-4 sm:p-5 bg-white border-t border-gray-100/80 shrink-0 sticky bottom-0 z-20">
+                <button
+                  type="button"
+                  onClick={handleFinalSubmitMessage}
+                  disabled={isModerating || !selectedEventType}
+                  className={`w-full font-medium text-base py-3.5 rounded-full transition-all shadow-2xs flex items-center justify-center gap-2 ${
+                    !selectedEventType || isModerating
+                      ? 'bg-[#F8CBBF] text-white opacity-60 cursor-not-allowed'
+                      : 'bg-[#FE6349] hover:bg-[#e05234] text-white cursor-pointer active:scale-[0.98]'
+                  }`}
+                >
+                  {isModerating ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Publishing...</span>
+                    </>
+                  ) : (
+                    <span>Send Message</span>
+                  )}
+                </button>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

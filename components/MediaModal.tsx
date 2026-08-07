@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Post, EntityType } from '../types';
 import { X, ChevronLeft, ChevronRight, Share2, Sparkles, Heart } from 'lucide-react';
+import { ConfettiOverlay } from './ConfettiOverlay';
 
 interface MediaModalProps {
   post: Post & { 
@@ -8,6 +9,7 @@ interface MediaModalProps {
     mediaType?: 'audio' | 'video' | 'image' | 'text' | 'note';
     sponsor?: string;
     sticker?: string;
+    confetti?: string;
     secondaryImage?: string;
     isBlurred?: boolean;
     statusBadge?: string;
@@ -84,6 +86,8 @@ export const MediaModal: React.FC<MediaModalProps> = ({ post, onClose, onPrev, o
           ...getContainerBgStyle() 
         }}
       >
+        {/* Confetti Animation Effect */}
+        {post.confetti && <ConfettiOverlay type={post.confetti} />}
         {/* Lined paper texture background overlay */}
         <div 
           className="absolute inset-0 opacity-15 pointer-events-none mix-blend-multiply rounded-[2.5rem]" 
