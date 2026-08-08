@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ShareProfileModal } from './ShareProfileModal';
+import { SEMANTIC_HEARTS } from './CreateAppreciationModal';
 import { 
   Settings, 
   Share2, 
@@ -16,14 +17,366 @@ import {
   LogOut,
   Globe,
   Sparkles,
-  Award
+  Award,
+  Heart,
+  CheckCircle2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface HeartboardViewProps {
+  posts?: any[];
   onPostClick?: (post: any) => void;
   onFilterClick?: () => void;
 }
+
+// SVG Speech Bubble with White Heart and Cute Smiley Face
+const HeartBubbleSVG: React.FC<{
+  size?: number;
+  bubbleColor: string;
+  className?: string;
+}> = ({ size = 56, bubbleColor, className = '' }) => {
+  return (
+    <div className={`relative flex items-center justify-center shrink-0 filter drop-shadow-2xs ${className}`}>
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 64 64"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        {/* Speech Bubble Shape */}
+        <path
+          d="M32 6C18.1929 6 7 16.2975 7 29C7 33.7225 8.5807 38.1065 11.2828 41.7208C10.0242 45.9621 7.27963 49.3879 7.02613 49.6973C6.61118 50.2033 6.97171 50.95 7.62562 50.95C12.872 50.95 17.3828 48.2435 20.0827 46.1623C23.7381 47.3392 27.756 48 32 48C45.8071 48 57 37.7025 57 25C57 12.2975 45.8071 6 32 6Z"
+          fill={bubbleColor}
+        />
+        {/* Centered White Heart */}
+        <path
+          d="M32 37.5 C32 37.5, 20.5 29, 20.5 22 C20.5 17.8, 23.5 14.8, 27.5 14.8 C29.8 14.8, 31.2 16, 32 17.2 C32.8 16, 34.2 14.8, 36.5 14.8 C40.5 14.8, 43.5 17.8, 43.5 22 C43.5 29, 32 37.5, 32 37.5 Z"
+          fill="white"
+        />
+        {/* Eyes inside White Heart */}
+        <circle cx="28" cy="20.5" r="1.35" fill={bubbleColor} />
+        <circle cx="36" cy="20.5" r="1.35" fill={bubbleColor} />
+        {/* Curved Smile */}
+        <path
+          d="M28.5 24.5 C28.5 24.5, 30.2 27, 32 27 C33.8 27, 35.5 24.5, 35.5 24.5"
+          stroke={bubbleColor}
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          fill="none"
+        />
+      </svg>
+    </div>
+  );
+};
+
+export interface HeartCategoryCardData {
+  id: string;
+  categoryName: string;
+  count: number;
+  bubbleColor: string;
+  bgHalo: string;
+  dotColors: string[];
+  layoutType: 'cluster3' | 'pair2' | 'single1';
+  badgeExtra?: string;
+  items?: any[];
+}
+
+export const HeartCategoryCard: React.FC<{
+  data: HeartCategoryCardData;
+  onShare?: (data: HeartCategoryCardData) => void;
+  onClick?: (data: HeartCategoryCardData) => void;
+}> = ({ data, onShare, onClick }) => {
+  const {
+    categoryName,
+    count,
+    bubbleColor,
+    bgHalo,
+    dotColors,
+    layoutType,
+    badgeExtra
+  } = data;
+
+  return (
+    <div
+      onClick={() => onClick && onClick(data)}
+      className="bg-white rounded-[2rem] sm:rounded-[2.25rem] transition-all duration-300 p-6 sm:p-7 flex flex-col justify-between items-center h-[340px] sm:h-[350px] relative overflow-hidden group cursor-pointer shadow-[3px_0px_45px_0px_rgba(0,0,0,0.08)]"
+      style={{ boxShadow: '3px 0px 45px 0px rgba(0, 0, 0, 0.08)' }}
+    >
+      {/* 1. Header Category Title */}
+      <div className="w-full flex items-center justify-between z-10">
+        <span className="text-[#808897] font-semibold text-sm sm:text-base tracking-wide pl-1">
+          {categoryName}
+        </span>
+      </div>
+
+      {/* 2. Center Graphic Area */}
+      <div className="relative flex items-center justify-center my-auto">
+        {/* Soft Circular Background Halo */}
+        <div 
+          className="w-40 h-40 sm:w-44 sm:h-44 rounded-full flex items-center justify-center relative transition-transform duration-300 group-hover:scale-105"
+          style={{ backgroundColor: bgHalo }}
+        >
+          {/* Decorative Scattered Dots */}
+          <div 
+            className="absolute -top-1 left-4 w-2.5 h-2.5 rounded-full opacity-75"
+            style={{ backgroundColor: dotColors[0] || bubbleColor }}
+          />
+          <div 
+            className="absolute top-8 -right-3 w-3 h-3 rounded-full opacity-80"
+            style={{ backgroundColor: dotColors[1] || bubbleColor }}
+          />
+          <div 
+            className="absolute bottom-6 -left-3 w-3.5 h-3.5 rounded-full opacity-60"
+            style={{ backgroundColor: dotColors[2] || bubbleColor }}
+          />
+          <div 
+            className="absolute -bottom-1 right-8 w-2.5 h-2.5 rounded-full opacity-75"
+            style={{ backgroundColor: dotColors[3] || bubbleColor }}
+          />
+          <div 
+            className="absolute top-2 right-12 w-1.5 h-1.5 rounded-full opacity-50"
+            style={{ backgroundColor: dotColors[0] || bubbleColor }}
+          />
+          <div 
+            className="absolute bottom-12 left-2 w-2 h-2 rounded-full opacity-65"
+            style={{ backgroundColor: dotColors[1] || bubbleColor }}
+          />
+
+          {/* Speech Bubble Cluster Layout */}
+          {layoutType === 'cluster3' && (
+            <div className="relative w-32 h-32 flex items-center justify-center">
+              {/* Top Bubble */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 z-10">
+                <HeartBubbleSVG size={58} bubbleColor={bubbleColor} />
+              </div>
+              {/* Bottom Left Bubble */}
+              <div className="absolute bottom-0 left-0 z-10">
+                <HeartBubbleSVG size={52} bubbleColor={bubbleColor} />
+              </div>
+              {/* Bottom Right Bubble */}
+              <div className="absolute bottom-0 right-0 z-10">
+                <HeartBubbleSVG size={52} bubbleColor={bubbleColor} />
+              </div>
+
+              {/* Optional Numeric Overlay Badge */}
+              {(badgeExtra || count > 3) && (
+                <div className="absolute top-[48%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 bg-[#353849]/90 text-white font-extrabold text-[10px] px-2 py-0.5 rounded-full border border-white shadow-xs">
+                  {badgeExtra || `+${count}`}
+                </div>
+              )}
+            </div>
+          )}
+
+          {layoutType === 'pair2' && (
+            <div className="relative w-32 h-32 flex items-center justify-center">
+              {/* Top Right Bubble */}
+              <div className="absolute top-2 right-2 z-10">
+                <HeartBubbleSVG size={58} bubbleColor={bubbleColor} />
+              </div>
+              {/* Bottom Left Bubble */}
+              <div className="absolute bottom-2 left-2 z-10">
+                <HeartBubbleSVG size={58} bubbleColor={bubbleColor} />
+              </div>
+            </div>
+          )}
+
+          {layoutType === 'single1' && (
+            <div className="relative w-32 h-32 flex items-center justify-center z-10">
+              <HeartBubbleSVG size={72} bubbleColor={bubbleColor} />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 3. Bottom Share Pill Button */}
+      <div className="w-full flex justify-center z-10">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (onShare) onShare(data);
+          }}
+          className="px-5 py-2 rounded-full border border-gray-200 text-[#353849] font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-gray-50 active:scale-95 transition-all cursor-pointer bg-white"
+        >
+          <Share2 className="w-3.5 h-3.5 stroke-[2.2] text-[#353849]" />
+          <span>Share</span>
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const HeartboardCard: React.FC<{ item: any; onClick: () => void }> = ({ item, onClick }) => {
+  // If item is a Heart Token
+  if (item.isHeartToken || item.section === 'hearts' || item.type === 'heart_token') {
+    const rawLabel = item.heartDetails?.label || item.title || 'Heart Token';
+    const matched = SEMANTIC_HEARTS.find(
+      sh => sh.label.toLowerCase() === rawLabel.toLowerCase() || sh.id === item.heartDetails?.id
+    );
+    const heartLabel = matched?.label || rawLabel;
+    const bubbleColor = item.heartDetails?.bubbleColor || matched?.bubbleColor || '#FF53C0';
+    const bg = item.frameBg || item.theme || '#FAF0EC';
+
+    return (
+      <div 
+        onClick={onClick}
+        className="rounded-[2.25rem] p-4 relative overflow-hidden group cursor-pointer transition-all duration-200 hover:scale-[1.01] flex flex-col justify-between min-h-[280px] shadow-[3px_0px_45px_0px_rgba(0,0,0,0.08)] border border-gray-100"
+        style={{ backgroundColor: bg }}
+      >
+        <div className="w-full bg-[#FFFDF9] rounded-[2rem] p-5 relative overflow-hidden flex flex-col items-center justify-between min-h-[250px]">
+          {/* Corner pushpins */}
+          <div className="absolute top-3 right-3 w-2.5 h-2.5 rounded-full bg-[#353849] opacity-80" />
+          <div className="absolute bottom-3 right-3 w-2.5 h-2.5 rounded-full bg-[#353849] opacity-80" />
+
+          {/* Heart Bubble Graphic */}
+          <div className="my-2">
+            <HeartBubbleSVG size={68} bubbleColor={bubbleColor} />
+          </div>
+
+          {/* Heart Label & Details */}
+          <div className="text-center relative z-10 w-full space-y-1">
+            <span 
+              className="inline-block px-3 py-1 rounded-full font-extrabold text-[11px] uppercase tracking-wider mb-1 text-white shadow-2xs"
+              style={{ backgroundColor: bubbleColor }}
+            >
+              {heartLabel}
+            </span>
+            <p className="font-bold text-[#1A1B25] text-sm leading-tight line-clamp-2">
+              {item.title || item.content}
+            </p>
+            {item.recipientName && (
+              <p className="text-xs font-semibold text-gray-500 mt-1">
+                To: <span className="text-[#1A1B25] font-extrabold">{item.recipientName}</span>
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // If item is a Voice Note / Audio
+  if (item.type === 'audio' || item.mediaType === 'audio') {
+    const bg = item.frameBg || item.theme || '#FAF0EC';
+    return (
+      <div 
+        onClick={onClick}
+        className="rounded-[2.5rem] p-4 relative overflow-hidden group cursor-pointer transition-all duration-200 hover:scale-[1.01] flex flex-col justify-between min-h-[260px] shadow-2xs"
+        style={{ backgroundColor: bg }}
+      >
+        <div className="w-full bg-white/90 rounded-[2rem] p-5 relative overflow-hidden flex flex-col items-center justify-center min-h-[230px] gap-3">
+          {/* Radial rings bg */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-10">
+            <div className="w-[180px] h-[180px] border border-[#FE6349] rounded-full absolute" />
+            <div className="w-[240px] h-[240px] border border-[#FE6349] rounded-full absolute" />
+          </div>
+
+          <div className="w-16 h-16 rounded-full bg-[#FE6349] text-white flex items-center justify-center relative z-10 shadow-md">
+            <Mic className="w-7 h-7" />
+          </div>
+
+          <div className="text-center relative z-10 px-2">
+            <p className="font-extrabold text-[#1A1B25] text-sm">
+              {item.title || 'Voice Note Appreciation'}
+            </p>
+            <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
+              {item.content || 'Audio tribute capsule'}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // If item is a Note / Handwritten Note with Photo or Stickers
+  if (item.type === 'note' || item.type === 'note_stickers' || item.type === 'image_note' || item.mediaType === 'note') {
+    const bg = item.frameBg || (item.theme && item.theme.startsWith('#') ? item.theme : '#FAF0EC');
+    return (
+      <div 
+        onClick={onClick}
+        className="rounded-[2.5rem] p-4 relative overflow-hidden group cursor-pointer transition-all duration-200 hover:scale-[1.01] shadow-2xs"
+        style={{ backgroundColor: bg }}
+      >
+        <div className="w-full bg-[#FFFDF9] rounded-[2rem] p-5 relative overflow-hidden flex flex-col justify-between min-h-[260px]">
+          {/* Lined paper pattern background */}
+          <div className="absolute inset-0 pointer-events-none opacity-15 bg-[linear-gradient(#808897_1px,transparent_1px)] bg-[size:100%_24px]" />
+          
+          {/* Corner pushpin */}
+          <div className="absolute top-3 right-3 w-2.5 h-2.5 rounded-full bg-[#353849] opacity-80" />
+
+          {/* Stickers row if present */}
+          <div className="flex items-center justify-between relative z-10 mb-2">
+            {item.stickers?.includes('red_heart') || item.sticker === 'heart_bubble' ? (
+              <span className="text-2xl">❤️</span>
+            ) : <span />}
+            {item.stickers?.includes('yellow_star') || item.sticker === 'star_glow' ? (
+              <span className="text-2xl">⭐</span>
+            ) : <span />}
+          </div>
+
+          {/* Optional image thumbnail */}
+          {(item.mediaUrl || item.imageUrl) && (
+            <div className="w-full h-36 rounded-xl overflow-hidden shrink-0 relative z-10 mb-3 bg-gray-50">
+              <img 
+                src={item.mediaUrl || item.imageUrl} 
+                alt={item.title || 'Note image'} 
+                className="w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+          )}
+
+          {/* Handwritten text */}
+          <div className="w-full text-center relative z-10 my-2 px-1">
+            <p className="font-handwriting text-base text-[#1A1B25] font-bold leading-relaxed line-clamp-3">
+              "{item.content}"
+            </p>
+          </div>
+
+          {/* Footer author */}
+          <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500 font-semibold relative z-10">
+            <span>By {item.authorName}</span>
+            {item.recipientName && <span>To {item.recipientName}</span>}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Standard Image / Video / Canvas Card
+  const bg = item.frameBg || (item.theme && item.theme.startsWith('#') ? item.theme : '#FAF0EC');
+  return (
+    <div 
+      onClick={onClick}
+      className="rounded-[2.5rem] p-4 relative overflow-hidden group cursor-pointer transition-all duration-200 hover:scale-[1.01] shadow-2xs"
+      style={{ backgroundColor: bg }}
+    >
+      <div className="w-full h-[320px] rounded-[2rem] overflow-hidden bg-white relative flex flex-col justify-between p-3">
+        {(item.mediaUrl || item.imageUrl) ? (
+          <div className="w-full h-full rounded-[1.5rem] overflow-hidden bg-gray-50 relative">
+            <img 
+              src={item.mediaUrl || item.imageUrl} 
+              alt={item.title || item.content}
+              className="w-full h-full object-cover"
+              referrerPolicy="no-referrer"
+            />
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent p-4 text-white">
+              <p className="font-extrabold text-sm line-clamp-1">{item.title || item.content}</p>
+              <p className="text-xs text-gray-200 font-medium">{item.authorName}</p>
+            </div>
+          </div>
+        ) : (
+          <div className="w-full h-full rounded-[1.5rem] bg-rose-50/50 p-6 flex flex-col justify-between">
+            <p className="font-extrabold text-[#1A1B25] text-lg leading-snug">
+              {item.title || item.content}
+            </p>
+            <p className="text-xs font-bold text-gray-400">Curated by {item.authorName}</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 const MOCK_HEARTBOARD_ITEMS = [
   {
@@ -105,7 +458,7 @@ const PRESET_AVATARS = [
   'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=200'
 ];
 
-export const HeartboardView: React.FC<HeartboardViewProps> = ({ onPostClick, onFilterClick }) => {
+export const HeartboardView: React.FC<HeartboardViewProps> = ({ posts = [], onPostClick, onFilterClick }) => {
   const [activeSubTab, setActiveSubTab] = useState<'board' | 'tagged' | 'hearts'>('board');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -174,6 +527,8 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({ onPostClick, onF
     showToast(`Removed tag: ${tagToRemove}`);
   };
 
+  const [selectedCategoryModal, setSelectedCategoryModal] = useState<HeartCategoryCardData | null>(null);
+
   const handleStartEdit = () => {
     setTempName(userName);
     setTempEmail(userEmail);
@@ -212,11 +567,125 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({ onPostClick, onF
     }
   };
 
-  const filteredItems = MOCK_HEARTBOARD_ITEMS.filter((item) => {
-    const matchesTab = activeSubTab === 'board' || item.tab === activeSubTab;
+  const allAvailableItems = posts.length > 0 ? posts : MOCK_HEARTBOARD_ITEMS;
+
+  // Build Heart Categories using exact SEMANTIC_HEARTS spectrum colors & definitions
+  const defaultHeartCategories: HeartCategoryCardData[] = [
+    {
+      id: 'cat-visionary',
+      categoryName: 'Visionary',
+      count: 92,
+      bubbleColor: '#FF53C0',
+      bgHalo: '#FDF2F8',
+      dotColors: ['#FBCFE8', '#FF53C0', '#F472B6', '#BE185D'],
+      layoutType: 'cluster3',
+      badgeExtra: '+89',
+      items: [
+        { authorName: 'Mercy24', content: 'Always thinking 10 steps ahead!', createdAt: '2 hours ago' },
+        { authorName: 'Alex_Dev', content: 'Incredible product vision and leadership!', createdAt: '1 day ago' }
+      ]
+    },
+    {
+      id: 'cat-leadership',
+      categoryName: 'Leadership',
+      count: 18,
+      bubbleColor: '#7B62FF',
+      bgHalo: '#F3F0FF',
+      dotColors: ['#C4B5FD', '#7B62FF', '#DDD6FE', '#5B21B6'],
+      layoutType: 'cluster3',
+      items: [
+        { authorName: 'Davido_Fan', content: 'Guiding the whole team through challenges with clarity.', createdAt: '3 days ago' }
+      ]
+    },
+    {
+      id: 'cat-hardworking',
+      categoryName: 'Hard working',
+      count: 12,
+      bubbleColor: '#4CD964',
+      bgHalo: '#ECFDF5',
+      dotColors: ['#A7F3D0', '#4CD964', '#6EE7B7', '#047857'],
+      layoutType: 'pair2',
+      items: [
+        { authorName: 'Amino', content: 'Pure dedication and consistency every single day!', createdAt: '4 days ago' }
+      ]
+    },
+    {
+      id: 'cat-loving',
+      categoryName: 'Loving',
+      count: 7,
+      bubbleColor: '#FFB800',
+      bgHalo: '#FEF3C7',
+      dotColors: ['#FDE047', '#FFB800', '#FEF08A', '#D97706'],
+      layoutType: 'single1',
+      items: [
+        { authorName: 'Grandpa', content: 'Your heart overflows with love and kindness.', createdAt: '5 days ago' }
+      ]
+    },
+    {
+      id: 'cat-reliable',
+      categoryName: 'Reliable',
+      count: 15,
+      bubbleColor: '#FF8A65',
+      bgHalo: '#FFF0EB',
+      dotColors: ['#FFD8CC', '#FF8A65', '#FFC1B0', '#E65100'],
+      layoutType: 'pair2',
+      items: [
+        { authorName: 'CR7_Official', content: 'Rock solid reliability. You never let anyone down.', createdAt: '1 week ago' }
+      ]
+    },
+    {
+      id: 'cat-appreciation',
+      categoryName: 'Best of all',
+      count: 9,
+      bubbleColor: '#007A78',
+      bgHalo: '#E6F4F4',
+      dotColors: ['#80CBD2', '#007A78', '#4DB6AC', '#004D40'],
+      layoutType: 'single1',
+      items: [
+        { authorName: 'Community', content: 'Thank you for all the support and goodwill!', createdAt: '2 weeks ago' }
+      ]
+    }
+  ];
+
+  // Group user-created / post hearts into matching categories
+  allAvailableItems.forEach((post) => {
+    if (post.isHeartToken || post.section === 'hearts' || post.type === 'heart_token') {
+      const label = (post.heartDetails?.label || post.title || '').toLowerCase();
+      const matchCat = defaultHeartCategories.find(c => 
+        c.categoryName.toLowerCase().includes(label) || label.includes(c.categoryName.toLowerCase())
+      );
+      if (matchCat) {
+        matchCat.count += 1;
+        matchCat.items?.push({ authorName: post.authorName || 'Anonymous', content: post.content || post.title, createdAt: post.createdAt });
+      }
+    }
+  });
+
+  const displayHeartCategories = defaultHeartCategories.filter((cat) => {
+    if (!searchQuery.trim()) return true;
+    return cat.categoryName.toLowerCase().includes(searchQuery.toLowerCase());
+  });
+
+  const filteredItems = allAvailableItems.filter((item) => {
+    let matchesTab = false;
+
+    if (activeSubTab === 'board') {
+      // 1. Created Messages / Boards
+      matchesTab = item.section === 'board' || item.isCreatedByUser === true || (!item.section && item.tab === 'board');
+    } else if (activeSubTab === 'tagged') {
+      // 2. Tagged / Recipient Messages
+      matchesTab = item.section === 'tagged' || item.isTaggedForUser === true || item.tab === 'tagged';
+    } else if (activeSubTab === 'hearts') {
+      // 3. Hearts
+      matchesTab = item.section === 'hearts' || item.isHeartToken === true || item.tab === 'hearts';
+    }
+
     const matchesSearch = searchQuery.trim() === '' || 
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (item.content && item.content.toLowerCase().includes(searchQuery.toLowerCase()));
+      (item.title && item.title.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (item.content && item.content.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (item.authorName && item.authorName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (item.recipientName && item.recipientName.toLowerCase().includes(searchQuery.toLowerCase()));
+
     return matchesTab && matchesSearch;
   });
 
@@ -358,158 +827,143 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({ onPostClick, onF
       </div>
 
       {/* 5. Heartboard Grid / Trophy Case */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        
-        {/* Card 1: Beyoncé Live Concert (Tall Portrait on soft pink frame) */}
-        <div 
-          onClick={() => onPostClick && onPostClick(filteredItems[0])}
-          className="rounded-[2.5rem] p-4 bg-[#FAF0EC] relative overflow-hidden group cursor-pointer transition-transform duration-200 hover:scale-[1.01]"
-        >
-          <div className="w-full h-[360px] rounded-[2rem] overflow-hidden bg-white relative">
-            <img 
-              src="https://images.unsplash.com/photo-1574100004472-e536d3b6bacc?auto=format&fit=crop&q=80&w=500" 
-              alt="Beyonce Live"
-              className="w-full h-full object-cover"
-              referrerPolicy="no-referrer"
-            />
-          </div>
-        </div>
-
-        {/* Card 2: "Love Granpa So Much" (Black Frame + Paper photo) */}
-        <div 
-          onClick={() => onPostClick && onPostClick(filteredItems[1])}
-          className="rounded-[2.5rem] p-3 bg-[#1A1B25] relative overflow-hidden group cursor-pointer transition-transform duration-200 hover:scale-[1.01]"
-        >
-          <div className="w-full h-[220px] rounded-[1.8rem] bg-[#F8F9FB] p-5 flex flex-row items-center gap-4 relative overflow-hidden">
-            <div className="flex-1 space-y-1">
-              <p className="font-extrabold text-red-500 text-lg leading-tight">
-                Love Granpa<br />So Much
-              </p>
+      {activeSubTab === 'hearts' ? (
+        displayHeartCategories.length === 0 ? (
+          <div className="bg-white rounded-[2.5rem] p-12 text-center border border-gray-100 flex flex-col items-center justify-center my-6">
+            <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center mb-3 text-[#FE6349]">
+              <Sparkles className="w-6 h-6" />
             </div>
-            <div className="w-32 h-36 rounded-xl overflow-hidden shrink-0">
-              <img 
-                src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=300" 
-                alt="Granpa" 
-                className="w-full h-full object-cover"
-                referrerPolicy="no-referrer"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Card 3: Davido Tribute Card (Yellow/Amber Frame + Lined Note Paper) */}
-        <div 
-          onClick={() => onPostClick && onPostClick(filteredItems[2])}
-          className="rounded-[2.5rem] p-4 bg-[#F7B238] relative overflow-hidden group cursor-pointer transition-transform duration-200 hover:scale-[1.01]"
-        >
-          <div className="w-full bg-[#FFFDF9] rounded-[2rem] p-5 relative overflow-hidden flex flex-col items-center gap-4 min-h-[340px]">
-            {/* Lined paper pattern background */}
-            <div className="absolute inset-0 pointer-events-none opacity-20 bg-[linear-[#808897]_1px,transparent_1px)] bg-[size:100%_24px]" />
-            
-            {/* Corner pushpins */}
-            <div className="absolute top-3 right-3 w-2.5 h-2.5 rounded-full bg-[#353849] opacity-80" />
-            <div className="absolute bottom-12 right-3 w-2.5 h-2.5 rounded-full bg-[#353849] opacity-80" />
-            <div className="absolute bottom-20 right-3 w-2.5 h-2.5 rounded-full bg-[#353849] opacity-80" />
-
-            {/* Photo */}
-            <div className="w-32 h-32 rounded-xl overflow-hidden shrink-0 mt-2 relative z-10">
-              <img 
-                src="https://images.unsplash.com/photo-1493225255756-d9584f8606e9?auto=format&fit=crop&q=80&w=300" 
-                alt="Davido" 
-                className="w-full h-full object-cover"
-                referrerPolicy="no-referrer"
-              />
-            </div>
-
-            {/* Handwritten note */}
-            <div className="w-full text-center relative z-10 mt-2 px-2">
-              <p className="font-handwriting text-lg text-[#1A1B25] font-bold leading-relaxed">
-                I love you ronaldo!. Happy retirement, Your cousin Amino
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Card 4: Voice Note Card (Soft Peach Frame + Radial Rings) */}
-        <div 
-          onClick={() => onPostClick && onPostClick(filteredItems[3])}
-          className="rounded-[2.5rem] p-4 bg-[#FAF0EC] relative overflow-hidden group cursor-pointer transition-transform duration-200 hover:scale-[1.01] flex items-center justify-center min-h-[220px]"
-        >
-          {/* Radial rings */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-10">
-            <div className="w-[180px] h-[180px] border border-[#FE6349] rounded-full absolute" />
-            <div className="w-[240px] h-[240px] border border-[#FE6349] rounded-full absolute" />
-            <div className="w-[300px] h-[300px] border border-[#FE6349] rounded-full absolute" />
-          </div>
-
-          <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center relative z-10">
-            <Mic className="w-7 h-7 text-[#FE6349]" />
-          </div>
-        </div>
-
-        {/* Card 5: Teal Green Note Card (Teal Frame + Heart & Star Stickers) */}
-        <div 
-          onClick={() => onPostClick && onPostClick(filteredItems[4])}
-          className="rounded-[2.5rem] p-4 bg-[#149B88] relative overflow-hidden group cursor-pointer transition-transform duration-200 hover:scale-[1.01]"
-        >
-          <div className="w-full bg-[#FFFDF9] rounded-[2rem] p-5 relative overflow-hidden flex flex-col justify-between min-h-[240px]">
-            {/* Corner pushpins */}
-            <div className="absolute bottom-3 right-3 w-2.5 h-2.5 rounded-full bg-[#353849] opacity-80" />
-
-            {/* Stickers top area */}
-            <div className="flex items-center justify-between relative z-10 mb-4">
-              {/* Red heart sticker */}
-              <div className="w-12 h-12 text-[#FE6349] fill-current">
-                <svg viewBox="0 0 24 24" className="w-full h-full fill-current">
-                  <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-                </svg>
-              </div>
-
-              {/* Yellow star sticker */}
-              <div className="w-14 h-14 text-[#F7B238] fill-current transform rotate-12">
-                <svg viewBox="0 0 24 24" className="w-full h-full fill-current">
-                  <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
-                </svg>
-              </div>
-            </div>
-
-            {/* Handwritten text */}
-            <p className="font-handwriting text-base text-[#1A1B25] font-bold leading-relaxed relative z-10">
-              I love you ronaldo!. Happy retirement, Your cousin Amino
+            <h3 className="text-lg font-bold text-[#1A1B25]">No heart categories found</h3>
+            <p className="text-xs text-gray-400 mt-1 max-w-sm">
+              Try searching for another category like "Visionary", "Leadership", or "Loving".
             </p>
           </div>
-        </div>
-
-        {/* Card 6: Light Green Frame with Giant Heart Sticker */}
-        <div 
-          onClick={() => onPostClick && onPostClick(filteredItems[5])}
-          className="rounded-[2.5rem] p-4 bg-[#BEE27C] relative overflow-hidden group cursor-pointer transition-transform duration-200 hover:scale-[1.01]"
-        >
-          <div className="w-full bg-[#FFFDF9] rounded-[2rem] p-5 relative overflow-hidden flex flex-col items-center gap-3 min-h-[260px]">
-            {/* Corner pushpin */}
-            <div className="absolute top-3 right-3 w-2.5 h-2.5 rounded-full bg-[#353849] opacity-80" />
-            <div className="absolute bottom-3 right-3 w-2.5 h-2.5 rounded-full bg-[#353849] opacity-80" />
-
-            {/* Giant Red Heart sticker */}
-            <div className="w-20 h-20 text-[#FE6349] fill-current my-2">
-              <svg viewBox="0 0 24 24" className="w-full h-full fill-current">
-                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-              </svg>
-            </div>
-
-            {/* Photo below */}
-            <div className="w-24 h-24 rounded-xl overflow-hidden shrink-0">
-              <img 
-                src="https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&q=80&w=300" 
-                alt="Tupac" 
-                className="w-full h-full object-cover"
-                referrerPolicy="no-referrer"
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {displayHeartCategories.map((cat) => (
+              <HeartCategoryCard
+                key={cat.id}
+                data={cat}
+                onShare={(catData) => {
+                  setSelectedCategoryModal(catData);
+                  setIsShareModalOpen(true);
+                }}
+                onClick={(catData) => {
+                  setSelectedCategoryModal(catData);
+                }}
               />
-            </div>
+            ))}
           </div>
+        )
+      ) : filteredItems.length === 0 ? (
+        <div className="bg-white rounded-[2.5rem] p-12 text-center border border-gray-100 flex flex-col items-center justify-center my-6">
+          <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center mb-3 text-[#FE6349]">
+            <Sparkles className="w-6 h-6" />
+          </div>
+          <h3 className="text-lg font-bold text-[#1A1B25]">No items found</h3>
+          <p className="text-xs text-gray-400 mt-1 max-w-sm">
+            {activeSubTab === 'board' && "Messages and boards you create will appear here automatically."}
+            {activeSubTab === 'tagged' && "Boards where you are tagged as a recipient will appear here automatically."}
+          </p>
         </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {filteredItems.map((item) => (
+            <HeartboardCard 
+              key={item.id} 
+              item={item} 
+              onClick={() => onPostClick && onPostClick(item)} 
+            />
+          ))}
+        </div>
+      )}
 
-      </div>
+      {/* Heart Category Detail Modal */}
+      <AnimatePresence>
+        {selectedCategoryModal && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedCategoryModal(null)}
+              className="fixed inset-0 bg-black/40 z-50 backdrop-blur-xs"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-[2.5rem] p-6 sm:p-8 z-50 shadow-2xl border border-gray-100"
+            >
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-[#808897] font-bold text-sm uppercase tracking-wider">
+                  {selectedCategoryModal.categoryName} Heart Category
+                </span>
+                <button
+                  onClick={() => setSelectedCategoryModal(null)}
+                  className="w-8 h-8 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-[#353849] transition-all cursor-pointer"
+                >
+                  <X className="w-4 h-4 stroke-[2.5]" />
+                </button>
+              </div>
+
+              {/* Big Heart Graphic Header */}
+              <div 
+                className="w-full rounded-[2rem] p-6 flex flex-col items-center justify-center relative overflow-hidden mb-6"
+                style={{ backgroundColor: selectedCategoryModal.bgHalo }}
+              >
+                <div className="my-2">
+                  <HeartBubbleSVG size={80} bubbleColor={selectedCategoryModal.bubbleColor} />
+                </div>
+                <h3 className="text-2xl font-extrabold text-[#1A1B25] mt-2">
+                  {selectedCategoryModal.count} Hearts
+                </h3>
+                <p className="text-xs font-semibold text-[#808897] mt-0.5">
+                  Total gifted in {selectedCategoryModal.categoryName} category
+                </p>
+              </div>
+
+              {/* Tributes List */}
+              <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
+                <h4 className="text-xs font-bold text-[#1A1B25] uppercase tracking-wider mb-2">
+                  Recent Tributes Received
+                </h4>
+                {selectedCategoryModal.items && selectedCategoryModal.items.length > 0 ? (
+                  selectedCategoryModal.items.map((it, idx) => (
+                    <div key={idx} className="p-3.5 rounded-2xl bg-gray-25 border border-gray-100 flex flex-col gap-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-[#1A1B25]">@{it.authorName}</span>
+                        {it.createdAt && <span className="text-[10px] text-gray-400 font-medium">{it.createdAt}</span>}
+                      </div>
+                      <p className="text-xs text-[#353849] font-medium leading-relaxed">
+                        "{it.content}"
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-gray-400 font-medium italic text-center py-4">
+                    No individual messages logged yet for this category.
+                  </p>
+                )}
+              </div>
+
+              {/* Action buttons */}
+              <div className="mt-6 flex items-center gap-3">
+                <button
+                  onClick={() => {
+                    setSelectedCategoryModal(null);
+                    setIsShareModalOpen(true);
+                  }}
+                  className="flex-1 bg-[#1A1B25] text-white py-3 rounded-full text-xs font-bold flex items-center justify-center gap-2 hover:bg-black transition-all cursor-pointer shadow-xs"
+                >
+                  <Share2 className="w-4 h-4 stroke-[2.2]" />
+                  <span>Share Trophy Case</span>
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Side Drawer Panel for Settings */}
       <AnimatePresence>

@@ -29,7 +29,9 @@ import {
   AlignRight,
   AlignJustify,
   Loader2,
-  PartyPopper
+  PartyPopper,
+  Search,
+  UserX
 } from 'lucide-react';
 import { refineText } from '../services/geminiService';
 import { VectorPicker, PHOSPHOR_VECTORS } from './VectorPicker';
@@ -549,8 +551,76 @@ const GRAYS = {
   gray900: '#1A1B25',
 };
 
+// Registered Users Dataset for Send Heart Selection
+export interface RegisteredUser {
+  id: string;
+  name: string;
+  handle: string;
+  avatar: string;
+  isVerified?: boolean;
+}
+
+export const REGISTERED_USERS: RegisteredUser[] = [
+  { 
+    id: 'u-ronaldo', 
+    name: 'Ronaldo', 
+    handle: '@ronaldo', 
+    avatar: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=150', 
+    isVerified: true 
+  },
+  { 
+    id: 'u-ronike', 
+    name: 'Ronike', 
+    handle: '@ronike', 
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150', 
+    isVerified: false 
+  },
+  { 
+    id: 'u-ronny', 
+    name: 'Ronny', 
+    handle: '@ronny', 
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=150', 
+    isVerified: false 
+  },
+  { 
+    id: 'u-messi', 
+    name: 'Leo Messi', 
+    handle: '@messi', 
+    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=150', 
+    isVerified: true 
+  },
+  { 
+    id: 'u-beyonce', 
+    name: 'Beyoncé', 
+    handle: '@beyonce', 
+    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=150', 
+    isVerified: true 
+  },
+  { 
+    id: 'u-amino', 
+    name: 'Amino', 
+    handle: '@amino', 
+    avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&q=80&w=150', 
+    isVerified: false 
+  },
+  { 
+    id: 'u-sarah', 
+    name: 'Sarah Connor', 
+    handle: '@sarah', 
+    avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?auto=format&fit=crop&q=80&w=150', 
+    isVerified: false 
+  },
+  { 
+    id: 'u-alex', 
+    name: 'Alex Johnson', 
+    handle: '@alexj', 
+    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=150', 
+    isVerified: false 
+  },
+];
+
 // Semantic Heart Spectrum matching the 6 screenshot items
-interface SemanticHeart {
+export interface SemanticHeart {
   id: string;
   label: string;
   details: string;
@@ -558,7 +628,7 @@ interface SemanticHeart {
   bubbleColor: string;
 }
 
-const SEMANTIC_HEARTS: SemanticHeart[] = [
+export const SEMANTIC_HEARTS: SemanticHeart[] = [
   { id: 'loving', label: 'Loving', details: 'Express romantic connection & affection', emoji: '💛', bubbleColor: '#FFB800' },
   { id: 'reliable', label: 'Reliable', details: 'Celebrate dependable, rock-solid support', emoji: '🧡', bubbleColor: '#FF8A65' },
   { id: 'leadership', label: 'Leadership', details: 'Salute career-defining status & legacy', emoji: '💜', bubbleColor: '#7B62FF' },
@@ -826,6 +896,29 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
   const [isHeartsOnlyPickerOpen, setIsHeartsOnlyPickerOpen] = useState(false);
   const [isStickerPickerOpen, setIsStickerPickerOpen] = useState(false);
   
+  // Isolated Send Heart Component States
+  const [isSendHeartOpen, setIsSendHeartOpen] = useState(false);
+  const [selectedSendHeart, setSelectedSendHeart] = useState<string | null>(null);
+  const [sendHeartSearchQuery, setSendHeartSearchQuery] = useState('');
+  const [selectedSendHeartRecipients, setSelectedSendHeartRecipients] = useState<RegisteredUser[]>([]);
+  const [sendHeartNote, setSendHeartNote] = useState('');
+  const [isBlowingHeart, setIsBlowingHeart] = useState(false);
+  const [sendHeartConfirmation, setSendHeartConfirmation] = useState<{
+    heart: SemanticHeart;
+    recipient: string;
+  } | null>(null);
+  const [createdPostConfirmation, setCreatedPostConfirmation] = useState<any | null>(null);
+
+  // Filter registered users based on search query
+  const filteredSendHeartUsers = REGISTERED_USERS.filter((u) => {
+    if (!sendHeartSearchQuery.trim()) return true;
+    const q = sendHeartSearchQuery.toLowerCase().trim();
+    return (
+      u.name.toLowerCase().includes(q) ||
+      u.handle.toLowerCase().includes(q)
+    );
+  });
+  
   // Moderation variables
   const [isModerating, setIsModerating] = useState(false);
   const [moderationError, setModerationError] = useState<string | null>(null);
@@ -943,8 +1036,8 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
       }
 
       onPostCreated(newPost);
-      setIsPreviewOpen(false);
-      onClose();
+      setIsModerating(false);
+      setCreatedPostConfirmation(newPost);
     } catch (e) {
       console.error(e);
       setModerationError("Network check failed. Sending direct tribute...");
@@ -1021,7 +1114,7 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
         <div 
           onClick={() => activeType === 'text' && setIsExpanded(true)}
           style={{ 
-            backgroundColor: (activeType === 'audio' || activeType === 'video') ? '#ffffff' : selectedFrame.bgHex,
+            backgroundColor: selectedFrame.bgHex,
             height: 'min(480px, 65vh)'
           }}
           className="relative w-full max-w-[461px] rounded-[2rem] sm:rounded-[2.5rem] transition-all duration-300 flex items-center justify-center p-4 sm:p-6 select-none border border-transparent cursor-pointer group hover:scale-[1.01] active:scale-[0.99]"
@@ -1150,6 +1243,333 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
               <span>Publish & Blast Love</span>
               <Sparkles className="w-3.5 h-3.5 fill-white" />
             </button>
+          </div>
+        )}
+
+        {/* Send Heart Accordion Component - Styled precisely according to reference image */}
+        <div 
+          style={{ backgroundColor: selectedFrame.bgHex }}
+          className="w-full max-w-[461px] mt-2 rounded-[24px] p-4 sm:p-5 transition-all duration-300 select-none border-0 shadow-none"
+        >
+          {/* Accordion Toggle Header */}
+          <button
+            type="button"
+            onClick={() => setIsSendHeartOpen(!isSendHeartOpen)}
+            className="w-full flex items-center justify-between px-2 py-1 transition-colors cursor-pointer group text-left"
+            aria-expanded={isSendHeartOpen}
+          >
+            <span className="text-[17px] font-medium text-[#565E70] tracking-tight">
+              Send heart
+            </span>
+            <div className="text-[#A4ABB8] group-hover:text-[#666D80] transition-transform duration-300">
+              {isSendHeartOpen ? (
+                <Minus className="w-5 h-5 stroke-[1.75]" />
+              ) : (
+                <Plus className="w-5 h-5 stroke-[1.75]" />
+              )}
+            </div>
+          </button>
+
+          {/* Expanded Heart Spectrum Selector */}
+          {isSendHeartOpen && (
+            <div className="mt-4 pt-4 border-t border-[#EAE3DC] flex flex-col gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+              <div>
+                <label className="text-xs font-extrabold text-gray-500 uppercase tracking-wider block mb-2">
+                  1. Select Heart Type
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                  {SEMANTIC_HEARTS.map((heart) => {
+                    const isSelected = selectedSendHeart === heart.id;
+                    return (
+                      <button
+                        key={heart.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedSendHeart(isSelected ? null : heart.id);
+                        }}
+                        className={`p-3 rounded-2xl text-left transition-all duration-200 cursor-pointer flex flex-col justify-between h-20 relative overflow-hidden bg-white border-0 shadow-none outline-none ${
+                          isSelected 
+                            ? 'ring-2 ring-[#FE6349] bg-rose-50/40' 
+                            : 'hover:bg-white/90'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <span className="text-2xl">{heart.emoji}</span>
+                          {isSelected && (
+                            <div className="w-5 h-5 rounded-full bg-[#FE6349] text-white flex items-center justify-center">
+                              <Check className="w-3 h-3 stroke-[3]" />
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-[#1A1B25]">{heart.label}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Recipient Input & Registered User Selection */}
+              <div className="space-y-2.5 pt-1">
+                <label className="text-xs font-extrabold text-gray-500 uppercase tracking-wider block">
+                  2. Recipient Details
+                </label>
+                
+                <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-5 border-0 shadow-none space-y-3">
+                  {/* Search bar input with search icon */}
+                  <div className="relative flex items-center bg-[#F8F9FB] rounded-2xl px-3.5 py-3 border border-gray-100 focus-within:border-[#FE6349] transition-all">
+                    <Search className="w-4.5 h-4.5 text-gray-400 mr-2 shrink-0" />
+                    <input
+                      type="text"
+                      value={sendHeartSearchQuery}
+                      onChange={(e) => setSendHeartSearchQuery(e.target.value)}
+                      placeholder="Search registered user..."
+                      className="w-full bg-transparent text-sm font-semibold text-[#1A1B25] placeholder:text-gray-400 focus:outline-none border-none p-0"
+                    />
+                    {sendHeartSearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setSendHeartSearchQuery('')}
+                        className="text-gray-400 hover:text-gray-600 p-1 cursor-pointer"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Selected Recipients Chips */}
+                  {selectedSendHeartRecipients.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {selectedSendHeartRecipients.map((user) => (
+                        <span
+                          key={user.id}
+                          className="inline-flex items-center gap-1.5 bg-rose-50 text-[#FE6349] border border-rose-100 font-bold text-xs px-2.5 py-1 rounded-full animate-in fade-in"
+                        >
+                          <img src={user.avatar} alt={user.name} className="w-4 h-4 rounded-full object-cover" />
+                          <span>{user.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedSendHeartRecipients(prev => prev.filter(u => u.id !== user.id));
+                            }}
+                            className="hover:bg-rose-100 rounded-full p-0.5 transition-colors cursor-pointer"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Profile List Header & Results matching attached design */}
+                  <div className="pt-2">
+                    <p className="text-sm font-semibold text-gray-500 mb-2 px-1">Profile</p>
+
+                    {filteredSendHeartUsers.length > 0 ? (
+                      <div className="space-y-1 max-h-60 overflow-y-auto pr-1">
+                        {filteredSendHeartUsers.map((user) => {
+                          const isSelected = selectedSendHeartRecipients.some(u => u.id === user.id);
+                          return (
+                            <div
+                              key={user.id}
+                              onClick={() => {
+                                if (isSelected) {
+                                  setSelectedSendHeartRecipients(prev => prev.filter(u => u.id !== user.id));
+                                } else {
+                                  setSelectedSendHeartRecipients(prev => [...prev, user]);
+                                }
+                              }}
+                              className={`flex items-center justify-between p-2.5 rounded-2xl transition-all cursor-pointer select-none ${
+                                isSelected ? 'bg-rose-50/60 hover:bg-rose-50' : 'hover:bg-gray-50'
+                              }`}
+                            >
+                              <div className="flex items-center gap-3">
+                                {/* Avatar with optional verified checkmark badge */}
+                                <div className="relative w-10 h-10 shrink-0">
+                                  <img
+                                    src={user.avatar}
+                                    alt={user.name}
+                                    className="w-10 h-10 rounded-full object-cover"
+                                  />
+                                  {user.isVerified && (
+                                    <div className="absolute -bottom-0.5 -right-0.5 bg-[#38BDF8] text-white rounded-full p-0.5 flex items-center justify-center border-2 border-white shadow-2xs">
+                                      <Check className="w-2.5 h-2.5 stroke-[3]" />
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Name */}
+                                <div>
+                                  <p className="text-base font-bold text-[#1A1B25] leading-tight">
+                                    {user.name}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Right Green Checkmark when selected */}
+                              {isSelected && (
+                                <Check className="w-5 h-5 text-[#22C55E] stroke-[2.5]" />
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      /* Empty State */
+                      <div className="text-center py-6 px-4 bg-gray-50/50 rounded-2xl border border-gray-100">
+                        <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-2 text-gray-400">
+                          <UserX className="w-5 h-5" />
+                        </div>
+                        <p className="text-sm font-bold text-[#1A1B25]">No users found</p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          Only registered users can receive a Send Heart.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Blow Heart CTA Button */}
+              <button
+                type="button"
+                disabled={!selectedSendHeart || selectedSendHeartRecipients.length === 0 || isBlowingHeart}
+                onClick={() => {
+                  if (!selectedSendHeart || selectedSendHeartRecipients.length === 0) return;
+                  setIsBlowingHeart(true);
+                  const chosenHeartObj = SEMANTIC_HEARTS.find(h => h.id === selectedSendHeart) || SEMANTIC_HEARTS[0];
+                  
+                  setTimeout(() => {
+                    setIsBlowingHeart(false);
+                    setSendHeartConfirmation({
+                      heart: chosenHeartObj,
+                      recipient: selectedSendHeartRecipients.map(u => u.name).join(', ')
+                    });
+                  }, 700);
+                }}
+                className={`w-full py-3.5 rounded-2xl font-bold text-sm transition-all shadow-none flex items-center justify-center gap-2 cursor-pointer ${
+                  !selectedSendHeart || selectedSendHeartRecipients.length === 0 || isBlowingHeart
+                    ? 'bg-[#F1E4DF] text-[#A49893] cursor-not-allowed'
+                    : 'bg-[#FE6349] hover:bg-[#e05234] text-white active:scale-[0.98]'
+                }`}
+              >
+                {isBlowingHeart ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Blowing Heart...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>
+                      {selectedSendHeartRecipients.length > 1
+                        ? `Blow Heart Token (${selectedSendHeartRecipients.length})`
+                        : 'Blow Heart Token'
+                      }
+                    </span>
+                    <Sparkles className="w-4 h-4 fill-white" />
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Full Page Confirmation Modal for Send Heart */}
+        {sendHeartConfirmation && (
+          <div className="fixed inset-0 z-[3000] bg-[#F7F0ED] sm:bg-[#1A1B25]/60 sm:backdrop-blur-md flex items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
+            <ConfettiOverlay active={true} type="heart" />
+            <div className="w-full h-full sm:h-auto sm:max-w-md bg-white sm:rounded-[32px] p-8 sm:p-10 flex flex-col items-center justify-between sm:justify-center text-center shadow-2xl relative overflow-hidden">
+              
+              {/* Background ambient gradient glow */}
+              <div 
+                className="absolute top-0 left-1/2 -translate-x-1/2 w-80 h-80 rounded-full blur-3xl opacity-25 pointer-events-none"
+                style={{ backgroundColor: sendHeartConfirmation.heart.bubbleColor }}
+              />
+
+              {/* Close Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setSendHeartConfirmation(null);
+                  setSelectedSendHeartRecipients([]);
+                  setSendHeartSearchQuery('');
+                  setSelectedSendHeart(null);
+                  setIsSendHeartOpen(false);
+                }}
+                className="absolute top-5 right-5 w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-colors cursor-pointer z-10"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="flex-1 flex flex-col items-center justify-center py-8 z-10">
+                {/* Animated Heart Badge */}
+                <div 
+                  className="w-28 h-28 rounded-full flex items-center justify-center mb-6 relative shadow-md animate-bounce"
+                  style={{ backgroundColor: `${sendHeartConfirmation.heart.bubbleColor}25` }}
+                >
+                  <span className="text-6xl">{sendHeartConfirmation.heart.emoji}</span>
+                  <div className="absolute -bottom-1 -right-1 bg-white p-1.5 rounded-full shadow-sm">
+                    <Sparkles className="w-5 h-5 fill-[#FE6349] text-[#FE6349]" />
+                  </div>
+                </div>
+
+                {/* Status Heading */}
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-[#1A1B25] tracking-tight mb-2">
+                  Heart Token Blown! 💖
+                </h2>
+                <p className="text-sm font-medium text-gray-500 max-w-xs mb-6">
+                  Your heartfelt <strong className="text-[#1A1B25] font-bold">{sendHeartConfirmation.heart.label}</strong> token has been successfully blown to <strong className="text-[#1A1B25] font-bold">{sendHeartConfirmation.recipient}</strong>'s Trophy Case!
+                </p>
+
+                {/* Details Badge */}
+                <div className="w-full bg-[#F8F9FB] rounded-2xl p-4 border border-gray-100 flex items-center justify-between">
+                  <div className="flex items-center gap-3 text-left">
+                    <span className="text-3xl">{sendHeartConfirmation.heart.emoji}</span>
+                    <div>
+                      <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider">Semantic Heart</p>
+                      <p className="text-sm font-extrabold text-[#1A1B25]">{sendHeartConfirmation.heart.label} Heart</p>
+                    </div>
+                  </div>
+                  <span 
+                    className="px-3 py-1 rounded-full text-xs font-bold text-white shadow-2xs"
+                    style={{ backgroundColor: sendHeartConfirmation.heart.bubbleColor }}
+                  >
+                    Delivered
+                  </span>
+                </div>
+              </div>
+
+              {/* Action buttons */}
+              <div className="w-full space-y-3 pt-4 z-10">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSendHeartConfirmation(null);
+                    setSelectedSendHeartRecipients([]);
+                    setSendHeartSearchQuery('');
+                    setSelectedSendHeart(null);
+                    setIsSendHeartOpen(false);
+                  }}
+                  className="w-full py-4 rounded-2xl bg-[#FE6349] hover:bg-[#e05234] text-white font-bold text-base shadow-md active:scale-[0.98] transition-all cursor-pointer"
+                >
+                  Done
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSendHeartConfirmation(null);
+                    setSelectedSendHeartRecipients([]);
+                    setSendHeartSearchQuery('');
+                    setSelectedSendHeart(null);
+                  }}
+                  className="w-full py-3 rounded-2xl bg-gray-100 hover:bg-gray-200 text-[#1A1B25] font-bold text-sm transition-all cursor-pointer"
+                >
+                  Send Another Heart
+                </button>
+              </div>
+
+            </div>
           </div>
         )}
 
@@ -2486,6 +2906,101 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
               </div>
 
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Full Page Confirmation Modal for Published Appreciation Card */}
+      {createdPostConfirmation && (
+        <div className="fixed inset-0 z-[3500] bg-[#FCF9F8] flex flex-col items-center justify-between p-6 sm:p-10 font-sans select-none animate-in fade-in duration-300 overflow-y-auto">
+          <ConfettiOverlay active={true} type={createdPostConfirmation.confetti || "heart"} />
+          
+          {/* Top Header with Close */}
+          <div className="w-full max-w-md flex justify-between items-center shrink-0 z-10">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-[#FE6349] fill-[#FE6349]" />
+              <span className="text-sm font-extrabold text-[#1A1B25] tracking-tight">Heartboard</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setCreatedPostConfirmation(null);
+                setIsPreviewOpen(false);
+                onClose();
+              }}
+              className="w-10 h-10 rounded-full bg-white shadow-xs border border-gray-100 hover:bg-gray-50 text-gray-500 flex items-center justify-center transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Center Body Content */}
+          <div className="w-full max-w-md flex-1 flex flex-col items-center justify-center text-center py-6 my-auto z-10">
+            <div className="w-24 h-24 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center mb-5 relative shadow-xs animate-bounce">
+              <span className="text-5xl">💌</span>
+              <div className="absolute -bottom-1 -right-1 bg-white p-1.5 rounded-full shadow-xs border border-gray-100">
+                <Sparkles className="w-4 h-4 fill-[#FE6349] text-[#FE6349]" />
+              </div>
+            </div>
+
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-[#1A1B25] tracking-tight mb-2">
+              Appreciation Sent! 💖
+            </h2>
+            <p className="text-sm font-medium text-gray-500 max-w-xs mb-6">
+              Your heartfelt tribute has been published and delivered to <strong className="text-[#1A1B25] font-bold">{createdPostConfirmation.targetId || createdPostConfirmation.recipients?.[0] || 'the recipient'}</strong>!
+            </p>
+
+            {/* Tribute Card Summary Badge */}
+            <div className="w-full bg-white rounded-3xl p-5 border border-gray-100/80 shadow-xs text-left space-y-3">
+              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                <div>
+                  <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider block">Recipient</span>
+                  <p className="text-sm font-extrabold text-[#1A1B25]">{createdPostConfirmation.targetId || '@recipient'}</p>
+                </div>
+                {createdPostConfirmation.eventType && (
+                  <span className="bg-rose-50 text-[#FE6349] text-xs font-bold px-3 py-1 rounded-full border border-rose-100">
+                    {createdPostConfirmation.eventType}
+                  </span>
+                )}
+              </div>
+
+              <div className="text-xs text-gray-600 font-medium line-clamp-3 italic bg-[#F8F9FB] p-3 rounded-2xl">
+                "{createdPostConfirmation.content}"
+              </div>
+
+              <div className="flex items-center justify-between pt-1 text-xs">
+                <span className="text-gray-400 font-semibold">Visibility</span>
+                <span className="font-bold text-[#1A1B25] capitalize">{createdPostConfirmation.targetType || 'Board'} ({privacyLayer})</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Bottom Fixed Action Buttons */}
+          <div className="w-full max-w-md space-y-3 pt-4 shrink-0 z-10">
+            <button
+              type="button"
+              onClick={() => {
+                setCreatedPostConfirmation(null);
+                setIsPreviewOpen(false);
+                onClose();
+              }}
+              className="w-full py-4 rounded-full bg-[#FE6349] hover:bg-[#e05234] text-white font-bold text-base shadow-md active:scale-[0.98] transition-all cursor-pointer"
+            >
+              View on Heartboard
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setCreatedPostConfirmation(null);
+                setIsPreviewOpen(false);
+                setContent('');
+                setRecipient('');
+                setCaption('');
+              }}
+              className="w-full py-3.5 rounded-full bg-white hover:bg-gray-50 border border-gray-200 text-[#1A1B25] font-bold text-sm transition-all cursor-pointer"
+            >
+              Create Another Card
+            </button>
           </div>
         </div>
       )}

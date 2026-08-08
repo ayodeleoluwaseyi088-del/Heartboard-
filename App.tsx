@@ -48,7 +48,8 @@ const INITIAL_MOCK_POSTS: (Post & {
     mediaType: 'video',
     category: 'hype',
     statusBadge: '🔥 PURE HYPE STATUS',
-    inactive: true
+    isCreatedByUser: true,
+    section: 'board'
   },
   {
     id: 'cr7-note',
@@ -65,7 +66,9 @@ const INITIAL_MOCK_POSTS: (Post & {
     mediaType: 'note',
     sticker: 'star',
     category: 'vouch',
-    statusBadge: '⭐ HIGH-AUTHORITY VOUCH'
+    statusBadge: '⭐ HIGH-AUTHORITY VOUCH',
+    isTaggedForUser: true,
+    section: 'tagged'
   },
   {
     id: 'm1',
@@ -80,7 +83,9 @@ const INITIAL_MOCK_POSTS: (Post & {
     reactions: 89000,
     theme: '#EEF1FA', // dreamy lavender
     category: 'hype',
-    statusBadge: '🔥 GOLDEN REP'
+    statusBadge: '🔥 GOLDEN REP',
+    isCreatedByUser: true,
+    section: 'board'
   },
   {
     id: 'trump-card',
@@ -97,7 +102,9 @@ const INITIAL_MOCK_POSTS: (Post & {
     theme: '#EEF1FA', // dreamy lavender
     mediaType: 'image',
     category: 'vouch',
-    statusBadge: '🛡️ PLATINUM VOUCH'
+    statusBadge: '🛡️ PLATINUM VOUCH',
+    isCreatedByUser: true,
+    section: 'board'
   },
   {
     id: 'birthday-note',
@@ -114,7 +121,9 @@ const INITIAL_MOCK_POSTS: (Post & {
     mediaType: 'note',
     category: 'tears',
     isBlurred: true,
-    statusBadge: '😭 BROUGHT THEM TO TEARS'
+    statusBadge: '😭 BROUGHT THEM TO TEARS',
+    isCreatedByUser: true,
+    section: 'board'
   },
   {
     id: 'audio-mic',
@@ -130,7 +139,32 @@ const INITIAL_MOCK_POSTS: (Post & {
     mediaType: 'audio',
     category: 'tears',
     isBlurred: true,
-    statusBadge: '😭 BROUGHT THEM TO TEARS'
+    statusBadge: '😭 BROUGHT THEM TO TEARS',
+    isCreatedByUser: true,
+    section: 'board'
+  },
+  {
+    id: 'heart-token-sample',
+    authorName: 'Mercy24',
+    recipientName: 'Micky Mouse',
+    content: 'Loving Heart 💖 blown to Micky Mouse with deepest appreciation!',
+    type: 'heart_token',
+    visibility: PostVisibility.PUBLIC,
+    createdAt: '2024-03-21T08:00:00Z',
+    targetId: 'mickymouse',
+    targetType: EntityType.WALL,
+    reactions: 88,
+    theme: '#FAF0EC',
+    frameBg: '#FAF0EC',
+    heartDetails: {
+      label: 'Loving Partner',
+      emoji: '💖',
+      bubbleColor: '#FE6349'
+    },
+    category: 'vouch',
+    statusBadge: '💖 HEART TOKEN',
+    isHeartToken: true,
+    section: 'hearts'
   },
   {
     id: 'davido-feed',
@@ -468,16 +502,30 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, setActiveTab, onPlusCl
   );
 };
 
+const formatStatNumber = (num: number): string => {
+  if (num >= 1000000) {
+    const val = (num / 1000000).toFixed(1);
+    return (val.endsWith('.0') ? Math.floor(num / 1000000) : val) + 'M';
+  }
+  if (num >= 1000) {
+    const val = (num / 1000).toFixed(1);
+    return (val.endsWith('.0') ? Math.floor(num / 1000) : val) + 'k';
+  }
+  return num.toLocaleString();
+};
+
 const MasonryFeed = ({ 
   posts, 
   onPostClick,
   activeFilter,
-  setActiveFilter
+  setActiveFilter,
+  realtimeStats
 }: { 
   posts: any[], 
   onPostClick: (index: number) => void,
   activeFilter: 'all' | 'tears' | 'vouch' | 'hype',
-  setActiveFilter: (filter: 'all' | 'tears' | 'vouch' | 'hype') => void
+  setActiveFilter: (filter: 'all' | 'tears' | 'vouch' | 'hype') => void,
+  realtimeStats: { totalMessages: number; totalCurators: number; totalReactions: number }
 }) => {
   return (
     <div className="app-container pb-40 px-6 md:px-12 mt-12">
@@ -487,8 +535,23 @@ const MasonryFeed = ({
           <h2 className="text-3xl font-extrabold tracking-tight text-gray-900 flex items-center gap-2">
             <span>❤️</span> Most Loved Today
           </h2>
-          <p className="text-gray-500 font-bold text-xs mt-2">
-            8.3k message, 245 curators, 7.6M reactions
+          <p className="text-gray-500 font-bold text-xs mt-2 flex items-center gap-2 flex-wrap">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 font-extrabold text-[10px] tracking-wider uppercase border border-emerald-100/80">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              LIVE DATA
+            </span>
+            <span>
+              <strong className="text-gray-900 font-extrabold">{formatStatNumber(realtimeStats.totalMessages)}</strong> messages
+            </span>
+            <span className="text-gray-300">•</span>
+            <span>
+              <strong className="text-gray-900 font-extrabold">{formatStatNumber(realtimeStats.totalCurators)}</strong> curators
+            </span>
+            <span className="text-gray-300">•</span>
+            <span className="inline-flex items-center gap-1">
+              <strong className="text-[#FE6349] font-extrabold transition-all duration-300">{formatStatNumber(realtimeStats.totalReactions)}</strong> reactions
+              <span className="text-[11px] text-rose-500 font-semibold animate-bounce">💖</span>
+            </span>
           </p>
         </div>
 
@@ -528,6 +591,27 @@ const App: React.FC = () => {
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<'all' | 'tears' | 'vouch' | 'hype'>('all');
   const [activeNavTab, setActiveNavTab] = useState<'home' | 'hearts'>('home');
+  const [liveReactionTicks, setLiveReactionTicks] = useState(0);
+
+  // Real-time ticker effect simulating global hearts blown continuously
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setLiveReactionTicks(prev => prev + Math.floor(Math.random() * 4) + 1);
+    }, 2800);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Calculate live real-time statistics dynamically
+  const totalMessagesCount = 8300 + (posts.length - INITIAL_MOCK_POSTS.length);
+  const uniqueAuthorsCount = 245 + new Set(posts.map(p => p.authorName)).size;
+  const postsReactionsSum = posts.reduce((sum, p) => sum + (p.reactions || 0), 0);
+  const totalReactionsCount = 7600000 + postsReactionsSum + liveReactionTicks;
+
+  const realtimeStats = {
+    totalMessages: totalMessagesCount,
+    totalCurators: uniqueAuthorsCount,
+    totalReactions: totalReactionsCount
+  };
 
   const handleTabChange = (tab: 'home' | 'hearts') => {
     setActiveNavTab(tab);
@@ -619,6 +703,7 @@ const App: React.FC = () => {
                     onPostClick={setSelectedPostIndex} 
                     activeFilter={activeFilter}
                     setActiveFilter={setActiveFilter}
+                    realtimeStats={realtimeStats}
                   />
                 } />
                 <Route path="*" element={
@@ -627,6 +712,7 @@ const App: React.FC = () => {
                     onPostClick={setSelectedPostIndex} 
                     activeFilter={activeFilter}
                     setActiveFilter={setActiveFilter}
+                    realtimeStats={realtimeStats}
                   />
                 } />
               </Routes>
@@ -635,6 +721,7 @@ const App: React.FC = () => {
         ) : (
           <main className="flex-grow bg-white">
             <HeartboardView 
+              posts={posts}
               onFilterClick={() => setIsFilterModalOpen(true)}
               onPostClick={(post) => {
                 const foundIndex = posts.findIndex(p => p.id === post.id);
