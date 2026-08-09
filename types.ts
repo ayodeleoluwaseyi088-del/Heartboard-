@@ -19,6 +19,170 @@ export interface User {
   socialUrl?: string;
 }
 
+export interface RegisteredUser {
+  id: string;
+  name: string;
+  handle: string;
+  avatar: string;
+  isVerified: boolean;
+  heartsCount: number;
+  boardsCount: number;
+  messagesCount?: string;
+  taggedCount?: string;
+  bio: string;
+  role?: string;
+}
+
+export const MOCK_REGISTERED_USERS: RegisteredUser[] = [
+  {
+    id: 'u-beyounce',
+    name: 'Beyounce',
+    handle: '@beyounce',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
+    isVerified: true,
+    heartsCount: 101600000,
+    boardsCount: 120,
+    messagesCount: '101.6M',
+    taggedCount: '30.6M',
+    bio: 'Queen Bey Official Heartboard Profile',
+    role: 'Verified Icon'
+  },
+  {
+    id: 'u1',
+    name: 'Mercy24',
+    handle: '@mercy24',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Mercy24',
+    isVerified: true,
+    heartsCount: 88,
+    boardsCount: 5,
+    messagesCount: '12.4k',
+    taggedCount: '3.2k',
+    bio: 'Curator & Goodwill Ambassador on Heartboard',
+    role: 'Verified Curator'
+  },
+  {
+    id: 'u2',
+    name: 'Amino',
+    handle: '@amino_official',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Amino',
+    isVerified: true,
+    heartsCount: 562,
+    boardsCount: 12,
+    bio: 'Spreading positive vibes & heartfelt vouches',
+    role: 'Verified Curator'
+  },
+  {
+    id: 'u3',
+    name: 'Beyoncé Fan',
+    handle: '@bey_hive',
+    avatar: 'https://images.unsplash.com/photo-1574100004472-e536d3b6bacc?auto=format&fit=crop&q=80&w=200',
+    isVerified: true,
+    heartsCount: 12400,
+    boardsCount: 18,
+    bio: 'Queen Bey fan club curator & concert memory builder',
+    role: 'Community Lead'
+  },
+  {
+    id: 'u4',
+    name: 'Davido Fans',
+    handle: '@davido_30bg',
+    avatar: 'https://images.unsplash.com/photo-1493225255756-d9584f8606e9?auto=format&fit=crop&q=80&w=200',
+    isVerified: true,
+    heartsCount: 1200000,
+    boardsCount: 42,
+    bio: '30BG Global Heartboard Official Curator',
+    role: 'Official Celebrity Account'
+  },
+  {
+    id: 'u5',
+    name: 'Tyler',
+    handle: '@tyler_grandson',
+    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=200',
+    isVerified: false,
+    heartsCount: 412,
+    boardsCount: 3,
+    bio: 'Grateful grandson & story writer',
+    role: 'Registered Member'
+  },
+  {
+    id: 'u6',
+    name: 'Cristiano Ronaldo',
+    handle: '@cristiano',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Cristiano',
+    isVerified: true,
+    heartsCount: 890000,
+    boardsCount: 150,
+    bio: 'Claimed Official Profile • Football Legend & Global Icon',
+    role: 'Verified Celebrity'
+  },
+  {
+    id: 'u7',
+    name: 'Lionel Messi',
+    handle: '@messi',
+    avatar: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&q=80&w=200',
+    isVerified: true,
+    heartsCount: 2100000,
+    boardsCount: 210,
+    bio: 'Claimed Official Profile • World Champion & Legend',
+    role: 'Verified Celebrity'
+  },
+  {
+    id: 'u8',
+    name: 'Sarah',
+    handle: '@sarah_zen',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah',
+    isVerified: true,
+    heartsCount: 194,
+    boardsCount: 7,
+    bio: 'Hard work & workplace appreciation notes creator',
+    role: 'Verified Curator'
+  },
+  {
+    id: 'u9',
+    name: 'Micky Mouse',
+    handle: '@mickymouse',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Micky',
+    isVerified: true,
+    heartsCount: 88,
+    boardsCount: 2,
+    bio: 'Disney Magic & Joy Receiver',
+    role: 'Registered Member'
+  },
+  {
+    id: 'u10',
+    name: 'Argentina Fans',
+    handle: '@argentina_fans',
+    avatar: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&q=80&w=200',
+    isVerified: true,
+    heartsCount: 89000,
+    boardsCount: 25,
+    bio: 'World Cup Champions Tribute Curator',
+    role: 'Verified Curator'
+  },
+  {
+    id: 'u11',
+    name: 'Alex_Dev',
+    handle: '@alex_dev',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alex',
+    isVerified: false,
+    heartsCount: 320,
+    boardsCount: 6,
+    bio: 'Building goodwill tools & appreciation boards',
+    role: 'Registered Member'
+  },
+  {
+    id: 'u12',
+    name: 'Ronike',
+    handle: '@ronike_vibe',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
+    isVerified: true,
+    heartsCount: 150,
+    boardsCount: 4,
+    bio: 'Goodwill Ambassador & Heartboard Curator',
+    role: 'Verified Curator'
+  }
+];
+
 export interface Post {
   id: string;
   authorName: string;

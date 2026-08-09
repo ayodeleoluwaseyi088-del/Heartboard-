@@ -520,9 +520,11 @@ export const CanvasReadOnlyCard: React.FC<CanvasReadOnlyCardProps> = ({
 import { moderateContent } from '../services/geminiService';
 import { EntityType, PostVisibility } from '../types';
 
-interface CreateAppreciationModalProps {
+export interface CreateAppreciationModalProps {
   onClose: () => void;
   onPostCreated: (post: any) => void;
+  initialRecipient?: { id?: string; name: string; handle: string; avatar?: string };
+  initialMode?: 'create_message' | 'send_heart';
 }
 
 // Spacing System conforming to additional guide elements:
@@ -733,13 +735,20 @@ const COLOR_OPTIONS = [
   { hex: '#A855F7', name: 'Violet' },
 ];
 
-export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = ({ onClose, onPostCreated }) => {
+export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = ({ 
+  onClose, 
+  onPostCreated,
+  initialRecipient,
+  initialMode
+}) => {
   const [activeType, setActiveType] = useState<'text' | 'audio' | 'video'>('text');
   
   // Customization & Core Information States
   const [content, setContent] = useState('');
   const [authorName, setAuthorName] = useState('');
-  const [recipient, setRecipient] = useState('');
+  const [recipient, setRecipient] = useState<string>(
+    initialRecipient ? (initialRecipient.handle || initialRecipient.name) : ''
+  );
   
   const [selectedFrame, setSelectedFrame] = useState<FrameTemplate>(FRAME_TEMPLATES[0]);
   const [selectedSticker, setSelectedSticker] = useState<StickerItem | null>(null);
@@ -873,7 +882,9 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
   const [caption, setCaption] = useState('');
   const [selectedEventType, setSelectedEventType] = useState<string>('');
   const [isEventDropdownOpen, setIsEventDropdownOpen] = useState(false);
-  const [recipients, setRecipients] = useState<string[]>(['@you']);
+  const [recipients, setRecipients] = useState<string[]>(
+    initialRecipient ? [initialRecipient.handle || initialRecipient.name] : ['@you']
+  );
   const [newRecipientInput, setNewRecipientInput] = useState('');
   const [boardCapacity, setBoardCapacity] = useState<'collaborative' | 'solo'>('collaborative');
   const [isCapacityModalOpen, setIsCapacityModalOpen] = useState(false);
@@ -887,10 +898,22 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
   const [isStickerPickerOpen, setIsStickerPickerOpen] = useState(false);
   
   // Isolated Send Heart Component States
-  const [isSendHeartOpen, setIsSendHeartOpen] = useState(false);
-  const [selectedSendHeart, setSelectedSendHeart] = useState<string | null>(null);
+  const [isSendHeartOpen, setIsSendHeartOpen] = useState<boolean>(initialMode === 'send_heart');
+  const [selectedSendHeart, setSelectedSendHeart] = useState<string | null>('loving');
   const [sendHeartSearchQuery, setSendHeartSearchQuery] = useState('');
-  const [selectedSendHeartRecipients, setSelectedSendHeartRecipients] = useState<RegisteredUser[]>([]);
+  const [selectedSendHeartRecipients, setSelectedSendHeartRecipients] = useState<RegisteredUser[]>(() => {
+    if (!initialRecipient) return [];
+    return [{
+      id: initialRecipient.id || 'u-' + initialRecipient.name.toLowerCase().replace(/\s+/g, ''),
+      name: initialRecipient.name,
+      handle: initialRecipient.handle || `@${initialRecipient.name.toLowerCase().replace(/\s+/g, '')}`,
+      avatar: initialRecipient.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150',
+      isVerified: true,
+      heartsCount: 100,
+      boardsCount: 5,
+      bio: ''
+    }];
+  });
   const [sendHeartNote, setSendHeartNote] = useState('');
   const [isBlowingHeart, setIsBlowingHeart] = useState(false);
   const [sendHeartConfirmation, setSendHeartConfirmation] = useState<{
