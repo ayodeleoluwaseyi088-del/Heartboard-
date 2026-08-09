@@ -637,25 +637,15 @@ export const SEMANTIC_HEARTS: SemanticHeart[] = [
   { id: 'best', label: 'Best of all', details: 'The ultimate golden status token', emoji: '💙', bubbleColor: '#007A78' },
 ];
 
-// Beautiful custom speech bubble with a smiley face heart inside (matches screenshot precisely)
-const HeartBubbleSvg: React.FC<{ color: string }> = ({ color }) => {
+// Clean circular heart token badge (no speech bubble tail, no smiley face)
+export const HeartBubbleSvg: React.FC<{ color: string; size?: number; className?: string }> = ({ color, size = 56, className = '' }) => {
   return (
-    <svg width="56" height="56" viewBox="0 0 60 60" className="select-none transform transition-all duration-200">
-      {/* Dynamic colored bubble with tail pointing to bottom-right */}
-      <path 
-        d="M 30 10 C 19.5 10 11 18.5 11 29 C 11 39.5 19.5 48 30 48 C 33.1 48 36.1 47.2 38.7 45.8 L 45.5 47.5 L 43.8 40.7 C 45.2 38.1 46 35.1 46 32 C 46 21.5 38.5 10 30 10 Z" 
-        fill={color} 
-      />
-      {/* Filled white heart shape inside the bubble */}
-      <path 
-        d="M 30 20 C 30 20 27.6 16.5 24 19.5 C 20.4 22.5 30 33 30 33 C 30 33 39.6 22.5 36 19.5 C 32.4 16.5 30 20 30 20 Z" 
-        fill="#FFFFFF" 
-      />
-      {/* Smiley face drawn in the bubble's original color overlaying the heart */}
-      <circle cx="26.5" cy="22.5" r="1.3" fill={color} />
-      <circle cx="33.5" cy="22.5" r="1.3" fill={color} />
-      <path d="M 25 25.8 C 26.5 28.3 33.5 28.3 35 25.8" stroke={color} strokeWidth="1.6" strokeLinecap="round" fill="none" />
-    </svg>
+    <div 
+      style={{ width: `${size}px`, height: `${size}px`, backgroundColor: color }}
+      className={`rounded-full flex items-center justify-center shadow-2xs shrink-0 select-none ${className}`}
+    >
+      <Heart className="text-white fill-white stroke-none" style={{ width: `${Math.round(size * 0.52)}px`, height: `${Math.round(size * 0.52)}px` }} />
+    </div>
   );
 };
 
@@ -1258,7 +1248,7 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
             className="w-full flex items-center justify-between px-2 py-1 transition-colors cursor-pointer group text-left"
             aria-expanded={isSendHeartOpen}
           >
-            <span className="text-[17px] font-medium text-[#565E70] tracking-tight">
+            <span className="text-[16px] font-medium text-[#A4ABB8] tracking-tight">
               Send heart
             </span>
             <div className="text-[#A4ABB8] group-hover:text-[#666D80] transition-transform duration-300">
@@ -1294,7 +1284,7 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                         }`}
                       >
                         <div className="flex items-center justify-between w-full">
-                          <span className="text-2xl">{heart.emoji}</span>
+                          <HeartBubbleSvg color={heart.bubbleColor} size={36} />
                           {isSelected && (
                             <div className="w-5 h-5 rounded-full bg-[#FE6349] text-white flex items-center justify-center">
                               <Check className="w-3 h-3 stroke-[3]" />

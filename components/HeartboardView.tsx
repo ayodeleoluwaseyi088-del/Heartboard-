@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ShareProfileModal } from './ShareProfileModal';
-import { SEMANTIC_HEARTS } from './CreateAppreciationModal';
+import { SEMANTIC_HEARTS, HeartBubbleSvg } from './CreateAppreciationModal';
+import { LiveHeartAnimation } from './LiveHeartAnimation';
 import { 
   Settings, 
   Share2, 
@@ -14,6 +15,7 @@ import {
   Bell,
   ShieldCheck,
   ChevronRight,
+  ChevronLeft,
   LogOut,
   Globe,
   Sparkles,
@@ -29,45 +31,13 @@ interface HeartboardViewProps {
   onFilterClick?: () => void;
 }
 
-// SVG Speech Bubble with White Heart and Cute Smiley Face
+// Re-use the exact HeartBubbleSvg component from Page 2 (Send/Blow Heart)
 const HeartBubbleSVG: React.FC<{
   size?: number;
-  bubbleColor: string;
+  bubbleColor?: string;
   className?: string;
-}> = ({ size = 56, bubbleColor, className = '' }) => {
-  return (
-    <div className={`relative flex items-center justify-center shrink-0 filter drop-shadow-2xs ${className}`}>
-      <svg
-        width={size}
-        height={size}
-        viewBox="0 0 64 64"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        {/* Speech Bubble Shape */}
-        <path
-          d="M32 6C18.1929 6 7 16.2975 7 29C7 33.7225 8.5807 38.1065 11.2828 41.7208C10.0242 45.9621 7.27963 49.3879 7.02613 49.6973C6.61118 50.2033 6.97171 50.95 7.62562 50.95C12.872 50.95 17.3828 48.2435 20.0827 46.1623C23.7381 47.3392 27.756 48 32 48C45.8071 48 57 37.7025 57 25C57 12.2975 45.8071 6 32 6Z"
-          fill={bubbleColor}
-        />
-        {/* Centered White Heart */}
-        <path
-          d="M32 37.5 C32 37.5, 20.5 29, 20.5 22 C20.5 17.8, 23.5 14.8, 27.5 14.8 C29.8 14.8, 31.2 16, 32 17.2 C32.8 16, 34.2 14.8, 36.5 14.8 C40.5 14.8, 43.5 17.8, 43.5 22 C43.5 29, 32 37.5, 32 37.5 Z"
-          fill="white"
-        />
-        {/* Eyes inside White Heart */}
-        <circle cx="28" cy="20.5" r="1.35" fill={bubbleColor} />
-        <circle cx="36" cy="20.5" r="1.35" fill={bubbleColor} />
-        {/* Curved Smile */}
-        <path
-          d="M28.5 24.5 C28.5 24.5, 30.2 27, 32 27 C33.8 27, 35.5 24.5, 35.5 24.5"
-          stroke={bubbleColor}
-          strokeWidth="1.6"
-          strokeLinecap="round"
-          fill="none"
-        />
-      </svg>
-    </div>
-  );
+}> = ({ size = 56, bubbleColor = '#FE6349', className = '' }) => {
+  return <HeartBubbleSvg color={bubbleColor || '#FE6349'} size={size} className={className} />;
 };
 
 export interface HeartCategoryCardData {
@@ -88,14 +58,15 @@ export const HeartCategoryCard: React.FC<{
   onClick?: (data: HeartCategoryCardData) => void;
 }> = ({ data, onShare, onClick }) => {
   const {
-    categoryName,
-    count,
-    bubbleColor,
-    bgHalo,
-    dotColors,
-    layoutType,
+    categoryName = 'Heart',
+    count = 0,
+    bubbleColor = '#FE6349',
+    bgHalo = '#FDF4F2',
+    dotColors = [],
     badgeExtra
-  } = data;
+  } = data || {};
+
+  const effectiveLayout = count === 1 ? 'single1' : count === 2 ? 'pair2' : 'cluster3';
 
   return (
     <div
@@ -143,32 +114,32 @@ export const HeartCategoryCard: React.FC<{
             style={{ backgroundColor: dotColors[1] || bubbleColor }}
           />
 
-          {/* Speech Bubble Cluster Layout */}
-          {layoutType === 'cluster3' && (
+          {/* Heart Token Cluster Layout */}
+          {effectiveLayout === 'cluster3' && (
             <div className="relative w-32 h-32 flex items-center justify-center">
-              {/* Top Bubble */}
+              {/* Top Token */}
               <div className="absolute top-0 left-1/2 -translate-x-1/2 z-10">
                 <HeartBubbleSVG size={58} bubbleColor={bubbleColor} />
               </div>
-              {/* Bottom Left Bubble */}
+              {/* Bottom Left Token */}
               <div className="absolute bottom-0 left-0 z-10">
                 <HeartBubbleSVG size={52} bubbleColor={bubbleColor} />
               </div>
-              {/* Bottom Right Bubble */}
+              {/* Bottom Right Token */}
               <div className="absolute bottom-0 right-0 z-10">
                 <HeartBubbleSVG size={52} bubbleColor={bubbleColor} />
               </div>
 
-              {/* Optional Numeric Overlay Badge */}
+              {/* Optional Numeric Overlay Badge for > 3 hearts */}
               {(badgeExtra || count > 3) && (
                 <div className="absolute top-[48%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 bg-[#353849]/90 text-white font-extrabold text-[10px] px-2 py-0.5 rounded-full border border-white shadow-xs">
-                  {badgeExtra || `+${count}`}
+                  {badgeExtra || (count > 20 ? `+${count - 3}` : `${count}`)}
                 </div>
               )}
             </div>
           )}
 
-          {layoutType === 'pair2' && (
+          {effectiveLayout === 'pair2' && (
             <div className="relative w-32 h-32 flex items-center justify-center">
               {/* Top Right Bubble */}
               <div className="absolute top-2 right-2 z-10">
@@ -181,7 +152,7 @@ export const HeartCategoryCard: React.FC<{
             </div>
           )}
 
-          {layoutType === 'single1' && (
+          {effectiveLayout === 'single1' && (
             <div className="relative w-32 h-32 flex items-center justify-center z-10">
               <HeartBubbleSVG size={72} bubbleColor={bubbleColor} />
             </div>
@@ -196,10 +167,10 @@ export const HeartCategoryCard: React.FC<{
             e.stopPropagation();
             if (onShare) onShare(data);
           }}
-          className="px-5 py-2 rounded-full border border-gray-200 text-[#353849] font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-gray-50 active:scale-95 transition-all cursor-pointer bg-white"
+          className="px-5 py-2 rounded-full border border-[#ECEFF3] text-[#A4ABB8] font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-gray-50 active:scale-95 transition-all cursor-pointer bg-white"
         >
-          <Share2 className="w-3.5 h-3.5 stroke-[2.2] text-[#353849]" />
-          <span>Share</span>
+          <Share2 className="w-3.5 h-3.5 stroke-[1.5] text-[#A4ABB8]" />
+          <span className="text-[#A4ABB8]">Share</span>
         </button>
       </div>
     </div>
@@ -463,6 +434,14 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({ posts = [], onPo
   const [searchQuery, setSearchQuery] = useState('');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isHeartsAnimationActive, setIsHeartsAnimationActive] = useState(false);
+
+  const triggerHeartsCelebration = () => {
+    setIsHeartsAnimationActive(false);
+    setTimeout(() => {
+      setIsHeartsAnimationActive(true);
+    }, 50);
+  };
 
   // Profile State
   const [userName, setUserName] = useState('Micky Mouse');
@@ -528,6 +507,74 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({ posts = [], onPo
   };
 
   const [selectedCategoryModal, setSelectedCategoryModal] = useState<HeartCategoryCardData | null>(null);
+  const lastSelectedCategoryModalRef = React.useRef<HeartCategoryCardData | null>(null);
+  if (selectedCategoryModal) {
+    lastSelectedCategoryModalRef.current = selectedCategoryModal;
+  }
+  const activeCategoryModal = selectedCategoryModal || lastSelectedCategoryModalRef.current;
+
+  const [drawerSearchQuery, setDrawerSearchQuery] = useState('');
+  const [activeTooltipIndex, setActiveTooltipIndex] = useState<string | null>(null);
+
+  const sampleSenders = [
+    { name: 'Ronike', date: 'Wed Dec 15 2016', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80' },
+    { name: 'MickyMouse', date: 'Thu Jan 12 2023', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80' },
+    { name: 'Mercy24', date: 'Fri Mar 04 2022', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&auto=format&fit=crop&q=80' },
+    { name: 'Alex_Dev', date: 'Mon Jun 19 2023', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=80' },
+    { name: 'Davido_Fan', date: 'Sat Oct 08 2022', avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=120&auto=format&fit=crop&q=80' },
+    { name: 'Amino', date: 'Tue Aug 22 2023', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=120&auto=format&fit=crop&q=80' },
+    { name: 'Sarah_K', date: 'Sun May 14 2023', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=120&auto=format&fit=crop&q=80' },
+    { name: 'David_B', date: 'Wed Nov 02 2022', avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=120&auto=format&fit=crop&q=80' },
+    { name: 'Jessica_M', date: 'Fri Feb 18 2022', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=120&auto=format&fit=crop&q=80' },
+    { name: 'Michael_T', date: 'Thu Sep 29 2022', avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=120&auto=format&fit=crop&q=80' },
+    { name: 'Elena_R', date: 'Mon Apr 03 2023', avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=120&auto=format&fit=crop&q=80' },
+    { name: 'Chris_P', date: 'Sat Dec 10 2022', avatar: 'https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?w=120&auto=format&fit=crop&q=80' },
+    { name: 'Sophie_L', date: 'Tue Jul 25 2023', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=120&auto=format&fit=crop&q=80' },
+    { name: 'Daniel_H', date: 'Sun Jan 29 2023', avatar: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=120&auto=format&fit=crop&q=80' },
+    { name: 'Chloe_W', date: 'Wed Aug 16 2023', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80' }
+  ];
+
+  const categorySendersMap: Record<string, { name: string; date: string; avatar: string }[]> = {
+    'cat-visionary': [
+      { name: 'Ronike', date: 'Wed Dec 15 2016', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80' },
+      { name: 'Mercy24', date: 'Fri Mar 04 2022', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&auto=format&fit=crop&q=80' },
+      { name: 'Alex_Dev', date: 'Mon Jun 19 2023', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=80' },
+      { name: 'MickyMouse', date: 'Thu Jan 12 2023', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80' },
+      { name: 'Sarah_K', date: 'Sun May 14 2023', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=120&auto=format&fit=crop&q=80' },
+      { name: 'David_B', date: 'Wed Nov 02 2022', avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=120&auto=format&fit=crop&q=80' },
+      { name: 'Chloe_W', date: 'Wed Aug 16 2023', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80' },
+      { name: 'Elena_R', date: 'Mon Apr 03 2023', avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=120&auto=format&fit=crop&q=80' },
+      { name: 'Chris_P', date: 'Sat Dec 10 2022', avatar: 'https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?w=120&auto=format&fit=crop&q=80' },
+      { name: 'Davido_Fan', date: 'Sat Oct 08 2022', avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=120&auto=format&fit=crop&q=80' },
+      { name: 'Amino', date: 'Tue Aug 22 2023', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=120&auto=format&fit=crop&q=80' },
+      { name: 'Jessica_M', date: 'Fri Feb 18 2022', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=120&auto=format&fit=crop&q=80' },
+      { name: 'Michael_T', date: 'Thu Sep 29 2022', avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=120&auto=format&fit=crop&q=80' },
+      { name: 'Sophie_L', date: 'Tue Jul 25 2023', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=120&auto=format&fit=crop&q=80' },
+      { name: 'Daniel_H', date: 'Sun Jan 29 2023', avatar: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=120&auto=format&fit=crop&q=80' }
+    ],
+    'cat-leadership': [
+      { name: 'Ronike', date: 'Tue Dec 20 2016', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80' },
+      { name: 'Davido_Fan', date: 'Sat Oct 08 2022', avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=120&auto=format&fit=crop&q=80' },
+      { name: 'Jessica_M', date: 'Fri Feb 18 2022', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=120&auto=format&fit=crop&q=80' }
+    ],
+    'cat-hardworking': [
+      { name: 'Amino', date: 'Tue Aug 22 2023', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=120&auto=format&fit=crop&q=80' },
+      { name: 'Alex_Dev', date: 'Mon Jul 03 2023', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=80' }
+    ],
+    'cat-loving': [
+      { name: 'Ronike', date: 'Thu Dec 22 2016', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80' },
+      { name: 'Sophie_L', date: 'Tue Jul 25 2023', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=120&auto=format&fit=crop&q=80' }
+    ],
+    'cat-reliable': [
+      { name: 'Mercy24', date: 'Fri Mar 11 2022', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&auto=format&fit=crop&q=80' },
+      { name: 'CR7_Official', date: 'Mon Oct 24 2022', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=80' },
+      { name: 'Ronike', date: 'Sun Jan 08 2017', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80' }
+    ],
+    'cat-appreciation': [
+      { name: 'MickyMouse', date: 'Wed Nov 15 2023', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80' },
+      { name: 'Community', date: 'Fri Nov 24 2023', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80' }
+    ]
+  };
 
   const handleStartEdit = () => {
     setTempName(userName);
@@ -588,7 +635,7 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({ posts = [], onPo
     {
       id: 'cat-leadership',
       categoryName: 'Leadership',
-      count: 18,
+      count: 3,
       bubbleColor: '#7B62FF',
       bgHalo: '#F3F0FF',
       dotColors: ['#C4B5FD', '#7B62FF', '#DDD6FE', '#5B21B6'],
@@ -600,7 +647,7 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({ posts = [], onPo
     {
       id: 'cat-hardworking',
       categoryName: 'Hard working',
-      count: 12,
+      count: 2,
       bubbleColor: '#4CD964',
       bgHalo: '#ECFDF5',
       dotColors: ['#A7F3D0', '#4CD964', '#6EE7B7', '#047857'],
@@ -612,7 +659,7 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({ posts = [], onPo
     {
       id: 'cat-loving',
       categoryName: 'Loving',
-      count: 7,
+      count: 1,
       bubbleColor: '#FFB800',
       bgHalo: '#FEF3C7',
       dotColors: ['#FDE047', '#FFB800', '#FEF08A', '#D97706'],
@@ -624,7 +671,7 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({ posts = [], onPo
     {
       id: 'cat-reliable',
       categoryName: 'Reliable',
-      count: 15,
+      count: 3,
       bubbleColor: '#FF8A65',
       bgHalo: '#FFF0EB',
       dotColors: ['#FFD8CC', '#FF8A65', '#FFC1B0', '#E65100'],
@@ -636,7 +683,7 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({ posts = [], onPo
     {
       id: 'cat-appreciation',
       categoryName: 'Best of all',
-      count: 9,
+      count: 1,
       bubbleColor: '#007A78',
       bgHalo: '#E6F4F4',
       dotColors: ['#80CBD2', '#007A78', '#4DB6AC', '#004D40'],
@@ -663,7 +710,19 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({ posts = [], onPo
 
   const displayHeartCategories = defaultHeartCategories.filter((cat) => {
     if (!searchQuery.trim()) return true;
-    return cat.categoryName.toLowerCase().includes(searchQuery.toLowerCase());
+    const q = searchQuery.trim().toLowerCase();
+    
+    // 1. Heart type / category match (e.g. "Visionary", "Leadership", "Hard Work", "Loving", "Reliable")
+    const catNameLower = cat.categoryName.toLowerCase();
+    const catFullName = `${catNameLower} heart`;
+    const matchesCatName = catNameLower.includes(q) || catFullName.includes(q) || q.includes(catNameLower);
+    
+    // 2. Sender name match (checks categorySendersMap[cat.id] and cat.items author names)
+    const senders = categorySendersMap[cat.id] || sampleSenders;
+    const matchesSender = senders.some(s => s.name.toLowerCase().includes(q)) ||
+      (cat.items && cat.items.some(item => item.authorName.toLowerCase().includes(q)));
+      
+    return matchesCatName || matchesSender;
   });
 
   const filteredItems = allAvailableItems.filter((item) => {
@@ -680,17 +739,46 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({ posts = [], onPo
       matchesTab = item.section === 'hearts' || item.isHeartToken === true || item.tab === 'hearts';
     }
 
-    const matchesSearch = searchQuery.trim() === '' || 
-      (item.title && item.title.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (item.content && item.content.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (item.authorName && item.authorName.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (item.recipientName && item.recipientName.toLowerCase().includes(searchQuery.toLowerCase()));
+    if (!matchesTab) return false;
 
-    return matchesTab && matchesSearch;
+    if (!searchQuery.trim()) return true;
+
+    const q = searchQuery.trim().toLowerCase();
+
+    // Section-specific search logic for Boards and Tagged:
+    // Search by Caption, Recipient Name, or Creator/Tagged User Name
+    const matchesCaption = 
+      (item.title && item.title.toLowerCase().includes(q)) ||
+      (item.content && item.content.toLowerCase().includes(q)) ||
+      (item.subtitle && item.subtitle.toLowerCase().includes(q)) ||
+      (item.quote && item.quote.toLowerCase().includes(q));
+
+    const matchesRecipient = 
+      (item.recipientName && item.recipientName.toLowerCase().includes(q)) ||
+      (item.recipient && item.recipient.toLowerCase().includes(q)) ||
+      (item.recipientHandle && item.recipientHandle.toLowerCase().includes(q));
+
+    const matchesCreatorOrTagged = 
+      (item.authorName && item.authorName.toLowerCase().includes(q)) ||
+      (item.creatorName && item.creatorName.toLowerCase().includes(q)) ||
+      (item.curatorName && item.curatorName.toLowerCase().includes(q)) ||
+      (item.taggedUser && item.taggedUser.toLowerCase().includes(q)) ||
+      (item.userHandle && item.userHandle.toLowerCase().includes(q)) ||
+      (Array.isArray(item.taggedUsers) && item.taggedUsers.some((u: string) => u.toLowerCase().includes(q)));
+
+    return matchesCaption || matchesRecipient || matchesCreatorOrTagged;
   });
 
   return (
     <div className="app-container px-6 md:px-12 py-8 pb-32">
+      {/* Live & Fun Floating Hearts Celebration Experience */}
+      <LiveHeartAnimation 
+        categories={displayHeartCategories} 
+        isActive={isHeartsAnimationActive} 
+        onComplete={() => setIsHeartsAnimationActive(false)} 
+        durationMs={6500} 
+      />
+
       {/* 1. Top Header: Page Title & Settings */}
       <div className="flex items-center justify-between mb-12">
         <h1 className="text-2xl md:text-3xl font-bold text-[#1A1B25] tracking-tight">
@@ -774,8 +862,8 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({ posts = [], onPo
             onClick={() => setActiveSubTab('board')}
             className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
               activeSubTab === 'board'
-                ? 'bg-[#1A1B25] text-white'
-                : 'bg-gray-25 text-[#A4ABB8] hover:bg-gray-50'
+                ? 'bg-white text-[#1A1B25] border-2 border-gray-50 shadow-2xs'
+                : 'bg-gray-25 text-[#A4ABB8] hover:bg-gray-50 border-2 border-transparent'
             }`}
           >
             Board
@@ -784,18 +872,21 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({ posts = [], onPo
             onClick={() => setActiveSubTab('tagged')}
             className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
               activeSubTab === 'tagged'
-                ? 'bg-[#1A1B25] text-white'
-                : 'bg-gray-25 text-[#A4ABB8] hover:bg-gray-50'
+                ? 'bg-white text-[#1A1B25] border-2 border-gray-50 shadow-2xs'
+                : 'bg-gray-25 text-[#A4ABB8] hover:bg-gray-50 border-2 border-transparent'
             }`}
           >
             Tagged
           </button>
           <button
-            onClick={() => setActiveSubTab('hearts')}
+            onClick={() => {
+              setActiveSubTab('hearts');
+              triggerHeartsCelebration();
+            }}
             className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
               activeSubTab === 'hearts'
-                ? 'bg-[#1A1B25] text-white'
-                : 'bg-gray-25 text-[#A4ABB8] hover:bg-gray-50'
+                ? 'bg-white text-[#1A1B25] border-2 border-gray-50 shadow-2xs'
+                : 'bg-gray-25 text-[#A4ABB8] hover:bg-gray-50 border-2 border-transparent'
             }`}
           >
             Hearts
@@ -813,7 +904,13 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({ posts = [], onPo
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by title, name...."
+            placeholder={
+              activeSubTab === 'board'
+                ? "Search boards by caption, recipient, or creator..."
+                : activeSubTab === 'tagged'
+                ? "Search tagged boards by caption, recipient, or creator..."
+                : "Search hearts by type or sender's name (e.g. Mercy24)..."
+            }
             className="w-full bg-gray-25 border-0 outline-none focus:outline-none focus:ring-0 rounded-full py-3 pl-10 pr-4 text-xs font-medium text-[#1A1B25] placeholder:text-[#A4ABB8]"
           />
         </div>
@@ -831,11 +928,15 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({ posts = [], onPo
         displayHeartCategories.length === 0 ? (
           <div className="bg-white rounded-[2.5rem] p-12 text-center border border-gray-100 flex flex-col items-center justify-center my-6">
             <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center mb-3 text-[#FE6349]">
-              <Sparkles className="w-6 h-6" />
+              <Search className="w-6 h-6 stroke-[2]" />
             </div>
-            <h3 className="text-lg font-bold text-[#1A1B25]">No heart categories found</h3>
+            <h3 className="text-lg font-bold text-[#1A1B25]">
+              {searchQuery.trim() ? 'No hearts found matching your search' : 'No heart categories found'}
+            </h3>
             <p className="text-xs text-gray-400 mt-1 max-w-sm">
-              Try searching for another category like "Visionary", "Leadership", or "Loving".
+              {searchQuery.trim()
+                ? `No received hearts match "${searchQuery}". Try searching for a sender like "Mercy24", "Ronike", or "Alex_Dev", or a heart type like "Loving".`
+                : 'No heart categories found.'}
             </p>
           </div>
         ) : (
@@ -858,12 +959,19 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({ posts = [], onPo
       ) : filteredItems.length === 0 ? (
         <div className="bg-white rounded-[2.5rem] p-12 text-center border border-gray-100 flex flex-col items-center justify-center my-6">
           <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center mb-3 text-[#FE6349]">
-            <Sparkles className="w-6 h-6" />
+            {searchQuery.trim() ? <Search className="w-6 h-6 stroke-[2]" /> : <Sparkles className="w-6 h-6" />}
           </div>
-          <h3 className="text-lg font-bold text-[#1A1B25]">No items found</h3>
+          <h3 className="text-lg font-bold text-[#1A1B25]">
+            {searchQuery.trim() 
+              ? `No ${activeSubTab === 'board' ? 'boards' : 'tagged boards'} found matching "${searchQuery}"`
+              : `No ${activeSubTab === 'board' ? 'boards' : 'tagged boards'} found`}
+          </h3>
           <p className="text-xs text-gray-400 mt-1 max-w-sm">
-            {activeSubTab === 'board' && "Messages and boards you create will appear here automatically."}
-            {activeSubTab === 'tagged' && "Boards where you are tagged as a recipient will appear here automatically."}
+            {searchQuery.trim()
+              ? `No ${activeSubTab === 'board' ? 'boards' : 'tagged boards'} matched "${searchQuery}". Try searching by caption, recipient name, or creator name.`
+              : activeSubTab === 'board'
+                ? "Messages and boards you create will appear here automatically."
+                : "Boards where you are tagged as a recipient will appear here automatically."}
           </p>
         </div>
       ) : (
@@ -878,90 +986,245 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({ posts = [], onPo
         </div>
       )}
 
-      {/* Heart Category Detail Modal */}
+      {/* Heart Category Detail Side Drawer */}
       <AnimatePresence>
-        {selectedCategoryModal && (
-          <>
+        {selectedCategoryModal && activeCategoryModal && (
+          <React.Fragment key="heart-category-drawer">
+            {/* Backdrop Overlay */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setSelectedCategoryModal(null)}
-              className="fixed inset-0 bg-black/40 z-50 backdrop-blur-xs"
+              transition={{ duration: 0.2 }}
+              onClick={() => {
+                setSelectedCategoryModal(null);
+                setDrawerSearchQuery('');
+              }}
+              className="fixed inset-0 bg-black/50 z-50 backdrop-blur-xs"
             />
+
+            {/* Side Drawer Panel */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-[2.5rem] p-6 sm:p-8 z-50 shadow-2xl border border-gray-100"
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 260 }}
+              className="fixed top-0 right-0 bottom-0 w-full max-w-sm sm:max-w-md bg-white z-50 flex flex-col overflow-hidden font-sans shadow-2xl"
             >
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-[#808897] font-bold text-sm uppercase tracking-wider">
-                  {selectedCategoryModal.categoryName} Heart Category
-                </span>
-                <button
-                  onClick={() => setSelectedCategoryModal(null)}
-                  className="w-8 h-8 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-[#353849] transition-all cursor-pointer"
-                >
-                  <X className="w-4 h-4 stroke-[2.5]" />
-                </button>
-              </div>
-
-              {/* Big Heart Graphic Header */}
-              <div 
-                className="w-full rounded-[2rem] p-6 flex flex-col items-center justify-center relative overflow-hidden mb-6"
-                style={{ backgroundColor: selectedCategoryModal.bgHalo }}
-              >
-                <div className="my-2">
-                  <HeartBubbleSVG size={80} bubbleColor={selectedCategoryModal.bubbleColor} />
-                </div>
-                <h3 className="text-2xl font-extrabold text-[#1A1B25] mt-2">
-                  {selectedCategoryModal.count} Hearts
-                </h3>
-                <p className="text-xs font-semibold text-[#808897] mt-0.5">
-                  Total gifted in {selectedCategoryModal.categoryName} category
-                </p>
-              </div>
-
-              {/* Tributes List */}
-              <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
-                <h4 className="text-xs font-bold text-[#1A1B25] uppercase tracking-wider mb-2">
-                  Recent Tributes Received
-                </h4>
-                {selectedCategoryModal.items && selectedCategoryModal.items.length > 0 ? (
-                  selectedCategoryModal.items.map((it, idx) => (
-                    <div key={idx} className="p-3.5 rounded-2xl bg-gray-25 border border-gray-100 flex flex-col gap-1">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-[#1A1B25]">@{it.authorName}</span>
-                        {it.createdAt && <span className="text-[10px] text-gray-400 font-medium">{it.createdAt}</span>}
-                      </div>
-                      <p className="text-xs text-[#353849] font-medium leading-relaxed">
-                        "{it.content}"
-                      </p>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-xs text-gray-400 font-medium italic text-center py-4">
-                    No individual messages logged yet for this category.
-                  </p>
-                )}
-              </div>
-
-              {/* Action buttons */}
-              <div className="mt-6 flex items-center gap-3">
+              {/* Top Header Area */}
+              <div className="p-6 sm:p-8 bg-white border-b border-gray-100/80 flex flex-col gap-6 relative">
+                {/* Back Arrow Button */}
                 <button
                   onClick={() => {
                     setSelectedCategoryModal(null);
-                    setIsShareModalOpen(true);
+                    setDrawerSearchQuery('');
                   }}
-                  className="flex-1 bg-[#1A1B25] text-white py-3 rounded-full text-xs font-bold flex items-center justify-center gap-2 hover:bg-black transition-all cursor-pointer shadow-xs"
+                  className="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center text-[#1A1B25] transition-all cursor-pointer self-start -ml-2"
+                  aria-label="Back"
                 >
-                  <Share2 className="w-4 h-4 stroke-[2.2]" />
-                  <span>Share Trophy Case</span>
+                  <ChevronLeft className="w-5 h-5 stroke-[2.2]" />
                 </button>
+
+                {/* Main Hero Header: Circular Heart Avatar + Category Details */}
+                <div className="flex items-center gap-5 sm:gap-6">
+                  {/* Soft Colored Circular Avatar with Heart Bubble */}
+                  <div
+                    className="w-24 h-24 sm:w-28 sm:h-28 rounded-full flex items-center justify-center shrink-0 relative transition-transform duration-300 shadow-xs"
+                    style={{ backgroundColor: activeCategoryModal.bgHalo || '#FDF2F8' }}
+                  >
+                    <HeartBubbleSVG
+                      size={72}
+                      bubbleColor={activeCategoryModal.bubbleColor || '#FE6349'}
+                    />
+                  </div>
+
+                  {/* Title & Stats */}
+                  <div className="flex flex-col items-start gap-1">
+                    <h2 className="text-lg sm:text-xl font-bold text-[#1A1B25] tracking-tight">
+                      {activeCategoryModal.categoryName || 'Heart'} Heart
+                    </h2>
+                    <p className="text-xs sm:text-sm text-[#808897] font-medium leading-snug">
+                      {(activeCategoryModal.count || 0) === 1
+                        ? '1 person send you this heart'
+                        : `${(activeCategoryModal.count || 0) > 20 ? '648' : (activeCategoryModal.count || 0)} people send you this heart`}
+                    </p>
+
+                    {/* Share Button Pill */}
+                    <button
+                      onClick={() => {
+                        setIsShareModalOpen(true);
+                      }}
+                      className="mt-2.5 px-4 py-1.5 rounded-full border border-gray-200 text-[#353849] font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-gray-50 active:scale-95 transition-all cursor-pointer bg-white shadow-2xs"
+                    >
+                      <Share2 className="w-3.5 h-3.5 stroke-[1.8] text-[#353849]" />
+                      <span>Share</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom Body Section (Filled with #ffffff background) */}
+              <div className="flex-1 bg-white flex flex-col overflow-hidden relative">
+                {/* Search Bar Input */}
+                <div className="p-5 pb-3">
+                  <div className="relative w-full">
+                    <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Search by username"
+                      value={drawerSearchQuery}
+                      onChange={(e) => setDrawerSearchQuery(e.target.value)}
+                      className="w-full bg-[#F6F8FA] focus:bg-gray-50 border border-gray-100 rounded-full pl-10 pr-4 py-3 text-xs font-medium text-[#1A1B25] placeholder-gray-400 outline-none transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* Scrollable Floating Hearts Canvas */}
+                <div className="flex-1 overflow-y-auto px-5 py-3">
+                  {(() => {
+                    const categorySenders = (activeCategoryModal.id && categorySendersMap[activeCategoryModal.id]) || sampleSenders;
+                    const isSearching = drawerSearchQuery.trim().length > 0;
+                    const filteredSenders = categorySenders.filter((s) =>
+                      s.name.toLowerCase().includes(drawerSearchQuery.trim().toLowerCase())
+                    );
+
+                    if (isSearching && filteredSenders.length === 0) {
+                      return (
+                        <div className="flex flex-col items-center justify-center py-16 px-4 text-center my-auto h-full">
+                          <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center text-[#FE6349] mb-3 shrink-0">
+                            <Search className="w-5 h-5 stroke-[2]" />
+                          </div>
+                          <h4 className="text-sm font-bold text-[#1A1B25]">No hearts found from this user</h4>
+                          <p className="text-xs text-[#808897] mt-1 max-w-xs leading-relaxed">
+                            No hearts matching "{drawerSearchQuery}" were found in the {activeCategoryModal.categoryName || 'Heart'} category.
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    if (isSearching && filteredSenders.length > 0) {
+                      return (
+                        <div className="flex flex-col gap-3 py-2">
+                          <p className="text-[11px] font-bold text-[#808897] uppercase tracking-wider px-1">
+                            {filteredSenders.length} {filteredSenders.length === 1 ? 'heart' : 'hearts'} from "{drawerSearchQuery}"
+                          </p>
+                          {filteredSenders.map((sender, idx) => (
+                            <motion.div
+                              key={`${sender.name}-${idx}`}
+                              initial={{ opacity: 0, y: 8 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ duration: 0.15, delay: idx * 0.03 }}
+                              className="p-3.5 rounded-2xl bg-[#F6F8FA] border border-gray-100/80 flex items-center gap-3.5 shadow-2xs hover:border-purple-200 transition-all cursor-pointer"
+                            >
+                              <div
+                                className="w-11 h-11 rounded-full flex items-center justify-center shrink-0 shadow-2xs"
+                                style={{ backgroundColor: activeCategoryModal.bgHalo || '#FDF2F8' }}
+                              >
+                                <HeartBubbleSVG size={30} bubbleColor={activeCategoryModal.bubbleColor || '#FE6349'} />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <img
+                                    src={sender.avatar}
+                                    alt={sender.name}
+                                    className="w-5 h-5 rounded-full object-cover border border-gray-200 shrink-0"
+                                  />
+                                  <h5 className="text-xs font-bold text-[#1A1B25] truncate">{sender.name}</h5>
+                                </div>
+                                <p className="text-[11px] text-[#808897] mt-0.5 font-medium">
+                                  Blew a {activeCategoryModal.categoryName || 'Heart'} Heart • {sender.date}
+                                </p>
+                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="relative pt-14 pb-6 flex flex-col items-center justify-center gap-3.5 w-full max-w-xs mx-auto">
+                        {/* Background scattered dots */}
+                        <div className="absolute top-2 left-6 w-2 h-2 rounded-full opacity-50" style={{ backgroundColor: activeCategoryModal.bubbleColor || '#FE6349' }} />
+                        <div className="absolute top-10 left-2 w-3 h-3 rounded-full opacity-30" style={{ backgroundColor: activeCategoryModal.bubbleColor || '#FE6349' }} />
+                        <div className="absolute top-8 right-8 w-2.5 h-2.5 rounded-full opacity-70" style={{ backgroundColor: activeCategoryModal.bubbleColor || '#FE6349' }} />
+                        <div className="absolute top-1/3 right-3 w-2 h-2 rounded-full opacity-60" style={{ backgroundColor: activeCategoryModal.bubbleColor || '#FE6349' }} />
+                        <div className="absolute bottom-1/3 left-4 w-3 h-3 rounded-full opacity-40" style={{ backgroundColor: activeCategoryModal.bubbleColor || '#FE6349' }} />
+                        <div className="absolute bottom-10 left-8 w-2 h-2 rounded-full opacity-60" style={{ backgroundColor: activeCategoryModal.bubbleColor || '#FE6349' }} />
+                        <div className="absolute bottom-6 right-6 w-2.5 h-2.5 rounded-full opacity-50" style={{ backgroundColor: activeCategoryModal.bubbleColor || '#FE6349' }} />
+
+                        {/* Alternating row layout: [2, 3, 2, 3, 2, 3] */}
+                        {[2, 3, 2, 3, 2, 3].map((count, rowIndex) => (
+                          <div key={rowIndex} className="flex items-center justify-center gap-3.5 sm:gap-4 w-full">
+                            {Array.from({ length: count }).map((_, itemIndex) => {
+                              const flatIndex = rowIndex * 3 + itemIndex;
+                              const itemKey = `${rowIndex}-${itemIndex}`;
+                              const sender = categorySenders[flatIndex % categorySenders.length];
+                              const isTooltipOpen = activeTooltipIndex === itemKey;
+
+                              return (
+                                <div key={itemKey} className="relative">
+                                  {/* Tooltip Card */}
+                                  <AnimatePresence>
+                                    {isTooltipOpen && (
+                                      <motion.div
+                                        initial={{ opacity: 0, y: 6, scale: 0.9 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: 4, scale: 0.95 }}
+                                        transition={{ duration: 0.15 }}
+                                        className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 z-30 pointer-events-auto"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <div className="bg-white rounded-2xl px-4 py-3 shadow-xl border border-gray-100/90 flex flex-col items-center min-w-[140px] relative">
+                                          {/* Top: Avatar + Name */}
+                                          <div className="flex items-center gap-2">
+                                            <img
+                                              src={sender.avatar}
+                                              alt={sender.name}
+                                              className="w-6 h-6 rounded-full object-cover border border-gray-100 shrink-0"
+                                            />
+                                            <span className="text-xs font-bold text-[#1A1B25] tracking-tight">
+                                              {sender.name}
+                                            </span>
+                                          </div>
+
+                                          {/* Dotted Line Divider */}
+                                          <div className="w-full border-b border-dashed border-gray-200/90 my-2" />
+
+                                          {/* Date */}
+                                          <span className="text-[11px] text-[#A4ABB8] font-medium whitespace-nowrap">
+                                            {sender.date}
+                                          </span>
+
+                                          {/* Bottom Pointer Tail Arrow */}
+                                          <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-r border-b border-gray-100/90 rotate-45" />
+                                        </div>
+                                      </motion.div>
+                                    )}
+                                  </AnimatePresence>
+
+                                  {/* Heart Bubble Button */}
+                                  <motion.div
+                                    initial={{ opacity: 0, scale: 0.8 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ delay: flatIndex * 0.03 }}
+                                    onClick={() => setActiveTooltipIndex(isTooltipOpen ? null : itemKey)}
+                                    className={`w-16 h-16 sm:w-18 sm:h-18 rounded-full flex items-center justify-center relative transition-transform hover:scale-105 active:scale-95 cursor-pointer shadow-2xs ${isTooltipOpen ? 'scale-105 ring-2 ring-offset-2 ring-purple-300/80' : ''}`}
+                                    style={{ backgroundColor: activeCategoryModal.bgHalo || '#FDF2F8' }}
+                                  >
+                                    <HeartBubbleSVG size={40} bubbleColor={activeCategoryModal.bubbleColor || '#FE6349'} />
+                                  </motion.div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  })()}
+                </div>
               </div>
             </motion.div>
-          </>
+          </React.Fragment>
         )}
       </AnimatePresence>
 
