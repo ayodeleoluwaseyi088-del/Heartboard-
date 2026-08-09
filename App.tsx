@@ -5,8 +5,9 @@ import { EntityType, Post, PostVisibility, MOCK_REGISTERED_USERS, RegisteredUser
 import { PostCard } from './components/PostCard';
 import { MediaModal } from './components/MediaModal';
 import { CreateAppreciationModal } from './components/CreateAppreciationModal';
-import { FilterModal } from './components/FilterModal';
+import { FilterModal, FILTER_OPTIONS } from './components/FilterModal';
 import { HeartboardView } from './components/HeartboardView';
+import { HashtagView } from './components/HashtagView';
 import { 
   SlidersHorizontal, 
   Search, 
@@ -52,6 +53,7 @@ const INITIAL_MOCK_POSTS: (Post & {
     theme: '#FAF0EC', // cozy peach
     mediaType: 'video',
     category: 'hype',
+    eventType: 'Groove',
     statusBadge: '🔥 PURE HYPE STATUS',
     isCreatedByUser: true,
     section: 'board'
@@ -61,19 +63,132 @@ const INITIAL_MOCK_POSTS: (Post & {
     authorName: 'Amino',
     content: 'I love you ronaldo!. Happy retirement, Your cousin Amino',
     type: 'text',
-    mediaUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Cristiano',
+    mediaUrl: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&q=80&w=400',
     visibility: PostVisibility.PUBLIC,
     createdAt: '2024-03-19T14:30:00Z',
-    targetId: 'cr7',
+    targetId: 'ronaldo',
     targetType: EntityType.WALL,
     reactions: 562,
-    theme: '#ECEFE6', // clean mint
+    theme: '#FAF0EC', // cozy peach
     mediaType: 'note',
     sticker: 'star',
     category: 'vouch',
+    eventType: 'Retirement',
     statusBadge: '⭐ HIGH-AUTHORITY VOUCH',
     isTaggedForUser: true,
-    section: 'tagged'
+    section: 'tagged',
+    hashtags: ['#ronaldo', '#loveRonaldo', '#cr7'],
+    recipients: ['@cristiano', '#ronaldo']
+  },
+  {
+    id: 'cr7-note-teal',
+    authorName: 'Amino',
+    content: 'I love you ronaldo!. Happy retirement, Your cousin Amino',
+    type: 'text',
+    mediaUrl: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&q=80&w=400',
+    visibility: PostVisibility.PUBLIC,
+    createdAt: '2024-03-19T14:32:00Z',
+    targetId: 'ronaldo',
+    targetType: EntityType.WALL,
+    reactions: 1240,
+    theme: '#029875', // deep teal
+    mediaType: 'note',
+    sticker: 'star',
+    category: 'vouch',
+    eventType: 'Sport',
+    statusBadge: '⭐ LEGENDARY TRIBUTE',
+    isTaggedForUser: true,
+    section: 'board',
+    hashtags: ['#ronaldo', '#loveRonaldo'],
+    recipients: ['@cristiano', '#ronaldo']
+  },
+  {
+    id: 'cr7-note-green',
+    authorName: 'Amino',
+    content: 'I love you ronaldo!. Happy retirement, Your cousin Amino',
+    type: 'text',
+    mediaUrl: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&q=80&w=400',
+    visibility: PostVisibility.PUBLIC,
+    createdAt: '2024-03-19T14:35:00Z',
+    targetId: 'ronaldo',
+    targetType: EntityType.WALL,
+    reactions: 890,
+    theme: '#CBEB99', // lime green
+    mediaType: 'note',
+    sticker: 'star',
+    category: 'vouch',
+    eventType: 'Graduation',
+    statusBadge: '⭐ LEGENDARY TRIBUTE',
+    isTaggedForUser: true,
+    section: 'board',
+    hashtags: ['#ronaldo', '#loveRonaldo'],
+    recipients: ['@cristiano', '#ronaldo']
+  },
+  {
+    id: 'cr7-note-yellow',
+    authorName: 'Amino',
+    content: 'I love you ronaldo!. Happy retirement, Your cousin Amino',
+    type: 'text',
+    mediaUrl: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&q=80&w=400',
+    visibility: PostVisibility.PUBLIC,
+    createdAt: '2024-03-19T14:38:00Z',
+    targetId: 'ronaldo',
+    targetType: EntityType.WALL,
+    reactions: 3400,
+    theme: '#F5D298', // wheat yellow
+    mediaType: 'note',
+    sticker: 'star',
+    category: 'vouch',
+    eventType: 'Get well',
+    statusBadge: '⭐ LEGENDARY TRIBUTE',
+    isTaggedForUser: true,
+    section: 'board',
+    hashtags: ['#ronaldo', '#loveRonaldo'],
+    recipients: ['@cristiano', '#ronaldo']
+  },
+  {
+    id: 'cr7-note-blue',
+    authorName: 'Amino',
+    content: 'I love you ronaldo!. Happy retirement, Your cousin Amino',
+    type: 'text',
+    mediaUrl: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&q=80&w=400',
+    visibility: PostVisibility.PUBLIC,
+    createdAt: '2024-03-19T14:40:00Z',
+    targetId: 'ronaldo',
+    targetType: EntityType.WALL,
+    reactions: 2150,
+    theme: '#BCE7F5', // sky blue
+    mediaType: 'note',
+    sticker: 'star',
+    category: 'vouch',
+    eventType: 'Promotion',
+    statusBadge: '⭐ LEGENDARY TRIBUTE',
+    isTaggedForUser: true,
+    section: 'board',
+    hashtags: ['#ronaldo', '#loveRonaldo'],
+    recipients: ['@cristiano', '#ronaldo']
+  },
+  {
+    id: 'cr7-note-periwinkle',
+    authorName: 'Amino',
+    content: 'I love you ronaldo!. Happy retirement, Your cousin Amino',
+    type: 'text',
+    mediaUrl: 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&q=80&w=400',
+    visibility: PostVisibility.PUBLIC,
+    createdAt: '2024-03-19T14:42:00Z',
+    targetId: 'ronaldo',
+    targetType: EntityType.WALL,
+    reactions: 4120,
+    theme: '#A4B8F5', // periwinkle
+    mediaType: 'note',
+    sticker: 'star',
+    category: 'vouch',
+    eventType: 'Wedding',
+    statusBadge: '⭐ LEGENDARY TRIBUTE',
+    isTaggedForUser: true,
+    section: 'board',
+    hashtags: ['#ronaldo', '#loveRonaldo'],
+    recipients: ['@cristiano', '#ronaldo']
   },
   {
     id: 'm1',
@@ -88,6 +203,7 @@ const INITIAL_MOCK_POSTS: (Post & {
     reactions: 89000,
     theme: '#EEF1FA', // dreamy lavender
     category: 'hype',
+    eventType: 'Sport',
     statusBadge: '🔥 GOLDEN REP',
     isCreatedByUser: true,
     section: 'board'
@@ -107,6 +223,7 @@ const INITIAL_MOCK_POSTS: (Post & {
     theme: '#EEF1FA', // dreamy lavender
     mediaType: 'image',
     category: 'vouch',
+    eventType: 'Promotion',
     statusBadge: '🛡️ PLATINUM VOUCH',
     isCreatedByUser: true,
     section: 'board'
@@ -125,8 +242,29 @@ const INITIAL_MOCK_POSTS: (Post & {
     theme: '#FAF5E8', // soft sunlight
     mediaType: 'note',
     category: 'tears',
+    eventType: 'Birthday',
     isBlurred: true,
     statusBadge: '😭 BROUGHT THEM TO TEARS',
+    isCreatedByUser: true,
+    section: 'board'
+  },
+  {
+    id: 'funeral-tribute',
+    authorName: 'Tyler',
+    content: 'Rest in peace grandpa James. Your warmth, wisdom, and love remain in our hearts forever.',
+    type: 'text',
+    mediaUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=200',
+    visibility: PostVisibility.PUBLIC,
+    createdAt: '2024-03-18T09:30:00Z',
+    targetId: 'family',
+    targetType: EntityType.BOARD,
+    reactions: 290,
+    theme: '#272835', // cosmic dark
+    mediaType: 'note',
+    category: 'tears',
+    eventType: 'Funeral',
+    isBlurred: false,
+    statusBadge: '🕯️ MEMORIAL TRIBUTE',
     isCreatedByUser: true,
     section: 'board'
   },
@@ -143,6 +281,7 @@ const INITIAL_MOCK_POSTS: (Post & {
     theme: '#FAF0EC', // cozy peach
     mediaType: 'audio',
     category: 'tears',
+    eventType: 'Graduation',
     isBlurred: true,
     statusBadge: '😭 BROUGHT THEM TO TEARS',
     isCreatedByUser: true,
@@ -167,6 +306,7 @@ const INITIAL_MOCK_POSTS: (Post & {
       bubbleColor: '#FE6349'
     },
     category: 'vouch',
+    eventType: 'Moment',
     statusBadge: '💖 HEART TOKEN',
     isHeartToken: true,
     section: 'hearts'
@@ -185,6 +325,7 @@ const INITIAL_MOCK_POSTS: (Post & {
     sponsor: 'Microsoft Inc',
     theme: '#272835', // cosmic slate
     category: 'hype',
+    eventType: 'Groove',
     statusBadge: '🔥 INSTANT VIRAL'
   }
 ];
@@ -196,6 +337,7 @@ interface TopNavigationProps {
   posts: any[];
   onSelectBoard: (post: any) => void;
   onSelectUser?: (user: RegisteredUser) => void;
+  onSelectHashtag?: (hashtag: string) => void;
 }
 
 const TopNavigation: React.FC<TopNavigationProps> = ({ 
@@ -204,7 +346,8 @@ const TopNavigation: React.FC<TopNavigationProps> = ({
   setSearchQuery, 
   posts, 
   onSelectBoard,
-  onSelectUser
+  onSelectUser,
+  onSelectHashtag
 }) => {
   const [isFullPageOpen, setIsFullPageOpen] = useState(false);
   const [activeSearchTab, setActiveSearchTab] = useState<'all' | 'users' | 'boards' | 'hashtags'>('all');
@@ -469,10 +612,21 @@ const TopNavigation: React.FC<TopNavigationProps> = ({
                       <TrendingUp size={14} className="text-[#FE6349]" /> Popular Searches & Accounts
                     </h3>
                     <div className="flex flex-wrap gap-2">
-                      {['@mercy24', '@cristiano', '@davido_30bg', '@messi', '#loveRonaldo', 'Birthday', 'World Cup', 'Appreciation'].map((chip) => (
+                      {['@mercy24', '@cristiano', '@davido_30bg', '@messi', '#ronaldo', '#loveRonaldo', 'Birthday', 'World Cup', 'Appreciation'].map((chip) => (
                         <button
                           key={chip}
-                          onClick={() => setSearchQuery(chip)}
+                          onClick={() => {
+                            if (chip.startsWith('#')) {
+                              setIsFullPageOpen(false);
+                              if (onSelectHashtag) {
+                                onSelectHashtag(chip);
+                              } else {
+                                setSearchQuery(chip);
+                              }
+                            } else {
+                              setSearchQuery(chip);
+                            }
+                          }}
                           className="px-3.5 py-2 rounded-full bg-gray-100 hover:bg-rose-50 hover:text-[#FE6349] text-xs font-bold text-gray-700 transition-all cursor-pointer border border-transparent hover:border-rose-200"
                         >
                           {chip}
@@ -641,8 +795,13 @@ const TopNavigation: React.FC<TopNavigationProps> = ({
                         <div
                           key={h.tag}
                           onClick={() => {
-                            setSearchQuery(h.tag);
-                            setActiveSearchTab('all');
+                            setIsFullPageOpen(false);
+                            if (onSelectHashtag) {
+                              onSelectHashtag(h.tag);
+                            } else {
+                              setSearchQuery(h.tag);
+                              setActiveSearchTab('all');
+                            }
                           }}
                           className="bg-white rounded-2xl p-4 border border-gray-100 hover:border-emerald-300 hover:bg-emerald-50/30 transition-all cursor-pointer flex items-center justify-between group"
                         >
@@ -1002,33 +1161,34 @@ const MasonryFeed = ({
   setSearchQuery: (query: string) => void,
   matchingUsersCount: number
 }) => {
+  const TABS: Array<{ id: 'all' | 'vouch' | 'tears' | 'hype'; label: string; emoji: string }> = [
+    { id: 'all', label: 'Most Loved Today', emoji: '❤️' },
+    { id: 'vouch', label: 'This Moved People', emoji: '🥺' },
+    { id: 'tears', label: 'This made people cry', emoji: '😭' },
+    { id: 'hype', label: 'Joyful post around world', emoji: '😇' },
+  ];
+
   return (
-    <div className="app-container pb-40 px-6 md:px-12 mt-12">
-      {/* Category Pills Header Section */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
-        <div>
-          <h2 className="text-3xl font-extrabold tracking-tight text-gray-900 flex items-center gap-2">
-            <span>❤️</span> Most Loved Today
-          </h2>
-          <p className="text-gray-500 font-bold text-xs mt-2 flex items-center gap-2 flex-wrap">
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 font-extrabold text-[10px] tracking-wider uppercase border border-emerald-100/80">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-              LIVE DATA
-            </span>
-            <span>
-              <strong className="text-gray-900 font-extrabold">{formatStatNumber(realtimeStats.totalMessages)}</strong> messages
-            </span>
-            <span className="text-gray-300">•</span>
-            <span>
-              <strong className="text-gray-900 font-extrabold">{formatStatNumber(realtimeStats.totalCurators)}</strong> curators
-            </span>
-            <span className="text-gray-300">•</span>
-            <span className="inline-flex items-center gap-1">
-              <strong className="text-[#FE6349] font-extrabold transition-all duration-300">{formatStatNumber(realtimeStats.totalReactions)}</strong> reactions
-              <span className="text-[11px] text-rose-500 font-semibold animate-bounce">💖</span>
-            </span>
-          </p>
-        </div>
+    <div className="app-container pb-40 px-6 md:px-12 mt-8">
+      {/* Tab Navigation Section */}
+      <div className="flex items-center gap-3 sm:gap-4 overflow-x-auto pb-3 scrollbar-none mb-8 -mx-2 px-2">
+        {TABS.map((tab) => {
+          const isActive = activeFilter === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveFilter(tab.id)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs md:text-sm font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                isActive
+                  ? 'bg-white text-gray-900 border border-gray-200/90 shadow-2xs'
+                  : 'bg-[#F4F6F9] text-gray-800 border border-transparent hover:bg-gray-100'
+              }`}
+            >
+              <span className="text-base md:text-lg leading-none">{tab.emoji}</span>
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Search active banner indicator */}
@@ -1084,8 +1244,169 @@ const MasonryFeed = ({
   );
 };
 
+interface EventCategoryViewProps {
+  filterId: string;
+  posts: any[];
+  onBack: () => void;
+  onFilterClick: () => void;
+  onPostClick: (index: number) => void;
+  onCreateBoard: (eventType?: string) => void;
+  searchQuery: string;
+  setSearchQuery: (q: string) => void;
+}
+
+const EventCategoryView: React.FC<EventCategoryViewProps> = ({
+  filterId,
+  posts,
+  onBack,
+  onFilterClick,
+  onPostClick,
+  onCreateBoard,
+  searchQuery,
+  setSearchQuery,
+}) => {
+  const currentOption = FILTER_OPTIONS.find(opt => opt.id === filterId) || {
+    id: filterId,
+    label: filterId.charAt(0).toUpperCase() + filterId.slice(1),
+    emoji: '🎉'
+  };
+
+  const targetLabel = currentOption.label.toLowerCase();
+  const targetId = currentOption.id.toLowerCase();
+
+  const matchedPosts = posts.filter(post => {
+    if (post.eventType) {
+      const pEv = post.eventType.toLowerCase().replace(/_/g, ' ');
+      if (pEv === targetLabel || pEv === targetId) return true;
+    }
+    const content = (post.content || '').toLowerCase();
+    const badge = (post.statusBadge || '').toLowerCase();
+    const cat = (post.category || '').toLowerCase();
+    const tags = (post.hashtags || []).map((h: string) => h.toLowerCase()).join(' ');
+
+    return (
+      content.includes(targetLabel) || 
+      content.includes(targetId) ||
+      badge.includes(targetLabel) || 
+      cat.includes(targetLabel) ||
+      tags.includes(targetId)
+    );
+  });
+
+  const query = searchQuery.trim().toLowerCase();
+  const displayPosts = matchedPosts.filter(post => {
+    if (!query) return true;
+    const author = (post.authorName || '').toLowerCase();
+    const recipient = (post.recipientName || post.targetId || '').toLowerCase();
+    const content = (post.content || '').toLowerCase();
+    const badge = (post.statusBadge || '').toLowerCase();
+    return (
+      author.includes(query) ||
+      recipient.includes(query) ||
+      content.includes(query) ||
+      badge.includes(query)
+    );
+  });
+
+  return (
+    <div className="w-full min-h-screen bg-white pb-36">
+      {/* Event Header Banner */}
+      <div className="bg-white border-b border-gray-100 py-6 px-6 md:px-12 sticky top-[73px] z-30 shadow-2xs">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={onBack}
+              aria-label="Back to Moment"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-extrabold text-xs transition-all cursor-pointer shrink-0"
+            >
+              <ArrowLeft size={16} strokeWidth={2.5} />
+              <span>Back to Moment</span>
+            </button>
+
+            <div className="flex items-center gap-3">
+              <span className="text-3xl leading-none">{currentOption.emoji}</span>
+              <div>
+                <h1 className="text-xl md:text-2xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
+                  <span>{currentOption.label}</span>
+                  <span className="text-xs font-extrabold px-2.5 py-0.5 rounded-full bg-rose-100 text-[#FE6349]">
+                    {matchedPosts.length} {matchedPosts.length === 1 ? 'board' : 'boards'}
+                  </span>
+                </h1>
+                <p className="text-xs font-bold text-gray-400 mt-0.5">
+                  Showing message boards for {currentOption.label}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 self-end sm:self-auto">
+            <button
+              onClick={onFilterClick}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-gray-50 hover:bg-gray-100 border border-gray-200/80 text-gray-700 font-bold text-xs transition-all cursor-pointer"
+            >
+              <SlidersHorizontal size={16} strokeWidth={2.5} />
+              <span>Filter ({currentOption.label})</span>
+            </button>
+
+            <button
+              onClick={() => onCreateBoard(currentOption.label)}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#FE6349] hover:bg-rose-600 text-white font-extrabold text-xs transition-all shadow-xs cursor-pointer"
+            >
+              <Plus size={16} strokeWidth={2.5} />
+              <span>Create {currentOption.label} Board</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Grid of Boards */}
+      <div className="max-w-7xl mx-auto px-6 md:px-12 pt-8">
+        {displayPosts.length === 0 ? (
+          <div className="bg-white rounded-3xl p-12 text-center border border-gray-100 shadow-2xs max-w-md mx-auto my-12 flex flex-col items-center justify-center space-y-4">
+            <div className="w-16 h-16 rounded-full bg-rose-50 text-[#FE6349] flex items-center justify-center text-3xl">
+              {currentOption.emoji}
+            </div>
+            <h3 className="text-lg font-extrabold text-gray-900">
+              No {currentOption.label} boards yet
+            </h3>
+            <p className="text-xs text-gray-400 leading-relaxed max-w-xs">
+              No message boards have been created under the {currentOption.label} event category yet. Be the first to create one!
+            </p>
+            <button
+              onClick={() => onCreateBoard(currentOption.label)}
+              className="mt-2 px-6 py-3 rounded-full bg-[#FE6349] text-white text-xs font-extrabold hover:bg-rose-600 transition-all shadow-sm cursor-pointer flex items-center gap-2"
+            >
+              <Plus size={16} />
+              <span>Create {currentOption.label} Board</span>
+            </button>
+          </div>
+        ) : (
+          <div className="columns-1 md:columns-2 lg:columns-3 xl:columns-4 gap-8 space-y-8">
+            {displayPosts.map((post) => {
+              const globalIndex = posts.findIndex(p => p.id === post.id);
+              return (
+                <motion.div
+                  key={post.id}
+                  className="break-inside-avoid relative"
+                  layout
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <PostCard post={post} onClick={() => onPostClick(globalIndex !== -1 ? globalIndex : 0)} />
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const App: React.FC = () => {
   const [posts, setPosts] = useState(INITIAL_MOCK_POSTS);
+  const [selectedFilterId, setSelectedFilterId] = useState<string>('moment');
   const [selectedPostIndex, setSelectedPostIndex] = useState<number | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
@@ -1094,9 +1415,11 @@ const App: React.FC = () => {
   const [activeNavTab, setActiveNavTab] = useState<'home' | 'hearts'>('home');
   const [liveReactionTicks, setLiveReactionTicks] = useState(0);
 
-  // Profile view states
+  // Profile and Hashtag view states
   const [viewingProfileUser, setViewingProfileUser] = useState<RegisteredUser | null>(null);
+  const [viewingHashtag, setViewingHashtag] = useState<string | null>(null);
   const [createModalRecipient, setCreateModalRecipient] = useState<{ id?: string; name: string; handle: string; avatar?: string } | undefined>(undefined);
+  const [createModalHashtag, setCreateModalHashtag] = useState<string | undefined>(undefined);
   const [createModalMode, setCreateModalMode] = useState<'create_message' | 'send_heart' | undefined>(undefined);
 
   const handleGiftHeartForUser = (user: RegisteredUser) => {
@@ -1106,6 +1429,7 @@ const App: React.FC = () => {
       handle: user.handle,
       avatar: user.avatar
     });
+    setCreateModalHashtag(undefined);
     setCreateModalMode('send_heart');
     setIsCreateModalOpen(true);
   };
@@ -1117,12 +1441,26 @@ const App: React.FC = () => {
       handle: user.handle,
       avatar: user.avatar
     });
+    setCreateModalHashtag(undefined);
     setCreateModalMode('create_message');
     setIsCreateModalOpen(true);
   };
 
   const handleSelectUser = (user: RegisteredUser) => {
     setViewingProfileUser(user);
+    setViewingHashtag(null);
+  };
+
+  const handleSelectHashtag = (tag: string) => {
+    setViewingHashtag(tag);
+    setViewingProfileUser(null);
+  };
+
+  const handleCreateBoardForHashtag = (tag: string) => {
+    setCreateModalHashtag(tag);
+    setCreateModalRecipient(undefined);
+    setCreateModalMode('create_message');
+    setIsCreateModalOpen(true);
   };
 
   // Real-time ticker effect simulating global hearts blown continuously
@@ -1245,7 +1583,25 @@ const App: React.FC = () => {
   return (
     <Router>
       <div className="min-h-screen flex flex-col bg-white font-sans selection:bg-orange-100">
-        {viewingProfileUser ? (
+        {viewingHashtag ? (
+          <main className="flex-grow bg-white">
+            <HashtagView
+              hashtag={viewingHashtag}
+              posts={posts}
+              onBack={() => setViewingHashtag(null)}
+              onCreateBoard={handleCreateBoardForHashtag}
+              onSelectUser={handleSelectUser}
+              onPostClick={(post) => {
+                const foundIndex = posts.findIndex(p => p.id === post.id);
+                if (foundIndex !== -1) {
+                  setSelectedPostIndex(foundIndex);
+                } else {
+                  setSelectedPostIndex(0);
+                }
+              }}
+            />
+          </main>
+        ) : viewingProfileUser ? (
           <main className="flex-grow bg-white">
             <HeartboardView  
               profileUser={viewingProfileUser}
@@ -1274,43 +1630,67 @@ const App: React.FC = () => {
               posts={posts}
               onSelectBoard={handleSelectBoardFromSearch}
               onSelectUser={handleSelectUser}
+              onSelectHashtag={handleSelectHashtag}
             />
             
-            {/* Concentric radar hero feed */}
-            <HeroPulseFeed onGiftVouchClick={() => {
-              setCreateModalRecipient(undefined);
-              setCreateModalMode(undefined);
-              setIsCreateModalOpen(true);
-            }} />
+            {selectedFilterId === 'moment' ? (
+              <>
+                {/* Concentric radar hero feed */}
+                <HeroPulseFeed onGiftVouchClick={() => {
+                  setCreateModalRecipient(undefined);
+                  setCreateModalHashtag(undefined);
+                  setCreateModalMode(undefined);
+                  setIsCreateModalOpen(true);
+                }} />
 
-            <main className="flex-grow bg-white">
-              <Routes>
-                <Route path="/" element={
-                  <MasonryFeed 
-                    posts={filteredPosts} 
-                    onPostClick={setSelectedPostIndex} 
-                    activeFilter={activeFilter}
-                    setActiveFilter={setActiveFilter}
-                    realtimeStats={realtimeStats}
-                    searchQuery={searchQuery}
-                    setSearchQuery={setSearchQuery}
-                    matchingUsersCount={matchingUsersCount}
-                  />
-                } />
-                <Route path="*" element={
-                  <MasonryFeed 
-                    posts={filteredPosts} 
-                    onPostClick={setSelectedPostIndex} 
-                    activeFilter={activeFilter}
-                    setActiveFilter={setActiveFilter}
-                    realtimeStats={realtimeStats}
-                    searchQuery={searchQuery}
-                    setSearchQuery={setSearchQuery}
-                    matchingUsersCount={matchingUsersCount}
-                  />
-                } />
-              </Routes>
-            </main>
+                <main className="flex-grow bg-white">
+                  <Routes>
+                    <Route path="/" element={
+                      <MasonryFeed 
+                        posts={filteredPosts} 
+                        onPostClick={setSelectedPostIndex} 
+                        activeFilter={activeFilter}
+                        setActiveFilter={setActiveFilter}
+                        realtimeStats={realtimeStats}
+                        searchQuery={searchQuery}
+                        setSearchQuery={setSearchQuery}
+                        matchingUsersCount={matchingUsersCount}
+                      />
+                    } />
+                    <Route path="*" element={
+                      <MasonryFeed 
+                        posts={filteredPosts} 
+                        onPostClick={setSelectedPostIndex} 
+                        activeFilter={activeFilter}
+                        setActiveFilter={setActiveFilter}
+                        realtimeStats={realtimeStats}
+                        searchQuery={searchQuery}
+                        setSearchQuery={setSearchQuery}
+                        matchingUsersCount={matchingUsersCount}
+                      />
+                    } />
+                  </Routes>
+                </main>
+              </>
+            ) : (
+              <main className="flex-grow bg-white">
+                <EventCategoryView 
+                  filterId={selectedFilterId}
+                  posts={posts}
+                  onBack={() => setSelectedFilterId('moment')}
+                  onFilterClick={() => setIsFilterModalOpen(true)}
+                  onPostClick={(index) => setSelectedPostIndex(index)}
+                  onCreateBoard={() => {
+                    setCreateModalRecipient(undefined);
+                    setCreateModalHashtag(undefined);
+                    setCreateModalMode('create_message');
+                    setIsCreateModalOpen(true);
+                  }}
+                  searchQuery={searchQuery}
+                  setSearchQuery={setSearchQuery}
+                />
+              </main>
+            )}
           </>
         ) : (
           <main className="flex-grow bg-white">
@@ -1334,9 +1714,11 @@ const App: React.FC = () => {
           setActiveTab={(tab) => {
             handleTabChange(tab);
             setViewingProfileUser(null);
+            setViewingHashtag(null);
           }} 
           onPlusClick={() => {
             setCreateModalRecipient(undefined);
+            setCreateModalHashtag(undefined);
             setCreateModalMode(undefined);
             setIsCreateModalOpen(true);
           }} 
@@ -1347,10 +1729,12 @@ const App: React.FC = () => {
             onClose={() => {
               setIsCreateModalOpen(false);
               setCreateModalRecipient(undefined);
+              setCreateModalHashtag(undefined);
               setCreateModalMode(undefined);
             }} 
             onPostCreated={handleNewPost}
             initialRecipient={createModalRecipient}
+            initialHashtag={createModalHashtag}
             initialMode={createModalMode}
           />
         )}
@@ -1358,8 +1742,9 @@ const App: React.FC = () => {
         <FilterModal 
           isOpen={isFilterModalOpen}
           onClose={() => setIsFilterModalOpen(false)}
+          selectedFilterId={selectedFilterId}
           onApplyFilter={(selectedOptionId) => {
-            console.log("Selected filter category:", selectedOptionId);
+            setSelectedFilterId(selectedOptionId);
           }}
         />
 

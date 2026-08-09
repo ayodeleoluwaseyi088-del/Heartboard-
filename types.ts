@@ -196,6 +196,7 @@ export interface Post {
   targetType: EntityType;
   reactions: number;
   canvasElements?: any[];
+  eventType?: string;
 }
 
 export interface AppreciationEntity {

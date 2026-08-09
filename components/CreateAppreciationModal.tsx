@@ -524,6 +524,7 @@ export interface CreateAppreciationModalProps {
   onClose: () => void;
   onPostCreated: (post: any) => void;
   initialRecipient?: { id?: string; name: string; handle: string; avatar?: string };
+  initialHashtag?: string;
   initialMode?: 'create_message' | 'send_heart';
 }
 
@@ -739,6 +740,7 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
   onClose, 
   onPostCreated,
   initialRecipient,
+  initialHashtag,
   initialMode
 }) => {
   const [activeType, setActiveType] = useState<'text' | 'audio' | 'video'>('text');
@@ -882,9 +884,19 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
   const [caption, setCaption] = useState('');
   const [selectedEventType, setSelectedEventType] = useState<string>('');
   const [isEventDropdownOpen, setIsEventDropdownOpen] = useState(false);
-  const [recipients, setRecipients] = useState<string[]>(
-    initialRecipient ? [initialRecipient.handle || initialRecipient.name] : ['@you']
-  );
+  const [recipients, setRecipients] = useState<string[]>(() => {
+    if (initialHashtag) {
+      const formattedHash = initialHashtag.startsWith('#') ? initialHashtag : `#${initialHashtag}`;
+      if (initialRecipient) {
+        return [initialRecipient.handle || initialRecipient.name, formattedHash];
+      }
+      return [formattedHash];
+    }
+    if (initialRecipient) {
+      return [initialRecipient.handle || initialRecipient.name];
+    }
+    return ['@you'];
+  });
   const [newRecipientInput, setNewRecipientInput] = useState('');
   const [boardCapacity, setBoardCapacity] = useState<'collaborative' | 'solo'>('collaborative');
   const [isCapacityModalOpen, setIsCapacityModalOpen] = useState(false);
@@ -1016,6 +1028,14 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
 
       const finalRecipientsString = recipients.join(', ') || '@you';
       
+      const extractedHashtags = recipients.filter(r => r.startsWith('#'));
+      if (initialHashtag) {
+        const formatted = initialHashtag.startsWith('#') ? initialHashtag : `#${initialHashtag}`;
+        if (!extractedHashtags.includes(formatted)) {
+          extractedHashtags.push(formatted);
+        }
+      }
+      
       const newPost: any = {
         id: 'post-' + Math.random().toString(36).substring(2, 11),
         authorName: privacyLayer === PostVisibility.ANONYMOUS ? (authorName.trim().split(' ')[0] || 'Anonymous') : (authorName.trim() || 'Curator'),
@@ -1023,6 +1043,7 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
         caption: caption.trim() || undefined,
         eventType: selectedEventType || undefined,
         recipients: recipients,
+        hashtags: extractedHashtags,
         boardCapacity: boardCapacity,
         type: activeType,
         mediaType: activeType === 'text' ? 'note' : activeType,

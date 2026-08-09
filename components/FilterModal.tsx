@@ -25,14 +25,22 @@ interface FilterModalProps {
   isOpen: boolean;
   onClose: () => void;
   onApplyFilter?: (selectedOptionId: string) => void;
+  selectedFilterId?: string;
 }
 
 export const FilterModal: React.FC<FilterModalProps> = ({ 
   isOpen, 
   onClose, 
-  onApplyFilter 
+  onApplyFilter,
+  selectedFilterId = 'moment'
 }) => {
-  const [selectedId, setSelectedId] = useState<string>('moment');
+  const [selectedId, setSelectedId] = useState<string>(selectedFilterId);
+
+  React.useEffect(() => {
+    if (selectedFilterId) {
+      setSelectedId(selectedFilterId);
+    }
+  }, [selectedFilterId, isOpen]);
 
   if (!isOpen) return null;
 
