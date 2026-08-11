@@ -415,7 +415,6 @@ export const CanvasReadOnlyCard: React.FC<CanvasReadOnlyCardProps> = ({
   authorName,
   recipient,
   selectedHearts = [],
-  activeType = 'text',
 }) => {
   const visibleElements = canvasElements.filter(el => {
     if (el.type === 'text') return Boolean(el.text && el.text.trim());
@@ -432,41 +431,9 @@ export const CanvasReadOnlyCard: React.FC<CanvasReadOnlyCardProps> = ({
       {/* Confetti Animation Overlay */}
       <ConfettiOverlay type={selectedConfetti || null} />
 
-      {/* Full Canvas Layer: Treats entire component as canvas area with zero internal clipping bounds */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none flex items-center justify-center z-10">
-        {activeType === 'text' && (
-          <>
-            {hasCanvasContent ? (
-              visibleElements.map((el) => (
-                <RenderCanvasElementReadOnly key={el.id} el={el} />
-              ))
-            ) : (
-              <div className="flex flex-col items-center justify-center w-full h-full p-4 pointer-events-none my-auto">
-                {uploadedImage && (
-                  <img src={uploadedImage} alt="Uploaded attachment" className="max-w-[200px] max-h-[140px] rounded-xl object-contain shadow-xs my-auto" />
-                )}
-                {fallbackText ? (
-                  <div className="w-full p-2 my-auto text-center">
-                    <p className="text-sm sm:text-base font-bold leading-snug break-words text-[#1A1B25]" style={{ fontFamily: 'Playfair Display, cursive' }}>
-                      "{fallbackText}"
-                    </p>
-                  </div>
-                ) : !uploadedImage && (
-                  <div className="text-center w-full px-4 space-y-0.5 py-1 pointer-events-none">
-                    <h3 className="text-[15px] font-semibold text-gray-600 tracking-tight">
-                      Message Card
-                    </h3>
-                  </div>
-                )}
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
       {/* Recipient tag */}
       <div className="w-full flex justify-end items-center pr-1 relative z-20 pointer-events-none select-none">
-        {activeType === 'text' && recipient?.trim() ? (
+        {recipient?.trim() ? (
           <span className="text-[10px] font-extrabold text-[#A4ABB8] uppercase tracking-wider bg-gray-50 px-2.5 py-1 rounded-full border border-gray-100 max-w-[130px] truncate">
             {recipient}
           </span>
@@ -475,44 +442,49 @@ export const CanvasReadOnlyCard: React.FC<CanvasReadOnlyCardProps> = ({
         )}
       </div>
 
-      {/* Central placeholder for audio/video if active */}
-      {activeType !== 'text' && (
-        <div className="flex-grow flex flex-col items-center justify-center text-center py-2 relative z-0 w-full gap-2 pointer-events-none">
-          {activeType === 'audio' && (
-            <div className="w-full flex flex-col items-center justify-center gap-2 select-none">
-              <Mic className="w-12 h-12 stroke-[1.5]" style={{ color: '#EED8CE' }} />
-              <h3 className="text-base font-semibold text-[#272835]">Audio tribute</h3>
-            </div>
-          )}
-
-          {activeType === 'video' && (
-            <div className="w-full flex flex-col items-center justify-center gap-2 select-none">
-              <Video className="w-12 h-12 stroke-[1.5]" style={{ color: '#EED8CE' }} />
-              <h3 className="text-base font-semibold text-[#272835]">Video tribute</h3>
-            </div>
-          )}
-        </div>
-      )}
+      {/* Full Canvas Layer: Treats entire component as canvas area with zero internal clipping bounds */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none flex items-center justify-center z-10 p-2">
+        {hasCanvasContent ? (
+          visibleElements.map((el) => (
+            <RenderCanvasElementReadOnly key={el.id} el={el} />
+          ))
+        ) : (
+          <div className="flex flex-col items-center justify-center w-full h-full p-4 pointer-events-none my-auto text-center">
+            {uploadedImage && (
+              <img src={uploadedImage} alt="Uploaded attachment" className="max-w-[200px] max-h-[140px] rounded-xl object-contain shadow-xs my-auto" />
+            )}
+            {fallbackText ? (
+              <div className="w-full p-2 my-auto text-center">
+                <p className="text-sm sm:text-base font-bold leading-snug break-words text-[#1A1B25]" style={{ fontFamily: 'Playfair Display, cursive' }}>
+                  "{fallbackText}"
+                </p>
+              </div>
+            ) : !uploadedImage && (
+              <div className="text-center w-full px-4 space-y-0.5 py-1 pointer-events-none">
+                <h3 className="text-[15px] font-semibold text-gray-600 tracking-tight">
+                  Message Card
+                </h3>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Card footer */}
-      {activeType === 'text' ? (
-        <div className="w-full flex justify-between items-center select-none pt-1 relative z-20 pointer-events-none">
-          <span className="text-[9px] font-extrabold text-gray-300 uppercase tracking-widest">
-            {authorName?.trim() ? `By ${authorName}` : ''}
-          </span>
-          {selectedHearts.length > 0 && (
-            <div className="flex gap-1 bg-gray-50/70 p-1.5 rounded-full">
-              {selectedHearts.map(id => (
-                <span key={id} className="text-xs">
-                  {SEMANTIC_HEARTS.find(h => h.id === id)?.emoji}
-                </span>
-              ))}
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="h-4" />
-      )}
+      <div className="w-full flex justify-between items-center select-none pt-1 relative z-20 pointer-events-none">
+        <span className="text-[9px] font-extrabold text-gray-300 uppercase tracking-widest">
+          {authorName?.trim() ? `By ${authorName}` : ''}
+        </span>
+        {selectedHearts.length > 0 && (
+          <div className="flex gap-1 bg-gray-50/70 p-1.5 rounded-full">
+            {selectedHearts.map(id => (
+              <span key={id} className="text-xs">
+                {SEMANTIC_HEARTS.find(h => h.id === id)?.emoji}
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
@@ -885,17 +857,20 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
   const [selectedEventType, setSelectedEventType] = useState<string>('');
   const [isEventDropdownOpen, setIsEventDropdownOpen] = useState(false);
   const [recipients, setRecipients] = useState<string[]>(() => {
+    const list: string[] = ['@you'];
+    if (initialRecipient) {
+      const handleOrName = initialRecipient.handle || initialRecipient.name;
+      if (!list.includes(handleOrName)) {
+        list.push(handleOrName);
+      }
+    }
     if (initialHashtag) {
       const formattedHash = initialHashtag.startsWith('#') ? initialHashtag : `#${initialHashtag}`;
-      if (initialRecipient) {
-        return [initialRecipient.handle || initialRecipient.name, formattedHash];
+      if (!list.includes(formattedHash)) {
+        list.push(formattedHash);
       }
-      return [formattedHash];
     }
-    if (initialRecipient) {
-      return [initialRecipient.handle || initialRecipient.name];
-    }
-    return ['@you'];
+    return list;
   });
   const [newRecipientInput, setNewRecipientInput] = useState('');
   const [boardCapacity, setBoardCapacity] = useState<'collaborative' | 'solo'>('collaborative');
@@ -948,13 +923,6 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
   const [isModerating, setIsModerating] = useState(false);
   const [moderationError, setModerationError] = useState<string | null>(null);
 
-  // Audio recording simulation
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingSeconds, setRecordingSeconds] = useState(0);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
-  const [isTranscribing, setIsTranscribing] = useState(false);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-
   // Auto recipient tagging check
   const isHashtagRecipient = recipient.startsWith('#');
 
@@ -963,41 +931,6 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
       setPrivacyLayer(PostVisibility.PUBLIC);
     }
   }, [recipient, isHashtagRecipient]);
-
-  // Audio Recording timer
-  useEffect(() => {
-    if (isRecording) {
-      timerRef.current = setInterval(() => {
-        setRecordingSeconds(prev => prev + 1);
-      }, 1000);
-    } else {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-    }
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [isRecording]);
-
-  const handleStartRecording = () => {
-    setIsRecording(true);
-    setRecordingSeconds(0);
-    setAudioUrl(null);
-  };
-
-  const handleStopRecording = () => {
-    setIsRecording(false);
-    setIsTranscribing(true);
-    
-    setTimeout(() => {
-      setAudioUrl('demo_appreciation_voice.wav');
-      setIsTranscribing(false);
-      setContent("Checking in to let you know how much I appreciate your consistent reliability and work ethic. You are an absolute inspiration and workspace legend!");
-      setIsCursive(true);
-    }, 1800);
-  };
 
   const handleHeartToggle = (heartId: string) => {
     if (selectedHearts.includes(heartId)) {
@@ -1041,7 +974,7 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
         authorName: privacyLayer === PostVisibility.ANONYMOUS ? (authorName.trim().split(' ')[0] || 'Anonymous') : (authorName.trim() || 'Curator'),
         content: safeTextCheck,
         caption: caption.trim() || undefined,
-        eventType: selectedEventType || undefined,
+        eventType: selectedEventType || 'Appreciation',
         recipients: recipients,
         hashtags: extractedHashtags,
         boardCapacity: boardCapacity,
@@ -1050,6 +983,8 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
         targetId: finalRecipientsString.replace('#', ''),
         targetType: isHashtagRecipient ? EntityType.WALL : EntityType.BOARD,
         reactions: 0,
+        isCreatedByUser: true,
+        section: 'board',
         aspectRatio: 'portrait',
         imageUrl: uploadedImage || undefined,
         createdAt: new Date().toISOString(),
@@ -1102,40 +1037,16 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
           <div className="w-8" />
         </div>
 
-        {/* 2. Media Tabs */}
+        {/* 2. Media Tabs (Only Text content active per platform specifications) */}
         <div className="w-full flex justify-center pb-2">
           <div className="flex gap-16 relative">
             <button 
               onClick={() => setActiveType('text')}
-              className={`flex items-center gap-2 pb-3 px-1 transition-all text-[16px] font-semibold relative cursor-pointer ${activeType === 'text' ? 'text-[#1A1B25]' : 'text-[#A4ABB8] hover:text-[#666D80]'}`}
+              className="flex items-center gap-2 pb-3 px-1 transition-all text-[16px] font-semibold relative cursor-pointer text-[#1A1B25]"
             >
               <PenLine className="w-[20px] h-[20px]" />
               <span>Text</span>
-              {activeType === 'text' && (
-                <div className="absolute bottom-[-9px] left-0 right-0 h-[2.5px] bg-[#1A1B25] rounded-full" />
-              )}
-            </button>
-
-            <button 
-              onClick={() => setActiveType('audio')}
-              className={`flex items-center gap-2 pb-3 px-1 transition-all text-[16px] font-semibold relative ${activeType === 'audio' ? 'text-[#1A1B25]' : 'text-[#A4ABB8] hover:text-[#666D80]'}`}
-            >
-              <Mic className="w-[20px] h-[20px]" />
-              <span>Audio</span>
-              {activeType === 'audio' && (
-                <div className="absolute bottom-[-9px] left-0 right-0 h-[2.5px] bg-[#1A1B25] rounded-full" />
-              )}
-            </button>
-
-            <button 
-              onClick={() => setActiveType('video')}
-              className={`flex items-center gap-2 pb-3 px-1 transition-all text-[16px] font-semibold relative ${activeType === 'video' ? 'text-[#1A1B25]' : 'text-[#A4ABB8] hover:text-[#666D80]'}`}
-            >
-              <Video className="w-[20px] h-[20px]" />
-              <span>Video</span>
-              {activeType === 'video' && (
-                <div className="absolute bottom-[-9px] left-0 right-0 h-[2.5px] bg-[#1A1B25] rounded-full" />
-              )}
+              <div className="absolute bottom-[-9px] left-0 right-0 h-[2.5px] bg-[#1A1B25] rounded-full" />
             </button>
           </div>
         </div>
@@ -1146,13 +1057,13 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
         
         {/* A. Outer Cozy Peach / Color Fill Preview Frame (Fixed Aspect Ratios with Responsive Scaling) */}
         <div 
-          onClick={() => activeType === 'text' && setIsExpanded(true)}
+          onClick={() => setIsExpanded(true)}
           style={{ 
             backgroundColor: selectedFrame.bgHex,
             height: 'min(480px, 65vh)'
           }}
           className="relative w-full max-w-[461px] rounded-[2rem] sm:rounded-[2.5rem] transition-all duration-300 flex items-center justify-center p-4 sm:p-6 select-none border border-transparent cursor-pointer group hover:scale-[1.01] active:scale-[0.99]"
-          title={activeType === 'text' ? "Click to expand into full workspace editor" : undefined}
+          title="Click to expand into full workspace editor"
         >
 
           {/* B. Center vertical or horizontal white card */}
@@ -1162,40 +1073,38 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
           >
             {/* Full Canvas Layer: Treats entire component as canvas area with zero internal clipping bounds */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none flex items-center justify-center z-10">
-              {activeType === 'text' && (
-                <>
-                  {(() => {
-                    const visibleElements = canvasElements.filter(hasElementContent);
-                    if (visibleElements.length === 0) {
-                      return (
-                        <div className="text-center w-full px-4 space-y-0.5 py-1 pointer-events-none">
-                          <h3 className="text-[15px] font-semibold text-gray-600 tracking-tight">
-                            Tap to create message
-                          </h3>
-                          <p className="text-[11px] text-[#808897] font-semibold">
-                            Create beautiful message with stunning visuals
-                          </p>
-                        </div>
-                      );
-                    }
-                    return visibleElements.map((el) => (
-                      <RenderCanvasElement
-                        key={el.id}
-                        el={el}
-                        isSelected={selectedElementId === el.id}
-                        onSelect={(id) => setSelectedElementId(id)}
-                        onEdit={(id) => setEditingElementId(id)}
-                        onUpdate={updateCanvasElement}
-                      />
-                    ));
-                  })()}
-                </>
-              )}
+              <>
+                {(() => {
+                  const visibleElements = canvasElements.filter(hasElementContent);
+                  if (visibleElements.length === 0) {
+                    return (
+                      <div className="text-center w-full px-4 space-y-0.5 py-1 pointer-events-none">
+                        <h3 className="text-[15px] font-semibold text-gray-600 tracking-tight">
+                          Tap to create message
+                        </h3>
+                        <p className="text-[11px] text-[#808897] font-semibold">
+                          Create beautiful message with stunning visuals
+                        </p>
+                      </div>
+                    );
+                  }
+                  return visibleElements.map((el) => (
+                    <RenderCanvasElement
+                      key={el.id}
+                      el={el}
+                      isSelected={selectedElementId === el.id}
+                      onSelect={(id) => setSelectedElementId(id)}
+                      onEdit={(id) => setEditingElementId(id)}
+                      onUpdate={updateCanvasElement}
+                    />
+                  ));
+                })()}
+              </>
             </div>
 
             {/* Recipient meta badge if recipient is filled */}
             <div className="w-full flex justify-end items-center pr-1 relative z-20 pointer-events-none select-none">
-              {activeType === 'text' && recipient.trim() ? (
+              {recipient.trim() ? (
                 <span className="text-[10px] font-extrabold text-[#A4ABB8] uppercase tracking-wider bg-gray-50 px-2.5 py-1 rounded-full border border-gray-100 max-w-[130px] truncate pointer-events-auto">
                   {recipient}
                 </span>
@@ -1204,61 +1113,24 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
               )}
             </div>
 
-            {/* Central placeholder for audio/video if active */}
-            <div className="flex-grow flex flex-col items-center justify-center text-center py-2 relative z-0 w-full gap-2 pointer-events-none">
-              {activeType === 'audio' && (
-                <div className="w-full flex flex-col items-center justify-center gap-2 select-none">
-                  <div className="p-1 mb-1">
-                    <Mic className="w-14 h-14 stroke-[1.5]" style={{ color: '#EED8CE' }} />
-                  </div>
-                  <h3 className="text-[17px] font-semibold text-[#272835] tracking-tight">
-                    Audio coming soon
-                  </h3>
-                  <div className="text-[12px] text-[#A4ABB8] font-semibold leading-tight">
-                    <p>Send beautiful message</p>
-                    <p>with your voice</p>
-                  </div>
-                </div>
-              )}
-
-              {activeType === 'video' && (
-                <div className="w-full flex flex-col items-center justify-center gap-2 select-none">
-                  <div className="p-1 mb-1">
-                    <Video className="w-14 h-14 stroke-[1.5]" style={{ color: '#EED8CE' }} />
-                  </div>
-                  <h3 className="text-[17px] font-semibold text-[#272835] tracking-tight">
-                    Video coming soon
-                  </h3>
-                  <div className="text-[12px] text-[#A4ABB8] font-semibold leading-tight">
-                    <p>Send beautiful message</p>
-                    <p>with your video</p>
-                  </div>
-                </div>
-              )}
-            </div>
-
             {/* Pristine clean footer: absolutely no borders, lines, or metadata unless there are active hearts */}
-            {activeType === 'text' ? (
-              <div className="w-full flex justify-between items-center select-none pt-1">
-                <span className="text-[9px] font-extrabold text-gray-300 uppercase tracking-widest">
-                  {authorName.trim() ? `By ${authorName}` : ''}
-                </span>
-                
-                <div className="flex gap-1 items-center">
-                  {selectedHearts.length > 0 && (
-                    <div className="flex gap-1 bg-gray-50/70 p-1.5 rounded-full">
-                      {selectedHearts.map(id => (
-                        <span key={id} className="text-sm scale-110 active:scale-125 transition-transform" title={SEMANTIC_HEARTS.find(h => h.id === id)?.label}>
-                          {SEMANTIC_HEARTS.find(h => h.id === id)?.emoji}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
+            <div className="w-full flex justify-between items-center select-none pt-1">
+              <span className="text-[9px] font-extrabold text-gray-300 uppercase tracking-widest">
+                {authorName.trim() ? `By ${authorName}` : ''}
+              </span>
+              
+              <div className="flex gap-1 items-center">
+                {selectedHearts.length > 0 && (
+                  <div className="flex gap-1 bg-gray-50/70 p-1.5 rounded-full">
+                    {selectedHearts.map(id => (
+                      <span key={id} className="text-sm scale-110 active:scale-125 transition-transform" title={SEMANTIC_HEARTS.find(h => h.id === id)?.label}>
+                        {SEMANTIC_HEARTS.find(h => h.id === id)?.emoji}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="h-4" />
-            )}
+            </div>
           </div>
         </div>
 
@@ -1476,9 +1348,38 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                   
                   setTimeout(() => {
                     setIsBlowingHeart(false);
+                    const recipientNames = selectedSendHeartRecipients.map(u => u.name).join(', ');
+                    const newHeartPost: any = {
+                      id: `heart-token-${Date.now()}`,
+                      authorName: authorName?.trim() || 'You',
+                      recipientName: recipientNames,
+                      content: `${chosenHeartObj.label} Heart ${chosenHeartObj.emoji} blown to ${recipientNames} with deepest appreciation!`,
+                      type: 'heart_token',
+                      visibility: PostVisibility.PUBLIC,
+                      createdAt: new Date().toISOString(),
+                      targetId: selectedSendHeartRecipients[0]?.handle || 'user',
+                      targetType: EntityType.WALL,
+                      reactions: 1,
+                      theme: '#FAF0EC',
+                      frameBg: '#FAF0EC',
+                      heartDetails: {
+                        label: chosenHeartObj.label,
+                        emoji: chosenHeartObj.emoji,
+                        bubbleColor: chosenHeartObj.bubbleColor
+                      },
+                      category: 'vouch',
+                      eventType: 'Moment',
+                      statusBadge: `${chosenHeartObj.emoji} HEART TOKEN`,
+                      isHeartToken: true,
+                      isCreatedByUser: true,
+                      section: 'hearts'
+                    };
+                    if (onPostCreated) {
+                      onPostCreated(newHeartPost);
+                    }
                     setSendHeartConfirmation({
                       heart: chosenHeartObj,
-                      recipient: selectedSendHeartRecipients.map(u => u.name).join(', ')
+                      recipient: recipientNames
                     });
                   }, 700);
                 }}

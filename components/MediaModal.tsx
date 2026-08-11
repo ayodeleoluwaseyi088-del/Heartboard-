@@ -115,28 +115,16 @@ export const MediaModal: React.FC<MediaModalProps> = ({ post, onClose, onPrev, o
 
           {/* Central Appreciation Body */}
           <div className="flex-grow flex flex-col justify-center text-right select-text">
-            {post.mediaType === 'audio' ? (
-              <div className="flex flex-col items-end gap-4">
-                <div className="w-14 h-14 bg-[#FE6349]/20 rounded-full flex items-center justify-center border border-[#FE6349]/30">
-                  <Heart className="text-[#FE6349] animate-pulse" size={24} />
-                </div>
-                <p className="text-gray-900 font-extrabold text-lg leading-snug">
-                  Play heart voice recording
-                </p>
-                <audio ref={audioRef} src={post.mediaUrl} controls className="w-full mt-2" autoPlay />
-              </div>
-            ) : post.mediaType === 'video' ? (
-              <div className="w-full h-48 rounded-2xl overflow-hidden border border-black/10 relative">
-                <video ref={videoRef} src={post.mediaUrl} className="w-full h-full object-cover" controls autoPlay loop playsInline />
-              </div>
-            ) : post.mediaType === 'image' ? (
+            {post.imageUrl || post.mediaUrl ? (
               <div className="flex flex-col items-end gap-3">
                 <div className="w-full max-h-60 rounded-none overflow-hidden border border-black/5 bg-gray-50 flex items-center justify-center p-1">
-                  <img src={post.mediaUrl} className="max-w-full max-h-full w-auto h-auto object-contain rounded-none" alt="Memory" referrerPolicy="no-referrer" />
+                  <img src={post.imageUrl || post.mediaUrl} className="max-w-full max-h-full w-auto h-auto object-contain rounded-none" alt="Memory" referrerPolicy="no-referrer" />
                 </div>
-                <p className="text-gray-800 handwriting text-xl leading-tight font-bold mt-2">
-                  {post.content}
-                </p>
+                {post.content && (
+                  <p className="text-gray-800 handwriting text-xl leading-tight font-bold mt-2">
+                    {post.content}
+                  </p>
+                )}
               </div>
             ) : (
               // Standard text or note archetype

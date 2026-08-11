@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ShareProfileModal } from './ShareProfileModal';
 import { SEMANTIC_HEARTS, HeartBubbleSvg } from './CreateAppreciationModal';
 import { LiveHeartAnimation } from './LiveHeartAnimation';
+import { PostCard } from './PostCard';
 import { 
   Settings, 
   Share2, 
@@ -49,6 +50,8 @@ export interface HeartboardViewProps {
   onGiftHeart?: (user: UserProfileData) => void;
   onSendMessage?: (user: UserProfileData) => void;
   onSelectUser?: (user: UserProfileData) => void;
+  selectedFilterId?: string;
+  onClearFilter?: () => void;
 }
 
 // Re-use the exact HeartBubbleSvg component from Page 2 (Send/Blow Heart)
@@ -198,175 +201,7 @@ export const HeartCategoryCard: React.FC<{
 };
 
 const HeartboardCard: React.FC<{ item: any; onClick: () => void }> = ({ item, onClick }) => {
-  // If item is a Heart Token
-  if (item.isHeartToken || item.section === 'hearts' || item.type === 'heart_token') {
-    const rawLabel = item.heartDetails?.label || item.title || 'Heart Token';
-    const matched = SEMANTIC_HEARTS.find(
-      sh => sh.label.toLowerCase() === rawLabel.toLowerCase() || sh.id === item.heartDetails?.id
-    );
-    const heartLabel = matched?.label || rawLabel;
-    const bubbleColor = item.heartDetails?.bubbleColor || matched?.bubbleColor || '#FF53C0';
-    const bg = item.frameBg || item.theme || '#FAF0EC';
-
-    return (
-      <div 
-        onClick={onClick}
-        className="rounded-[2.25rem] p-4 relative overflow-hidden group cursor-pointer transition-all duration-200 hover:scale-[1.01] flex flex-col justify-between min-h-[280px] shadow-[3px_0px_45px_0px_rgba(0,0,0,0.08)] border border-gray-100 w-full"
-        style={{ backgroundColor: bg }}
-      >
-        <div className="w-full bg-[#FFFDF9] rounded-[2rem] p-5 relative overflow-hidden flex flex-col items-center justify-between min-h-[250px]">
-          {/* Corner pushpins */}
-          <div className="absolute top-3 right-3 w-2.5 h-2.5 rounded-full bg-[#353849] opacity-80" />
-          <div className="absolute bottom-3 right-3 w-2.5 h-2.5 rounded-full bg-[#353849] opacity-80" />
-
-          {/* Heart Bubble Graphic */}
-          <div className="my-2">
-            <HeartBubbleSVG size={68} bubbleColor={bubbleColor} />
-          </div>
-
-          {/* Heart Label & Details */}
-          <div className="text-center relative z-10 w-full space-y-1">
-            <span 
-              className="inline-block px-3 py-1 rounded-full font-extrabold text-[11px] uppercase tracking-wider mb-1 text-white shadow-2xs"
-              style={{ backgroundColor: bubbleColor }}
-            >
-              {heartLabel}
-            </span>
-            <p className="font-bold text-[#1A1B25] text-sm leading-tight line-clamp-2">
-              {item.title || item.content}
-            </p>
-            {item.recipientName && (
-              <p className="text-xs font-semibold text-gray-500 mt-1">
-                To: <span className="text-[#1A1B25] font-extrabold">{item.recipientName}</span>
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // If item is a Voice Note / Audio
-  if (item.type === 'audio' || item.mediaType === 'audio') {
-    const bg = item.frameBg || item.theme || '#FAF0EC';
-    return (
-      <div 
-        onClick={onClick}
-        className="rounded-[2.5rem] p-4 relative overflow-hidden group cursor-pointer transition-all duration-200 hover:scale-[1.01] flex flex-col justify-between min-h-[260px] shadow-2xs w-full"
-        style={{ backgroundColor: bg }}
-      >
-        <div className="w-full bg-white/90 rounded-[2rem] p-5 relative overflow-hidden flex flex-col items-center justify-center min-h-[230px] gap-3">
-          {/* Radial rings bg */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-10">
-            <div className="w-[180px] h-[180px] border border-[#FE6349] rounded-full absolute" />
-            <div className="w-[240px] h-[240px] border border-[#FE6349] rounded-full absolute" />
-          </div>
-
-          <div className="w-16 h-16 rounded-full bg-[#FE6349] text-white flex items-center justify-center relative z-10 shadow-md">
-            <Mic className="w-7 h-7" />
-          </div>
-
-          <div className="text-center relative z-10 px-2">
-            <p className="font-extrabold text-[#1A1B25] text-sm">
-              {item.title || 'Voice Note Appreciation'}
-            </p>
-            <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
-              {item.content || 'Audio tribute capsule'}
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // If item is a Note / Handwritten Note with Photo or Stickers
-  if (item.type === 'note' || item.type === 'note_stickers' || item.type === 'image_note' || item.mediaType === 'note') {
-    const bg = item.frameBg || (item.theme && item.theme.startsWith('#') ? item.theme : '#FAF0EC');
-    return (
-      <div 
-        onClick={onClick}
-        className="rounded-[2.5rem] p-4 relative overflow-hidden group cursor-pointer transition-all duration-200 hover:scale-[1.01] shadow-2xs w-full"
-        style={{ backgroundColor: bg }}
-      >
-        <div className="w-full bg-[#FFFDF9] rounded-[2rem] p-5 relative overflow-hidden flex flex-col justify-between min-h-[260px]">
-          {/* Lined paper pattern background */}
-          <div className="absolute inset-0 pointer-events-none opacity-15 bg-[linear-gradient(#808897_1px,transparent_1px)] bg-[size:100%_24px]" />
-          
-          {/* Corner pushpin */}
-          <div className="absolute top-3 right-3 w-2.5 h-2.5 rounded-full bg-[#353849] opacity-80" />
-
-          {/* Stickers row if present */}
-          <div className="flex items-center justify-between relative z-10 mb-2">
-            {item.stickers?.includes('red_heart') || item.sticker === 'heart_bubble' ? (
-              <span className="text-2xl">❤️</span>
-            ) : <span />}
-            {item.stickers?.includes('yellow_star') || item.sticker === 'star_glow' ? (
-              <span className="text-2xl">⭐</span>
-            ) : <span />}
-          </div>
-
-          {/* Optional image thumbnail */}
-          {(item.mediaUrl || item.imageUrl) && (
-            <div className="w-full h-36 rounded-xl overflow-hidden shrink-0 relative z-10 mb-3 bg-gray-50">
-              <img 
-                src={item.mediaUrl || item.imageUrl} 
-                alt={item.title || 'Note image'} 
-                className="w-full h-full object-cover"
-                referrerPolicy="no-referrer"
-              />
-            </div>
-          )}
-
-          {/* Handwritten text */}
-          <div className="w-full text-center relative z-10 my-2 px-1">
-            <p className="font-handwriting text-base text-[#1A1B25] font-bold leading-relaxed line-clamp-3">
-              "{item.content}"
-            </p>
-          </div>
-
-          {/* Footer author */}
-          <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500 font-semibold relative z-10">
-            <span>By {item.authorName}</span>
-            {item.recipientName && <span>To {item.recipientName}</span>}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Standard Image / Video / Canvas Card
-  const bg = item.frameBg || (item.theme && item.theme.startsWith('#') ? item.theme : '#FAF0EC');
-  return (
-    <div 
-      onClick={onClick}
-      className="rounded-[2.5rem] p-4 relative overflow-hidden group cursor-pointer transition-all duration-200 hover:scale-[1.01] shadow-2xs w-full"
-      style={{ backgroundColor: bg }}
-    >
-      <div className="w-full h-[320px] rounded-[2rem] overflow-hidden bg-white relative flex flex-col justify-between p-3">
-        {(item.mediaUrl || item.imageUrl) ? (
-          <div className="w-full h-full rounded-[1.5rem] overflow-hidden bg-gray-50 relative">
-            <img 
-              src={item.mediaUrl || item.imageUrl} 
-              alt={item.title || item.content}
-              className="w-full h-full object-cover"
-              referrerPolicy="no-referrer"
-            />
-            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent p-4 text-white">
-              <p className="font-extrabold text-sm line-clamp-1">{item.title || item.content}</p>
-              <p className="text-xs text-gray-200 font-medium">{item.authorName}</p>
-            </div>
-          </div>
-        ) : (
-          <div className="w-full h-full rounded-[1.5rem] bg-rose-50/50 p-6 flex flex-col justify-between">
-            <p className="font-extrabold text-[#1A1B25] text-lg leading-snug">
-              {item.title || item.content}
-            </p>
-            <p className="text-xs font-bold text-gray-400">Curated by {item.authorName}</p>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  return <PostCard post={item} onClick={onClick} />;
 };
 
 const MOCK_HEARTBOARD_ITEMS = [
@@ -457,7 +292,9 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
   onBack,
   onGiftHeart,
   onSendMessage,
-  onSelectUser
+  onSelectUser,
+  selectedFilterId = 'moment',
+  onClearFilter
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'board' | 'tagged' | 'hearts'>('board');
   const [searchQuery, setSearchQuery] = useState('');
@@ -770,6 +607,21 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
 
     if (!matchesTab) return false;
 
+    // Apply User-Controlled Event Category Filter on Boards tab if explicitly selected by user
+    if (activeSubTab === 'board' && selectedFilterId && selectedFilterId !== 'moment' && selectedFilterId !== 'all') {
+      const targetFilter = selectedFilterId.toLowerCase();
+      const pEv = (item.eventType || '').toLowerCase().replace(/_/g, ' ');
+      const content = (item.content || '').toLowerCase();
+      const title = (item.title || '').toLowerCase();
+      const badge = (item.statusBadge || '').toLowerCase();
+      
+      const matchesEvent = pEv === targetFilter || 
+                           content.includes(targetFilter) || 
+                           title.includes(targetFilter) || 
+                           badge.includes(targetFilter);
+      if (!matchesEvent) return false;
+    }
+
     if (!searchQuery.trim()) return true;
 
     const q = searchQuery.trim().toLowerCase();
@@ -785,7 +637,8 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
     const matchesRecipient = 
       (item.recipientName && item.recipientName.toLowerCase().includes(q)) ||
       (item.recipient && item.recipient.toLowerCase().includes(q)) ||
-      (item.recipientHandle && item.recipientHandle.toLowerCase().includes(q));
+      (item.recipientHandle && item.recipientHandle.toLowerCase().includes(q)) ||
+      (Array.isArray(item.recipients) && item.recipients.some((r: string) => r.toLowerCase().includes(q)));
 
     const matchesCreatorOrTagged = 
       (item.authorName && item.authorName.toLowerCase().includes(q)) ||
@@ -796,7 +649,7 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
       (Array.isArray(item.taggedUsers) && item.taggedUsers.some((u: string) => u.toLowerCase().includes(q)));
 
     return matchesCaption || matchesRecipient || matchesCreatorOrTagged;
-  });
+  }).sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
 
   return (
     <div className="w-full max-w-none px-4 sm:px-6 md:px-8 lg:px-12 py-8 pb-32">
@@ -988,6 +841,27 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Active Filter Banner when user selects an event filter on Heartboard */}
+      {activeSubTab === 'board' && selectedFilterId && selectedFilterId !== 'moment' && selectedFilterId !== 'all' && (
+        <div className="bg-[#FAF0EC] border border-orange-200/60 rounded-2xl p-3.5 mb-6 flex items-center justify-between gap-3 shadow-2xs">
+          <div className="flex items-center gap-2 text-xs text-gray-900 font-bold">
+            <SlidersHorizontal className="w-4 h-4 text-[#FE6349] shrink-0" />
+            <span>
+              Filtered by event: <strong className="font-extrabold text-[#FE6349] capitalize">{selectedFilterId}</strong>
+              {' '}({filteredItems.length} {filteredItems.length === 1 ? 'board' : 'boards'})
+            </span>
+          </div>
+          {onClearFilter && (
+            <button 
+              onClick={onClearFilter}
+              className="text-xs font-bold text-[#FE6349] hover:text-rose-700 bg-white border border-rose-200/80 px-3 py-1 rounded-full hover:shadow-xs transition-all flex items-center gap-1 cursor-pointer"
+            >
+              Show All Boards ✕
+            </button>
+          )}
+        </div>
+      )}
 
       {/* 4. Search Bar Row */}
       <div className="flex items-center gap-3 mb-8">

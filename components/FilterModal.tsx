@@ -10,15 +10,16 @@ export interface FilterOption {
 
 export const FILTER_OPTIONS: FilterOption[] = [
   { id: 'moment', label: 'Moment', emoji: '🥰' },
-  { id: 'birthday', label: 'Birthday', emoji: '🎂' },
-  { id: 'sport', label: 'Sport', emoji: '🎾' },
-  { id: 'groove', label: 'Groove', emoji: '📻' },
-  { id: 'wedding', label: 'Wedding', emoji: '💍' },
   { id: 'graduation', label: 'Graduation', emoji: '🎓' },
-  { id: 'retirement', label: 'Retirement', emoji: '🪑' },
-  { id: 'get_well', label: 'Get well', emoji: '🤟' },
-  { id: 'funeral', label: 'Funeral', emoji: '🕯️' },
-  { id: 'promotion', label: 'Promotion', emoji: '🤝' },
+  { id: 'wedding', label: 'Wedding', emoji: '💍' },
+  { id: 'birthday', label: 'Birthday', emoji: '🎂' },
+  { id: 'anniversary', label: 'Anniversary', emoji: '💐' },
+  { id: 'appreciation', label: 'Appreciation', emoji: '🙌' },
+  { id: 'congratulations', label: 'Congratulations', emoji: '🎉' },
+  { id: 'condolence', label: 'Condolence', emoji: '🕯️' },
+  { id: 'friendship', label: 'Friendship', emoji: '🤝' },
+  { id: 'love', label: 'Love', emoji: '❤️' },
+  { id: 'other', label: 'Other', emoji: '✨' },
 ];
 
 interface FilterModalProps {

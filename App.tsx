@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { HashRouter as Router, Routes, Route } from 'react-router-dom';
 import { EntityType, Post, PostVisibility, MOCK_REGISTERED_USERS, RegisteredUser } from './types';
 import { PostCard } from './components/PostCard';
@@ -51,9 +51,9 @@ const INITIAL_MOCK_POSTS: (Post & {
     targetType: EntityType.WALL,
     reactions: 12400,
     theme: '#FAF0EC', // cozy peach
-    mediaType: 'video',
+    mediaType: 'image',
     category: 'hype',
-    eventType: 'Groove',
+    eventType: 'Appreciation',
     statusBadge: '🔥 PURE HYPE STATUS',
     isCreatedByUser: true,
     section: 'board'
@@ -73,7 +73,7 @@ const INITIAL_MOCK_POSTS: (Post & {
     mediaType: 'note',
     sticker: 'star',
     category: 'vouch',
-    eventType: 'Retirement',
+    eventType: 'Love',
     statusBadge: '⭐ HIGH-AUTHORITY VOUCH',
     isTaggedForUser: true,
     section: 'tagged',
@@ -95,7 +95,7 @@ const INITIAL_MOCK_POSTS: (Post & {
     mediaType: 'note',
     sticker: 'star',
     category: 'vouch',
-    eventType: 'Sport',
+    eventType: 'Congratulations',
     statusBadge: '⭐ LEGENDARY TRIBUTE',
     isTaggedForUser: true,
     section: 'board',
@@ -139,7 +139,7 @@ const INITIAL_MOCK_POSTS: (Post & {
     mediaType: 'note',
     sticker: 'star',
     category: 'vouch',
-    eventType: 'Get well',
+    eventType: 'Birthday',
     statusBadge: '⭐ LEGENDARY TRIBUTE',
     isTaggedForUser: true,
     section: 'board',
@@ -161,7 +161,7 @@ const INITIAL_MOCK_POSTS: (Post & {
     mediaType: 'note',
     sticker: 'star',
     category: 'vouch',
-    eventType: 'Promotion',
+    eventType: 'Anniversary',
     statusBadge: '⭐ LEGENDARY TRIBUTE',
     isTaggedForUser: true,
     section: 'board',
@@ -859,26 +859,78 @@ const TopNavigation: React.FC<TopNavigationProps> = ({
   );
 };
 
-const HeroPulseFeed: React.FC<{ onGiftVouchClick: () => void }> = ({ onGiftVouchClick }) => {
+interface HeroPulseFeedProps {
+  posts?: any[];
+  onGiftVouchClick: () => void;
+}
+
+const HeroPulseFeed: React.FC<HeroPulseFeedProps> = ({ posts = [], onGiftVouchClick }) => {
   const [activeMessageIndex, setActiveMessageIndex] = useState(0);
 
-  const mockLiveActivities = [
+  const defaultMockActivities = useMemo(() => [
     { sender: "Mercy24", heartType: "Loving Heart 💖", receiver: "Matthew", color: "text-[#FE6349]", hexColor: "#FE6349" },
-    { sender: "Amino", heartType: "Reliable Heart 🧡", receiver: "Cristiano", color: "text-amber-500", hexColor: "#F59E0B" },
-    { sender: "Sarah", heartType: "Hard Work Heart 💚", receiver: "Alex", color: "text-emerald-500", hexColor: "#10B981" },
-    { sender: "Seyi", heartType: "Workspace Legend 💜", receiver: "Ronike", color: "text-indigo-500", hexColor: "#6366F1" },
-    { sender: "Tyler", heartType: "Inspiration Heart ✨", receiver: "James", color: "text-yellow-500", hexColor: "#EAB308" },
-    { sender: "Sophia", heartType: "Loving Heart 💖", receiver: "Emma", color: "text-rose-500", hexColor: "#F43F5E" },
-  ];
+    { sender: "Amino", heartType: "Reliable Heart 🧡", receiver: "Cristiano", color: "text-[#FF8A65]", hexColor: "#FF8A65" },
+    { sender: "Sarah", heartType: "Hard Work Heart 💚", receiver: "Alex", color: "text-[#4CD964]", hexColor: "#4CD964" },
+    { sender: "Seyi", heartType: "Workspace Legend 💜", receiver: "Ronike", color: "text-[#7B62FF]", hexColor: "#7B62FF" },
+    { sender: "Tyler", heartType: "Visionary Heart 💖", receiver: "James", color: "text-[#FF53C0]", hexColor: "#FF53C0" },
+    { sender: "Sophia", heartType: "Golden Status 💙", receiver: "Emma", color: "text-[#007A78]", hexColor: "#007A78" },
+  ], []);
+
+  // Derive live activities from user posts & blown hearts dynamically
+  const userHeartActivities = useMemo(() => {
+    const list: any[] = [];
+    posts.forEach((p) => {
+      if (p.isHeartToken || p.type === 'heart_token' || p.heartDetails) {
+        const hex = p.heartDetails?.bubbleColor || '#FE6349';
+        const label = p.heartDetails?.label || 'Loving';
+        const emoji = p.heartDetails?.emoji || '💖';
+        list.push({
+          sender: p.authorName || 'Curator',
+          heartType: `${label} Heart ${emoji}`,
+          receiver: (p.recipientName || p.targetId || 'Recipient').replace(/^@/, ''),
+          color: `text-[${hex}]`,
+          hexColor: hex,
+        });
+      } else if (p.isCreatedByUser) {
+        let hex = '#FE6349';
+        let label = 'Loving';
+        let emoji = '💖';
+        if (p.category === 'vouch') { hex = '#FFB800'; label = 'Loving'; emoji = '💛'; }
+        else if (p.category === 'tears') { hex = '#FF8A65'; label = 'Reliable'; emoji = '🧡'; }
+        else if (p.category === 'hype') { hex = '#FF53C0'; label = 'Visionary'; emoji = '💖'; }
+        list.push({
+          sender: p.authorName || 'You',
+          heartType: `${label} Heart ${emoji}`,
+          receiver: (p.recipientName || p.targetId || 'Recipient').replace(/^@/, ''),
+          color: `text-[${hex}]`,
+          hexColor: hex,
+        });
+      }
+    });
+    return list;
+  }, [posts]);
+
+  const liveActivities = useMemo(() => {
+    return [...userHeartActivities, ...defaultMockActivities];
+  }, [userHeartActivities, defaultMockActivities]);
+
+  // When a user blows a new heart, reset active index to 0 so hero section updates immediately!
+  const lastUserCountRef = useRef(userHeartActivities.length);
+  useEffect(() => {
+    if (userHeartActivities.length > lastUserCountRef.current) {
+      setActiveMessageIndex(0);
+    }
+    lastUserCountRef.current = userHeartActivities.length;
+  }, [userHeartActivities.length]);
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setActiveMessageIndex((prev) => (prev + 1) % mockLiveActivities.length);
+      setActiveMessageIndex((prev) => (prev + 1) % liveActivities.length);
     }, 3200);
     return () => clearInterval(timer);
-  }, []);
+  }, [liveActivities.length]);
 
-  const currentActivity = mockLiveActivities[activeMessageIndex];
+  const currentActivity = liveActivities[activeMessageIndex] || liveActivities[0];
 
   return (
     <div className="relative w-full overflow-visible bg-white py-[72px] md:py-[104px] flex flex-col items-center justify-center">
@@ -1066,7 +1118,7 @@ const HeroPulseFeed: React.FC<{ onGiftVouchClick: () => void }> = ({ onGiftVouch
           >
             <span className="font-bold text-gray-900">{currentActivity.sender}</span>
             <span>blew a</span>
-            <span className={`font-bold select-none ${currentActivity.color}`}>{currentActivity.heartType}</span>
+            <span className="font-bold select-none" style={{ color: currentActivity.hexColor }}>{currentActivity.heartType}</span>
             <span>to</span>
             <span className="font-bold text-gray-900">@{currentActivity.receiver}</span>
           </motion.div>
@@ -1523,7 +1575,9 @@ const App: React.FC = () => {
       visibility: PostVisibility.PUBLIC,
       targetType: newPost.targetType || EntityType.WALL,
       ...newPost,
-      reactions: Math.floor(Math.random() * 200) + 5,
+      reactions: newPost.reactions ?? 0,
+      isCreatedByUser: true,
+      section: 'board',
       theme: newPost.theme || '#FAF5E8',
       mediaType: newPost.type === 'text' ? 'note' : newPost.type,
       category: inferredCategory,
@@ -1531,6 +1585,17 @@ const App: React.FC = () => {
     };
     setPosts([postWithTheme, ...posts]);
   };
+
+  const MOMENT_REACTION_THRESHOLD = 50;
+
+  const isEligibleForMoment = (post: any) => {
+    if (post.isMomentEligible) return true;
+    if ((post.reactions || 0) >= MOMENT_REACTION_THRESHOLD) return true;
+    if (!post.isCreatedByUser && (post.reactions || 0) > 0) return true;
+    return false;
+  };
+
+  const momentPosts = posts.filter(isEligibleForMoment);
 
   const query = searchQuery.trim().toLowerCase();
 
@@ -1544,7 +1609,7 @@ const App: React.FC = () => {
     );
   }).length;
 
-  const filteredPosts = posts.filter(post => {
+  const filteredPosts = momentPosts.filter(post => {
     // Filter category
     if (activeFilter !== 'all' && post.category !== activeFilter) {
       return false;
@@ -1636,19 +1701,28 @@ const App: React.FC = () => {
             {selectedFilterId === 'moment' ? (
               <>
                 {/* Concentric radar hero feed */}
-                <HeroPulseFeed onGiftVouchClick={() => {
-                  setCreateModalRecipient(undefined);
-                  setCreateModalHashtag(undefined);
-                  setCreateModalMode(undefined);
-                  setIsCreateModalOpen(true);
-                }} />
+                <HeroPulseFeed 
+                  posts={momentPosts}
+                  onGiftVouchClick={() => {
+                    setCreateModalRecipient(undefined);
+                    setCreateModalHashtag(undefined);
+                    setCreateModalMode(undefined);
+                    setIsCreateModalOpen(true);
+                  }} 
+                />
 
                 <main className="flex-grow bg-white">
                   <Routes>
                     <Route path="/" element={
                       <MasonryFeed 
                         posts={filteredPosts} 
-                        onPostClick={setSelectedPostIndex} 
+                        onPostClick={(index) => {
+                          const target = filteredPosts[index];
+                          if (target) {
+                            const globalIndex = posts.findIndex(p => p.id === target.id);
+                            setSelectedPostIndex(globalIndex !== -1 ? globalIndex : 0);
+                          }
+                        }} 
                         activeFilter={activeFilter}
                         setActiveFilter={setActiveFilter}
                         realtimeStats={realtimeStats}
@@ -1660,7 +1734,13 @@ const App: React.FC = () => {
                     <Route path="*" element={
                       <MasonryFeed 
                         posts={filteredPosts} 
-                        onPostClick={setSelectedPostIndex} 
+                        onPostClick={(index) => {
+                          const target = filteredPosts[index];
+                          if (target) {
+                            const globalIndex = posts.findIndex(p => p.id === target.id);
+                            setSelectedPostIndex(globalIndex !== -1 ? globalIndex : 0);
+                          }
+                        }} 
                         activeFilter={activeFilter}
                         setActiveFilter={setActiveFilter}
                         realtimeStats={realtimeStats}
@@ -1696,6 +1776,8 @@ const App: React.FC = () => {
           <main className="flex-grow bg-white">
             <HeartboardView  
               posts={posts}
+              selectedFilterId={selectedFilterId}
+              onClearFilter={() => setSelectedFilterId('moment')}
               onFilterClick={() => setIsFilterModalOpen(true)}
               onPostClick={(post) => {
                 const foundIndex = posts.findIndex(p => p.id === post.id);
@@ -1748,12 +1830,12 @@ const App: React.FC = () => {
           }}
         />
 
-        {selectedPostIndex !== null && filteredPosts[selectedPostIndex] && (
+        {selectedPostIndex !== null && posts[selectedPostIndex] && (
           <MediaModal 
-            post={filteredPosts[selectedPostIndex]} 
+            post={posts[selectedPostIndex]} 
             onClose={() => setSelectedPostIndex(null)}
-            onPrev={() => setSelectedPostIndex((prev) => prev !== null ? (prev - 1 + filteredPosts.length) % filteredPosts.length : null)}
-            onNext={() => setSelectedPostIndex((prev) => prev !== null ? (prev + 1) % filteredPosts.length : null)}
+            onPrev={() => setSelectedPostIndex((prev) => prev !== null ? (prev - 1 + posts.length) % posts.length : null)}
+            onNext={() => setSelectedPostIndex((prev) => prev !== null ? (prev + 1) % posts.length : null)}
           />
         )}
       </div>
