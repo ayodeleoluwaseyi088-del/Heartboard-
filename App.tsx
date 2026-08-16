@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { HashRouter as Router, Routes, Route } from 'react-router-dom';
-import { EntityType, Post, PostVisibility, MOCK_REGISTERED_USERS, RegisteredUser } from './types';
+import { EntityType, Post, PostVisibility, MOCK_REGISTERED_USERS, RegisteredUser, Contribution } from './types';
 import { PostCard } from './components/PostCard';
 import { MediaModal } from './components/MediaModal';
 import { CreateAppreciationModal } from './components/CreateAppreciationModal';
@@ -27,6 +27,20 @@ import {
   Hash
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+
+export function canViewPostPublicly(post: any) {
+  if (!post.visibility || post.visibility === PostVisibility.PUBLIC || post.visibility === PostVisibility.ANONYMOUS) {
+    return true;
+  }
+  if (post.visibility === PostVisibility.PRIVATE) {
+    if (post.isCreatedByUser) return true;
+    if (Array.isArray(post.recipients) && post.recipients.some((r: string) => r === '@you' || r.toLowerCase().includes('you'))) {
+      return true;
+    }
+    return false;
+  }
+  return true;
+}
 
 const INITIAL_MOCK_POSTS: (Post & { 
   theme?: string; 
@@ -379,6 +393,7 @@ const TopNavigation: React.FC<TopNavigationProps> = ({
 
   // Filter created boards
   const matchingBoards = posts.filter((post) => {
+    if (!canViewPostPublicly(post)) return false;
     if (!query) return true;
     const author = (post.authorName || '').toLowerCase();
     const recipient = (post.recipientName || post.targetId || '').toLowerCase();
@@ -1327,6 +1342,7 @@ const EventCategoryView: React.FC<EventCategoryViewProps> = ({
   const targetId = currentOption.id.toLowerCase();
 
   const matchedPosts = posts.filter(post => {
+    if (!canViewPostPublicly(post)) return false;
     if (post.eventType) {
       const pEv = post.eventType.toLowerCase().replace(/_/g, ' ');
       if (pEv === targetLabel || pEv === targetId) return true;
@@ -1462,9 +1478,11 @@ const App: React.FC = () => {
   const [selectedPostIndex, setSelectedPostIndex] = useState<number | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [filterModalMode, setFilterModalMode] = useState<'events' | 'hearts'>('events');
   const [activeFilter, setActiveFilter] = useState<'all' | 'tears' | 'vouch' | 'hype'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeNavTab, setActiveNavTab] = useState<'home' | 'hearts'>('home');
+  const [heartFilter, setHeartFilter] = useState<'received' | 'sent'>('received');
   const [liveReactionTicks, setLiveReactionTicks] = useState(0);
 
   // Profile and Hashtag view states
@@ -1589,6 +1607,7 @@ const App: React.FC = () => {
   const MOMENT_REACTION_THRESHOLD = 50;
 
   const isEligibleForMoment = (post: any) => {
+    if (!canViewPostPublicly(post)) return false;
     if (post.isMomentEligible) return true;
     if ((post.reactions || 0) >= MOMENT_REACTION_THRESHOLD) return true;
     if (!post.isCreatedByUser && (post.reactions || 0) > 0) return true;
@@ -1675,7 +1694,12 @@ const App: React.FC = () => {
               onSendMessage={handleSendMessageForUser}
               onSelectUser={handleSelectUser}
               posts={posts}
-              onFilterClick={() => setIsFilterModalOpen(true)}
+              heartFilter={heartFilter}
+              onHeartFilterChange={setHeartFilter}
+              onFilterClick={(subTab) => {
+                setFilterModalMode(subTab === 'hearts' ? 'hearts' : 'events');
+                setIsFilterModalOpen(true);
+              }}
               onPostClick={(post) => {
                 const foundIndex = posts.findIndex(p => p.id === post.id);
                 if (foundIndex !== -1) {
@@ -1689,7 +1713,10 @@ const App: React.FC = () => {
         ) : activeNavTab === 'home' ? (
           <>
             <TopNavigation 
-              onFilterClick={() => setIsFilterModalOpen(true)} 
+              onFilterClick={() => {
+                setFilterModalMode('events');
+                setIsFilterModalOpen(true);
+              }} 
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
               posts={posts}
@@ -1758,7 +1785,10 @@ const App: React.FC = () => {
                   filterId={selectedFilterId}
                   posts={posts}
                   onBack={() => setSelectedFilterId('moment')}
-                  onFilterClick={() => setIsFilterModalOpen(true)}
+                  onFilterClick={() => {
+                    setFilterModalMode('events');
+                    setIsFilterModalOpen(true);
+                  }}
                   onPostClick={(index) => setSelectedPostIndex(index)}
                   onCreateBoard={() => {
                     setCreateModalRecipient(undefined);
@@ -1778,7 +1808,12 @@ const App: React.FC = () => {
               posts={posts}
               selectedFilterId={selectedFilterId}
               onClearFilter={() => setSelectedFilterId('moment')}
-              onFilterClick={() => setIsFilterModalOpen(true)}
+              heartFilter={heartFilter}
+              onHeartFilterChange={setHeartFilter}
+              onFilterClick={(subTab) => {
+                setFilterModalMode(subTab === 'hearts' ? 'hearts' : 'events');
+                setIsFilterModalOpen(true);
+              }}
               onPostClick={(post) => {
                 const foundIndex = posts.findIndex(p => p.id === post.id);
                 if (foundIndex !== -1) {
@@ -1824,20 +1859,57 @@ const App: React.FC = () => {
         <FilterModal 
           isOpen={isFilterModalOpen}
           onClose={() => setIsFilterModalOpen(false)}
+          mode={filterModalMode}
           selectedFilterId={selectedFilterId}
-          onApplyFilter={(selectedOptionId) => {
+          heartFilter={heartFilter}
+          onApplyFilter={(selectedOptionId, selectedHeartFilter) => {
             setSelectedFilterId(selectedOptionId);
+            if (selectedHeartFilter) {
+              setHeartFilter(selectedHeartFilter);
+            }
           }}
         />
 
-        {selectedPostIndex !== null && posts[selectedPostIndex] && (
-          <MediaModal 
-            post={posts[selectedPostIndex]} 
-            onClose={() => setSelectedPostIndex(null)}
-            onPrev={() => setSelectedPostIndex((prev) => prev !== null ? (prev - 1 + posts.length) % posts.length : null)}
-            onNext={() => setSelectedPostIndex((prev) => prev !== null ? (prev + 1) % posts.length : null)}
-          />
-        )}
+        {(() => {
+          const handleAddContribution = (postId: string, text: string, authorName = 'You') => {
+            setPosts((prevPosts) =>
+              prevPosts.map((p) => {
+                if (p.id !== postId) return p;
+                const maxCap = p.maxCapacity || (p.boardCapacity === 'solo' ? 1 : 20);
+                const currentContribs = p.contributions || [];
+                const totalMessages = 1 + currentContribs.length;
+                if (totalMessages >= maxCap) return p;
+
+                const newContrib: Contribution = {
+                  id: `contrib-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+                  authorName: authorName,
+                  authorHandle: authorName.startsWith('@') ? authorName : `@${authorName.toLowerCase().replace(/\s+/g, '')}`,
+                  content: text,
+                  createdAt: new Date().toISOString(),
+                };
+
+                return {
+                  ...p,
+                  contributions: [...currentContribs, newContrib],
+                };
+              })
+            );
+          };
+
+          return (
+            <>
+              {selectedPostIndex !== null && posts[selectedPostIndex] && (
+                <MediaModal 
+                  post={posts[selectedPostIndex]} 
+                  onClose={() => setSelectedPostIndex(null)}
+                  onPrev={() => setSelectedPostIndex((prev) => prev !== null ? (prev - 1 + posts.length) % posts.length : null)}
+                  onNext={() => setSelectedPostIndex((prev) => prev !== null ? (prev + 1) % posts.length : null)}
+                  onAddContribution={handleAddContribution}
+                />
+              )}
+            </>
+          );
+        })()}
       </div>
     </Router>
   );

@@ -183,13 +183,24 @@ export const MOCK_REGISTERED_USERS: RegisteredUser[] = [
   }
 ];
 
+export interface Contribution {
+  id: string;
+  authorName: string;
+  authorHandle?: string;
+  authorAvatar?: string;
+  content: string;
+  createdAt: string;
+}
+
 export interface Post {
   id: string;
   authorName: string;
   authorAvatar?: string;
   content: string;
+  caption?: string;
   type: 'text' | 'image' | 'audio';
   mediaUrl?: string;
+  imageUrl?: string;
   visibility: PostVisibility;
   createdAt: string;
   targetId: string;
@@ -197,6 +208,21 @@ export interface Post {
   reactions: number;
   canvasElements?: any[];
   eventType?: string;
+  recipients?: string[];
+  hashtags?: string[];
+  boardCapacity?: 'solo' | 'collaborative' | string;
+  maxCapacity?: number;
+  contributions?: Contribution[];
+  isCreatedByUser?: boolean;
+  section?: 'board' | 'tagged' | string;
+  theme?: string;
+  mediaType?: 'audio' | 'video' | 'image' | 'text' | 'note';
+  sponsor?: string;
+  sticker?: string;
+  confetti?: string;
+  secondaryImage?: string;
+  isBlurred?: boolean;
+  statusBadge?: string;
 }
 
 export interface AppreciationEntity {

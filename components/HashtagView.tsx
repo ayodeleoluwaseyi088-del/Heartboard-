@@ -6,7 +6,7 @@ import {
   Share2
 } from 'lucide-react';
 import { PostCard } from './PostCard';
-import { RegisteredUser } from '../types';
+import { RegisteredUser, PostVisibility } from '../types';
 
 export interface HashtagViewProps {
   hashtag: string; // e.g. "#ronaldo" or "ronaldo"
@@ -33,6 +33,13 @@ export const HashtagView: React.FC<HashtagViewProps> = ({
 
   // Filter posts that belong to this hashtag
   const matchingPosts = posts.filter(post => {
+    // Check privacy
+    if (post.visibility === PostVisibility.PRIVATE) {
+      if (!post.isCreatedByUser && (!Array.isArray(post.recipients) || !post.recipients.some((r: string) => r === '@you' || r.toLowerCase().includes('you')))) {
+        return false;
+      }
+    }
+
     // Check hashtags array
     if (Array.isArray(post.hashtags)) {
       if (post.hashtags.some((h: string) => h.toLowerCase().replace('#', '') === rawTag)) {

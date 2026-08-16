@@ -47,6 +47,8 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick, disabled }) =
     return fallback;
   };
 
+  const isCollaborative = post.boardCapacity !== 'solo' && (post.maxCapacity === undefined || post.maxCapacity > 1);
+
   return (
     <div 
       className={`group h-full select-none ${isInactive ? 'cursor-default' : 'cursor-pointer'}`} 
@@ -73,6 +75,9 @@ export const PostCard: React.FC<PostCardProps> = ({ post, onClick, disabled }) =
             recipient={Array.isArray((post as any).recipients) ? (post as any).recipients[0] : (post.recipientName || post.targetId)}
             selectedHearts={(post as any).selectedHearts || []}
             activeType={post.mediaType || post.type || 'text'}
+            isCollaborative={isCollaborative}
+            visibility={post.visibility}
+            showMetadata={false}
           />
         </div>
       </div>

@@ -44,7 +44,7 @@ export interface UserProfileData {
 export interface HeartboardViewProps {
   posts?: any[];
   onPostClick?: (post: any) => void;
-  onFilterClick?: () => void;
+  onFilterClick?: (subTab?: 'board' | 'tagged' | 'hearts') => void;
   profileUser?: UserProfileData | null;
   onBack?: () => void;
   onGiftHeart?: (user: UserProfileData) => void;
@@ -52,6 +52,9 @@ export interface HeartboardViewProps {
   onSelectUser?: (user: UserProfileData) => void;
   selectedFilterId?: string;
   onClearFilter?: () => void;
+  defaultTab?: 'board' | 'tagged' | 'hearts';
+  heartFilter?: 'received' | 'sent';
+  onHeartFilterChange?: (filter: 'received' | 'sent') => void;
 }
 
 // Re-use the exact HeartBubbleSvg component from Page 2 (Send/Blow Heart)
@@ -204,6 +207,330 @@ const HeartboardCard: React.FC<{ item: any; onClick: () => void }> = ({ item, on
   return <PostCard post={item} onClick={onClick} />;
 };
 
+const DEFAULT_MOCK_RECEIVED_HEARTS = [
+  {
+    id: 'rec-heart-loving-1',
+    authorName: 'Mercy24',
+    authorHandle: '@mercy24',
+    authorAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Mercy24',
+    recipientName: 'Micky Mouse',
+    recipients: ['@mickymouse'],
+    selectedHearts: ['loving'],
+    heartDetails: { id: 'loving', label: 'Loving Partner', emoji: '💖', bubbleColor: '#FFB800' },
+    content: 'Loving Heart 💖 blown to Micky Mouse with deepest appreciation!',
+    createdAt: '2024-03-21T08:00:00Z',
+    isHeartToken: true,
+    isCreatedByUser: false,
+    section: 'hearts'
+  },
+  {
+    id: 'rec-heart-loving-2',
+    authorName: 'Ronike',
+    authorHandle: '@ronike_vibe',
+    authorAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80',
+    recipientName: 'Micky Mouse',
+    recipients: ['@mickymouse'],
+    selectedHearts: ['loving'],
+    heartDetails: { id: 'loving', label: 'Loving Partner', emoji: '💖', bubbleColor: '#FFB800' },
+    content: 'Loving soul and always spreading sunshine everywhere! ✨',
+    createdAt: '2024-03-20T14:15:00Z',
+    isHeartToken: true,
+    isCreatedByUser: false,
+    section: 'hearts'
+  },
+  {
+    id: 'rec-heart-loving-3',
+    authorName: 'Tyler',
+    authorHandle: '@tyler_grandson',
+    authorAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=200',
+    recipientName: 'Micky Mouse',
+    recipients: ['@mickymouse'],
+    selectedHearts: ['loving'],
+    heartDetails: { id: 'loving', label: 'Loving Partner', emoji: '💖', bubbleColor: '#FFB800' },
+    content: 'Endless love and appreciation for your support throughout the journey!',
+    createdAt: '2024-03-19T11:20:00Z',
+    isHeartToken: true,
+    isCreatedByUser: false,
+    section: 'hearts'
+  },
+  {
+    id: 'rec-heart-reliable-1',
+    authorName: 'Alex_Dev',
+    authorHandle: '@alex_dev',
+    authorAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alex',
+    recipientName: 'Micky Mouse',
+    recipients: ['@mickymouse'],
+    selectedHearts: ['reliable'],
+    heartDetails: { id: 'reliable', label: 'Reliable', emoji: '🤝', bubbleColor: '#FF8A65' },
+    content: 'Always dependable and on time whenever a deadline approaches. True rock! 🤝',
+    createdAt: '2024-03-20T16:45:00Z',
+    isHeartToken: true,
+    isCreatedByUser: false,
+    section: 'hearts'
+  },
+  {
+    id: 'rec-heart-reliable-2',
+    authorName: 'Sarah',
+    authorHandle: '@sarah_zen',
+    authorAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah',
+    recipientName: 'Micky Mouse',
+    recipients: ['@mickymouse'],
+    selectedHearts: ['reliable'],
+    heartDetails: { id: 'reliable', label: 'Reliable', emoji: '🤝', bubbleColor: '#FF8A65' },
+    content: 'Rock-solid reliability through thick and thin.',
+    createdAt: '2024-03-18T09:30:00Z',
+    isHeartToken: true,
+    isCreatedByUser: false,
+    section: 'hearts'
+  },
+  {
+    id: 'rec-heart-leadership-1',
+    authorName: 'Cristiano Ronaldo',
+    authorHandle: '@cristiano',
+    authorAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Cristiano',
+    recipientName: 'Micky Mouse',
+    recipients: ['@mickymouse'],
+    selectedHearts: ['leadership'],
+    heartDetails: { id: 'leadership', label: 'Leadership', emoji: '👑', bubbleColor: '#7B62FF' },
+    content: 'True leadership that inspires the entire community. Keep pushing! 👑',
+    createdAt: '2024-03-19T18:00:00Z',
+    isHeartToken: true,
+    isCreatedByUser: false,
+    section: 'hearts'
+  },
+  {
+    id: 'rec-heart-leadership-2',
+    authorName: 'Amino',
+    authorHandle: '@amino_official',
+    authorAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Amino',
+    recipientName: 'Micky Mouse',
+    recipients: ['@mickymouse'],
+    selectedHearts: ['leadership'],
+    heartDetails: { id: 'leadership', label: 'Leadership', emoji: '👑', bubbleColor: '#7B62FF' },
+    content: 'Guiding light for our creative projects and team coordination!',
+    createdAt: '2024-03-17T12:00:00Z',
+    isHeartToken: true,
+    isCreatedByUser: false,
+    section: 'hearts'
+  },
+  {
+    id: 'rec-heart-hardworking-1',
+    authorName: 'Sarah',
+    authorHandle: '@sarah_zen',
+    authorAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah',
+    recipientName: 'Micky Mouse',
+    recipients: ['@mickymouse'],
+    selectedHearts: ['hardworking'],
+    heartDetails: { id: 'hardworking', label: 'Hard working', emoji: '💪', bubbleColor: '#4CD964' },
+    content: 'Incredible work ethic day in and day out! Never ceases to amaze. 💪',
+    createdAt: '2024-03-21T07:10:00Z',
+    isHeartToken: true,
+    isCreatedByUser: false,
+    section: 'hearts'
+  },
+  {
+    id: 'rec-heart-hardworking-2',
+    authorName: 'Davido Fans',
+    authorHandle: '@davido_30bg',
+    authorAvatar: 'https://images.unsplash.com/photo-1493225255756-d9584f8606e9?auto=format&fit=crop&q=80&w=200',
+    recipientName: 'Micky Mouse',
+    recipients: ['@mickymouse'],
+    selectedHearts: ['hardworking'],
+    heartDetails: { id: 'hardworking', label: 'Hard working', emoji: '💪', bubbleColor: '#4CD964' },
+    content: 'Non-stop dedication, hard work and persistent positivity!',
+    createdAt: '2024-03-16T15:00:00Z',
+    isHeartToken: true,
+    isCreatedByUser: false,
+    section: 'hearts'
+  },
+  {
+    id: 'rec-heart-visionary-1',
+    authorName: 'Beyoncé Fan',
+    authorHandle: '@bey_hive',
+    authorAvatar: 'https://images.unsplash.com/photo-1574100004472-e536d3b6bacc?auto=format&fit=crop&q=80&w=200',
+    recipientName: 'Micky Mouse',
+    recipients: ['@mickymouse'],
+    selectedHearts: ['visionary'],
+    heartDetails: { id: 'visionary', label: 'Visionary', emoji: '✨', bubbleColor: '#FF53C0' },
+    content: 'Foresight that changes the game. Truly a visionary creator! ✨',
+    createdAt: '2024-03-20T10:30:00Z',
+    isHeartToken: true,
+    isCreatedByUser: false,
+    section: 'hearts'
+  },
+  {
+    id: 'rec-heart-best-1',
+    authorName: 'Argentina Fans',
+    authorHandle: '@argentina_fans',
+    authorAvatar: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&q=80&w=200',
+    recipientName: 'Micky Mouse',
+    recipients: ['@mickymouse'],
+    selectedHearts: ['best'],
+    heartDetails: { id: 'best', label: 'Best of all', emoji: '🏆', bubbleColor: '#007A78' },
+    content: 'Best of all! A genuine legend and inspiring soul in the community. 🏆',
+    createdAt: '2024-03-19T20:15:00Z',
+    isHeartToken: true,
+    isCreatedByUser: false,
+    section: 'hearts'
+  }
+];
+
+const DEFAULT_MOCK_SENT_HEARTS = [
+  {
+    id: 'sent-heart-loving-1',
+    authorName: 'Micky Mouse',
+    authorHandle: '@mickymouse',
+    authorAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Micky',
+    recipientName: 'Beyounce',
+    recipientHandle: '@beyounce',
+    recipientAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200',
+    recipients: ['@beyounce'],
+    selectedHearts: ['loving'],
+    heartDetails: { id: 'loving', label: 'Loving Partner', emoji: '💖', bubbleColor: '#FFB800' },
+    content: 'Queen Bey, your music healed my heart! Loving token for you 💖',
+    createdAt: '2024-03-21T09:00:00Z',
+    isHeartToken: true,
+    isCreatedByUser: true,
+    section: 'hearts'
+  },
+  {
+    id: 'sent-heart-loving-2',
+    authorName: 'Micky Mouse',
+    authorHandle: '@mickymouse',
+    authorAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Micky',
+    recipientName: 'Sarah',
+    recipientHandle: '@sarah_zen',
+    recipientAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah',
+    recipients: ['@sarah_zen'],
+    selectedHearts: ['loving'],
+    heartDetails: { id: 'loving', label: 'Loving Partner', emoji: '💖', bubbleColor: '#FFB800' },
+    content: 'Thank you for the warm guidance, calm mindset, and kindness! 💖',
+    createdAt: '2024-03-20T17:00:00Z',
+    isHeartToken: true,
+    isCreatedByUser: true,
+    section: 'hearts'
+  },
+  {
+    id: 'sent-heart-reliable-1',
+    authorName: 'Micky Mouse',
+    authorHandle: '@mickymouse',
+    authorAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Micky',
+    recipientName: 'Tyler',
+    recipientHandle: '@tyler_grandson',
+    recipientAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=200',
+    recipients: ['@tyler_grandson'],
+    selectedHearts: ['reliable'],
+    heartDetails: { id: 'reliable', label: 'Reliable', emoji: '🤝', bubbleColor: '#FF8A65' },
+    content: 'Thank you for always keeping your word and standing strong with family.',
+    createdAt: '2024-03-19T13:40:00Z',
+    isHeartToken: true,
+    isCreatedByUser: true,
+    section: 'hearts'
+  },
+  {
+    id: 'sent-heart-leadership-1',
+    authorName: 'Micky Mouse',
+    authorHandle: '@mickymouse',
+    authorAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Micky',
+    recipientName: 'Cristiano Ronaldo',
+    recipientHandle: '@cristiano',
+    recipientAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Cristiano',
+    recipients: ['@cristiano'],
+    selectedHearts: ['leadership'],
+    heartDetails: { id: 'leadership', label: 'Leadership', emoji: '👑', bubbleColor: '#7B62FF' },
+    content: 'Unmatched leadership on and off the pitch. True global inspiration! 👑',
+    createdAt: '2024-03-20T21:10:00Z',
+    isHeartToken: true,
+    isCreatedByUser: true,
+    section: 'hearts'
+  },
+  {
+    id: 'sent-heart-leadership-2',
+    authorName: 'Micky Mouse',
+    authorHandle: '@mickymouse',
+    authorAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Micky',
+    recipientName: 'Lionel Messi',
+    recipientHandle: '@messi',
+    recipientAvatar: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&q=80&w=200',
+    recipients: ['@messi'],
+    selectedHearts: ['leadership'],
+    heartDetails: { id: 'leadership', label: 'Leadership', emoji: '👑', bubbleColor: '#7B62FF' },
+    content: 'Masterful captaincy and calm leadership in the world cup final.',
+    createdAt: '2024-03-18T19:30:00Z',
+    isHeartToken: true,
+    isCreatedByUser: true,
+    section: 'hearts'
+  },
+  {
+    id: 'sent-heart-hardworking-1',
+    authorName: 'Micky Mouse',
+    authorHandle: '@mickymouse',
+    authorAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Micky',
+    recipientName: 'Alex_Dev',
+    recipientHandle: '@alex_dev',
+    recipientAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alex',
+    recipients: ['@alex_dev'],
+    selectedHearts: ['hardworking'],
+    heartDetails: { id: 'hardworking', label: 'Hard working', emoji: '💪', bubbleColor: '#4CD964' },
+    content: 'Astonishing technical grit and late-night coding breakthroughs! 🛠️💪',
+    createdAt: '2024-03-21T06:45:00Z',
+    isHeartToken: true,
+    isCreatedByUser: true,
+    section: 'hearts'
+  },
+  {
+    id: 'sent-heart-visionary-1',
+    authorName: 'Micky Mouse',
+    authorHandle: '@mickymouse',
+    authorAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Micky',
+    recipientName: 'Davido',
+    recipientHandle: '@davido_30bg',
+    recipientAvatar: 'https://images.unsplash.com/photo-1493225255756-d9584f8606e9?auto=format&fit=crop&q=80&w=200',
+    recipients: ['@davido_30bg'],
+    selectedHearts: ['visionary'],
+    heartDetails: { id: 'visionary', label: 'Visionary', emoji: '✨', bubbleColor: '#FF53C0' },
+    content: 'Visionary music pioneer taking global Afrobeats to unprecedented heights! 🌟',
+    createdAt: '2024-03-19T15:20:00Z',
+    isHeartToken: true,
+    isCreatedByUser: true,
+    section: 'hearts'
+  },
+  {
+    id: 'sent-heart-best-1',
+    authorName: 'Micky Mouse',
+    authorHandle: '@mickymouse',
+    authorAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Micky',
+    recipientName: 'Cristiano Ronaldo',
+    recipientHandle: '@cristiano',
+    recipientAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Cristiano',
+    recipients: ['@cristiano'],
+    selectedHearts: ['best'],
+    heartDetails: { id: 'best', label: 'Best of all', emoji: '🏆', bubbleColor: '#007A78' },
+    content: 'The greatest of all time. Respect and honor forever! 🏆',
+    createdAt: '2024-03-18T22:00:00Z',
+    isHeartToken: true,
+    isCreatedByUser: true,
+    section: 'hearts'
+  },
+  {
+    id: 'sent-heart-best-2',
+    authorName: 'Micky Mouse',
+    authorHandle: '@mickymouse',
+    authorAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Micky',
+    recipientName: 'Lionel Messi',
+    recipientHandle: '@messi',
+    recipientAvatar: 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&q=80&w=200',
+    recipients: ['@messi'],
+    selectedHearts: ['best'],
+    heartDetails: { id: 'best', label: 'Best of all', emoji: '🏆', bubbleColor: '#007A78' },
+    content: 'Pure footballing perfection. Best of all time! 🏆',
+    createdAt: '2024-03-17T18:15:00Z',
+    isHeartToken: true,
+    isCreatedByUser: true,
+    section: 'hearts'
+  }
+];
+
 const MOCK_HEARTBOARD_ITEMS = [
   {
     id: 'hb-1',
@@ -294,9 +621,28 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
   onSendMessage,
   onSelectUser,
   selectedFilterId = 'moment',
-  onClearFilter
+  onClearFilter,
+  defaultTab = 'board',
+  heartFilter: heartFilterProp,
+  onHeartFilterChange
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'board' | 'tagged' | 'hearts'>('board');
+  const [activeSubTab, setActiveSubTab] = useState<'board' | 'tagged' | 'hearts'>(defaultTab);
+  const [internalHeartFilter, setInternalHeartFilter] = useState<'received' | 'sent'>(heartFilterProp || 'received');
+  
+  React.useEffect(() => {
+    if (heartFilterProp !== undefined) {
+      setInternalHeartFilter(heartFilterProp);
+    }
+  }, [heartFilterProp]);
+
+  const heartFilter = heartFilterProp !== undefined ? heartFilterProp : internalHeartFilter;
+  const setHeartFilter = (newFilter: 'received' | 'sent') => {
+    setInternalHeartFilter(newFilter);
+    if (onHeartFilterChange) {
+      onHeartFilterChange(newFilter);
+    }
+  };
+
   const [searchQuery, setSearchQuery] = useState('');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -382,65 +728,51 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
   const [drawerSearchQuery, setDrawerSearchQuery] = useState('');
   const [activeTooltipIndex, setActiveTooltipIndex] = useState<string | null>(null);
 
-  const sampleSenders = [
-    { name: 'Ronike', date: 'Wed Dec 15 2016', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80' },
-    { name: 'MickyMouse', date: 'Thu Jan 12 2023', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80' },
-    { name: 'Mercy24', date: 'Fri Mar 04 2022', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&auto=format&fit=crop&q=80' },
-    { name: 'Alex_Dev', date: 'Mon Jun 19 2023', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=80' },
-    { name: 'Davido_Fan', date: 'Sat Oct 08 2022', avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=120&auto=format&fit=crop&q=80' },
-    { name: 'Amino', date: 'Tue Aug 22 2023', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=120&auto=format&fit=crop&q=80' },
-    { name: 'Sarah_K', date: 'Sun May 14 2023', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=120&auto=format&fit=crop&q=80' },
-    { name: 'David_B', date: 'Wed Nov 02 2022', avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=120&auto=format&fit=crop&q=80' },
-    { name: 'Jessica_M', date: 'Fri Feb 18 2022', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=120&auto=format&fit=crop&q=80' },
-    { name: 'Michael_T', date: 'Thu Sep 29 2022', avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=120&auto=format&fit=crop&q=80' },
-    { name: 'Elena_R', date: 'Mon Apr 03 2023', avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=120&auto=format&fit=crop&q=80' },
-    { name: 'Chris_P', date: 'Sat Dec 10 2022', avatar: 'https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?w=120&auto=format&fit=crop&q=80' },
-    { name: 'Sophie_L', date: 'Tue Jul 25 2023', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=120&auto=format&fit=crop&q=80' },
-    { name: 'Daniel_H', date: 'Sun Jan 29 2023', avatar: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=120&auto=format&fit=crop&q=80' },
-    { name: 'Chloe_W', date: 'Wed Aug 16 2023', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80' }
+  // Semantic Heart Spectrum specifications matching SEMANTIC_HEARTS
+  const SEMANTIC_SPECS = [
+    {
+      id: 'loving',
+      categoryName: 'Loving',
+      bubbleColor: '#FFB800',
+      bgHalo: '#FEF3C7',
+      dotColors: ['#FDE047', '#FFB800', '#FEF08A', '#D97706'],
+    },
+    {
+      id: 'reliable',
+      categoryName: 'Reliable',
+      bubbleColor: '#FF8A65',
+      bgHalo: '#FFF0EB',
+      dotColors: ['#FFD8CC', '#FF8A65', '#FFC1B0', '#E65100'],
+    },
+    {
+      id: 'leadership',
+      categoryName: 'Leadership',
+      bubbleColor: '#7B62FF',
+      bgHalo: '#F3F0FF',
+      dotColors: ['#C4B5FD', '#7B62FF', '#DDD6FE', '#5B21B6'],
+    },
+    {
+      id: 'hardworking',
+      categoryName: 'Hard working',
+      bubbleColor: '#4CD964',
+      bgHalo: '#ECFDF5',
+      dotColors: ['#A7F3D0', '#4CD964', '#6EE7B7', '#047857'],
+    },
+    {
+      id: 'visionary',
+      categoryName: 'Visionary',
+      bubbleColor: '#FF53C0',
+      bgHalo: '#FDF2F8',
+      dotColors: ['#FBCFE8', '#FF53C0', '#F472B6', '#BE185D'],
+    },
+    {
+      id: 'best',
+      categoryName: 'Best of all',
+      bubbleColor: '#007A78',
+      bgHalo: '#E6F4F4',
+      dotColors: ['#80CBD2', '#007A78', '#4DB6AC', '#004D40'],
+    },
   ];
-
-  const categorySendersMap: Record<string, { name: string; date: string; avatar: string }[]> = {
-    'cat-visionary': [
-      { name: 'Ronike', date: 'Wed Dec 15 2016', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80' },
-      { name: 'Mercy24', date: 'Fri Mar 04 2022', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&auto=format&fit=crop&q=80' },
-      { name: 'Alex_Dev', date: 'Mon Jun 19 2023', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=80' },
-      { name: 'MickyMouse', date: 'Thu Jan 12 2023', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80' },
-      { name: 'Sarah_K', date: 'Sun May 14 2023', avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=120&auto=format&fit=crop&q=80' },
-      { name: 'David_B', date: 'Wed Nov 02 2022', avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=120&auto=format&fit=crop&q=80' },
-      { name: 'Chloe_W', date: 'Wed Aug 16 2023', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80' },
-      { name: 'Elena_R', date: 'Mon Apr 03 2023', avatar: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=120&auto=format&fit=crop&q=80' },
-      { name: 'Chris_P', date: 'Sat Dec 10 2022', avatar: 'https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?w=120&auto=format&fit=crop&q=80' },
-      { name: 'Davido_Fan', date: 'Sat Oct 08 2022', avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=120&auto=format&fit=crop&q=80' },
-      { name: 'Amino', date: 'Tue Aug 22 2023', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=120&auto=format&fit=crop&q=80' },
-      { name: 'Jessica_M', date: 'Fri Feb 18 2022', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=120&auto=format&fit=crop&q=80' },
-      { name: 'Michael_T', date: 'Thu Sep 29 2022', avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=120&auto=format&fit=crop&q=80' },
-      { name: 'Sophie_L', date: 'Tue Jul 25 2023', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=120&auto=format&fit=crop&q=80' },
-      { name: 'Daniel_H', date: 'Sun Jan 29 2023', avatar: 'https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=120&auto=format&fit=crop&q=80' }
-    ],
-    'cat-leadership': [
-      { name: 'Ronike', date: 'Tue Dec 20 2016', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80' },
-      { name: 'Davido_Fan', date: 'Sat Oct 08 2022', avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=120&auto=format&fit=crop&q=80' },
-      { name: 'Jessica_M', date: 'Fri Feb 18 2022', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=120&auto=format&fit=crop&q=80' }
-    ],
-    'cat-hardworking': [
-      { name: 'Amino', date: 'Tue Aug 22 2023', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=120&auto=format&fit=crop&q=80' },
-      { name: 'Alex_Dev', date: 'Mon Jul 03 2023', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=80' }
-    ],
-    'cat-loving': [
-      { name: 'Ronike', date: 'Thu Dec 22 2016', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80' },
-      { name: 'Sophie_L', date: 'Tue Jul 25 2023', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=120&auto=format&fit=crop&q=80' }
-    ],
-    'cat-reliable': [
-      { name: 'Mercy24', date: 'Fri Mar 11 2022', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=120&auto=format&fit=crop&q=80' },
-      { name: 'CR7_Official', date: 'Mon Oct 24 2022', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=120&auto=format&fit=crop&q=80' },
-      { name: 'Ronike', date: 'Sun Jan 08 2017', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80' }
-    ],
-    'cat-appreciation': [
-      { name: 'MickyMouse', date: 'Wed Nov 15 2023', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=120&auto=format&fit=crop&q=80' },
-      { name: 'Community', date: 'Fri Nov 24 2023', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80' }
-    ]
-  };
 
   const handleStartEdit = () => {
     setTempName(userName);
@@ -482,113 +814,168 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
 
   const allAvailableItems = posts.length > 0 ? posts : MOCK_HEARTBOARD_ITEMS;
 
-  // Build Heart Categories using exact SEMANTIC_HEARTS spectrum colors & definitions
-  const defaultHeartCategories: HeartCategoryCardData[] = [
-    {
-      id: 'cat-visionary',
-      categoryName: 'Visionary',
-      count: 92,
-      bubbleColor: '#FF53C0',
-      bgHalo: '#FDF2F8',
-      dotColors: ['#FBCFE8', '#FF53C0', '#F472B6', '#BE185D'],
-      layoutType: 'cluster3',
-      badgeExtra: '+89',
-      items: [
-        { authorName: 'Mercy24', content: 'Always thinking 10 steps ahead!', createdAt: '2 hours ago' },
-        { authorName: 'Alex_Dev', content: 'Incredible product vision and leadership!', createdAt: '1 day ago' }
-      ]
-    },
-    {
-      id: 'cat-leadership',
-      categoryName: 'Leadership',
-      count: 3,
-      bubbleColor: '#7B62FF',
-      bgHalo: '#F3F0FF',
-      dotColors: ['#C4B5FD', '#7B62FF', '#DDD6FE', '#5B21B6'],
-      layoutType: 'cluster3',
-      items: [
-        { authorName: 'Davido_Fan', content: 'Guiding the whole team through challenges with clarity.', createdAt: '3 days ago' }
-      ]
-    },
-    {
-      id: 'cat-hardworking',
-      categoryName: 'Hard working',
-      count: 2,
-      bubbleColor: '#4CD964',
-      bgHalo: '#ECFDF5',
-      dotColors: ['#A7F3D0', '#4CD964', '#6EE7B7', '#047857'],
-      layoutType: 'pair2',
-      items: [
-        { authorName: 'Amino', content: 'Pure dedication and consistency every single day!', createdAt: '4 days ago' }
-      ]
-    },
-    {
-      id: 'cat-loving',
-      categoryName: 'Loving',
-      count: 1,
-      bubbleColor: '#FFB800',
-      bgHalo: '#FEF3C7',
-      dotColors: ['#FDE047', '#FFB800', '#FEF08A', '#D97706'],
-      layoutType: 'single1',
-      items: [
-        { authorName: 'Grandpa', content: 'Your heart overflows with love and kindness.', createdAt: '5 days ago' }
-      ]
-    },
-    {
-      id: 'cat-reliable',
-      categoryName: 'Reliable',
-      count: 3,
-      bubbleColor: '#FF8A65',
-      bgHalo: '#FFF0EB',
-      dotColors: ['#FFD8CC', '#FF8A65', '#FFC1B0', '#E65100'],
-      layoutType: 'pair2',
-      items: [
-        { authorName: 'CR7_Official', content: 'Rock solid reliability. You never let anyone down.', createdAt: '1 week ago' }
-      ]
-    },
-    {
-      id: 'cat-appreciation',
-      categoryName: 'Best of all',
-      count: 1,
-      bubbleColor: '#007A78',
-      bgHalo: '#E6F4F4',
-      dotColors: ['#80CBD2', '#007A78', '#4DB6AC', '#004D40'],
-      layoutType: 'single1',
-      items: [
-        { authorName: 'Community', content: 'Thank you for all the support and goodwill!', createdAt: '2 weeks ago' }
-      ]
-    }
+  // Build separate Received and Sent datasets from dynamic posts and defaults
+  const userHeartPosts = allAvailableItems.filter((p: any) => 
+    p.isHeartToken || p.section === 'hearts' || p.type === 'heart_token' || (Array.isArray(p.selectedHearts) && p.selectedHearts.length > 0) || p.heartDetails
+  );
+
+  // Dynamic user-sent hearts: items created by user
+  const dynamicSentHearts = userHeartPosts.filter((p: any) => p.isCreatedByUser === true);
+  // Dynamic user-received hearts: items not created by user or targeted at user
+  const dynamicReceivedHearts = userHeartPosts.filter((p: any) => p.isCreatedByUser !== true);
+
+  // Combine defaults with user actions without duplicates
+  const allReceivedHearts = [
+    ...dynamicReceivedHearts,
+    ...DEFAULT_MOCK_RECEIVED_HEARTS.filter(
+      def => !dynamicReceivedHearts.some((dyn: any) => dyn.id === def.id)
+    )
   ];
 
-  // Group user-created / post hearts into matching categories
-  allAvailableItems.forEach((post) => {
-    if (post.isHeartToken || post.section === 'hearts' || post.type === 'heart_token') {
-      const label = (post.heartDetails?.label || post.title || '').toLowerCase();
-      const matchCat = defaultHeartCategories.find(c => 
-        c.categoryName.toLowerCase().includes(label) || label.includes(c.categoryName.toLowerCase())
-      );
-      if (matchCat) {
-        matchCat.count += 1;
-        matchCat.items?.push({ authorName: post.authorName || 'Anonymous', content: post.content || post.title, createdAt: post.createdAt });
-      }
-    }
-  });
+  const allSentHearts = [
+    ...dynamicSentHearts,
+    ...DEFAULT_MOCK_SENT_HEARTS.filter(
+      def => !dynamicSentHearts.some((dyn: any) => dyn.id === def.id)
+    )
+  ];
 
-  const displayHeartCategories = defaultHeartCategories.filter((cat) => {
+  // Dynamically calculate category stats strictly for the active filter (Received vs Sent)
+  const buildCategoriesForDataset = (dataset: any[], isSentFilter: boolean): HeartCategoryCardData[] => {
+    return SEMANTIC_SPECS.map((spec) => {
+      const matchedEntries: any[] = [];
+
+      dataset.forEach((post) => {
+        let isMatch = false;
+
+        // 1. Check selectedHearts array
+        if (Array.isArray(post.selectedHearts) && post.selectedHearts.length > 0) {
+          if (
+            post.selectedHearts.includes(spec.id) ||
+            post.selectedHearts.some((h: string) => h.toLowerCase().includes(spec.categoryName.toLowerCase()))
+          ) {
+            isMatch = true;
+          }
+        }
+
+        // 2. Check heartDetails object
+        if (!isMatch && post.heartDetails) {
+          const hId = (post.heartDetails.id || '').toLowerCase();
+          const hLabel = (post.heartDetails.label || '').toLowerCase();
+          if (hId === spec.id || hLabel.includes(spec.categoryName.toLowerCase()) || spec.categoryName.toLowerCase().includes(hLabel)) {
+            isMatch = true;
+          }
+        }
+
+        // 3. Check heart token type / section / content
+        if (!isMatch && (post.isHeartToken || post.section === 'hearts' || post.type === 'heart_token')) {
+          const content = (post.content || '').toLowerCase();
+          const badge = (post.statusBadge || '').toLowerCase();
+          const title = (post.title || '').toLowerCase();
+          const catNameLower = spec.categoryName.toLowerCase();
+
+          if (
+            content.includes(catNameLower) ||
+            badge.includes(catNameLower) ||
+            title.includes(catNameLower) ||
+            (spec.id === 'loving' && (content.includes('loving') || content.includes('love'))) ||
+            (spec.id === 'visionary' && content.includes('vision')) ||
+            (spec.id === 'leadership' && content.includes('leader')) ||
+            (spec.id === 'hardworking' && (content.includes('hard work') || content.includes('hardworking'))) ||
+            (spec.id === 'reliable' && content.includes('reliab'))
+          ) {
+            isMatch = true;
+          }
+        }
+
+        if (isMatch) {
+          if (isSentFilter) {
+            // In Sent mode, show recipient details
+            const recName = post.recipientName || post.targetId || 'Recipient';
+            const recHandle = post.recipientHandle || post.recipients?.[0] || (post.recipientName ? `@${post.recipientName.toLowerCase().replace(/\s+/g, '')}` : '@recipient');
+            const recAvatar = post.recipientAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(recName)}`;
+
+            matchedEntries.push({
+              id: post.id,
+              name: recName,
+              handle: recHandle,
+              avatar: recAvatar,
+              date: post.createdAt 
+                ? new Date(post.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) 
+                : 'Recently',
+              content: post.content || `${spec.categoryName} Heart Token Sent`
+            });
+          } else {
+            // In Received mode, show sender details
+            const sndName = post.authorName || 'Anonymous';
+            const sndHandle = post.authorHandle || (post.authorName ? `@${post.authorName.toLowerCase().replace(/\s+/g, '')}` : '@anonymous');
+            const sndAvatar = post.authorAvatar || post.mediaUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(sndName)}`;
+
+            matchedEntries.push({
+              id: post.id,
+              name: sndName,
+              handle: sndHandle,
+              avatar: sndAvatar,
+              date: post.createdAt 
+                ? new Date(post.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) 
+                : 'Recently',
+              content: post.content || `${spec.categoryName} Heart Token`
+            });
+          }
+        }
+      });
+
+      const count = matchedEntries.length;
+      const layoutType = count === 1 ? 'single1' : count === 2 ? 'pair2' : 'cluster3';
+
+      return {
+        id: `cat-${spec.id}`,
+        categoryName: spec.categoryName,
+        count: count,
+        bubbleColor: spec.bubbleColor,
+        bgHalo: spec.bgHalo,
+        dotColors: spec.dotColors,
+        layoutType: layoutType,
+        items: matchedEntries
+      };
+    });
+  };
+
+  const calculatedReceivedCategories = React.useMemo(() => {
+    return buildCategoriesForDataset(allReceivedHearts, false);
+  }, [allReceivedHearts]);
+
+  const calculatedSentCategories = React.useMemo(() => {
+    return buildCategoriesForDataset(allSentHearts, true);
+  }, [allSentHearts]);
+
+  const totalReceivedHeartsCount = React.useMemo(() => {
+    return calculatedReceivedCategories.reduce((sum, cat) => sum + cat.count, 0);
+  }, [calculatedReceivedCategories]);
+
+  const totalSentHeartsCount = React.useMemo(() => {
+    return calculatedSentCategories.reduce((sum, cat) => sum + cat.count, 0);
+  }, [calculatedSentCategories]);
+
+  // Selected dataset based strictly on active filter
+  const activeHeartCategories = heartFilter === 'received' ? calculatedReceivedCategories : calculatedSentCategories;
+
+  // Only display categories that have count > 0 (at least 1 send/receive)
+  const nonZeroCategories = activeHeartCategories.filter((cat) => cat.count > 0);
+
+  const displayHeartCategories = nonZeroCategories.filter((cat) => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.trim().toLowerCase();
     
-    // 1. Heart type / category match (e.g. "Visionary", "Leadership", "Hard Work", "Loving", "Reliable")
+    // 1. Heart type / category match
     const catNameLower = cat.categoryName.toLowerCase();
-    const catFullName = `${catNameLower} heart`;
-    const matchesCatName = catNameLower.includes(q) || catFullName.includes(q) || q.includes(catNameLower);
+    const matchesCatName = catNameLower.includes(q) || q.includes(catNameLower);
     
-    // 2. Sender name match (checks categorySendersMap[cat.id] and cat.items author names)
-    const senders = categorySendersMap[cat.id] || sampleSenders;
-    const matchesSender = senders.some(s => s.name.toLowerCase().includes(q)) ||
-      (cat.items && cat.items.some(item => item.authorName.toLowerCase().includes(q)));
+    // 2. Sender / Recipient name / handle match
+    const matchesUser = cat.items && cat.items.some((item: any) => 
+      item.name.toLowerCase().includes(q) || item.handle.toLowerCase().includes(q)
+    );
       
-    return matchesCatName || matchesSender;
+    return matchesCatName || matchesUser;
   });
 
   const filteredItems = allAvailableItems.filter((item) => {
@@ -864,7 +1251,7 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
       )}
 
       {/* 4. Search Bar Row */}
-      <div className="flex items-center gap-3 mb-8">
+      <div className="flex items-center gap-3 mb-6">
         <div className="flex-grow relative">
           <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#A4ABB8]">
             <Search className="w-4 h-4 stroke-[2.5]" />
@@ -878,13 +1265,19 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
                 ? "Search boards by caption, recipient, or creator..."
                 : activeSubTab === 'tagged'
                 ? "Search tagged boards by caption, recipient, or creator..."
-                : "Search hearts by type or sender's name (e.g. Mercy24)..."
+                : heartFilter === 'received'
+                ? "Search received hearts by type or sender's name (e.g. Mercy24)..."
+                : "Search sent hearts by type or recipient's name (e.g. Cristiano)..."
             }
             className="w-full bg-gray-25 border-0 outline-none focus:outline-none focus:ring-0 rounded-full py-3 pl-10 pr-4 text-xs font-medium text-[#1A1B25] placeholder:text-[#A4ABB8]"
           />
         </div>
         <button 
-          onClick={onFilterClick}
+          onClick={() => {
+            if (onFilterClick) {
+              onFilterClick(activeSubTab);
+            }
+          }}
           aria-label="Filter"
           className="w-10 h-10 rounded-full bg-gray-25 flex items-center justify-center text-[#353849] hover:text-[#1A1B25] transition-all cursor-pointer shrink-0"
         >
@@ -900,12 +1293,14 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
               <Search className="w-6 h-6 stroke-[2]" />
             </div>
             <h3 className="text-lg font-bold text-[#1A1B25]">
-              {searchQuery.trim() ? 'No hearts found matching your search' : 'No heart categories found'}
+              {searchQuery.trim()
+                ? `No ${heartFilter === 'received' ? 'received' : 'sent'} hearts found matching "${searchQuery}"`
+                : `No ${heartFilter === 'received' ? 'received' : 'sent'} hearts yet`}
             </h3>
             <p className="text-xs text-gray-400 mt-1 max-w-sm">
               {searchQuery.trim()
-                ? `No received hearts match "${searchQuery}". Try searching for a sender like "Mercy24", "Ronike", or "Alex_Dev", or a heart type like "Loving".`
-                : 'No heart categories found.'}
+                ? `No ${heartFilter === 'received' ? 'received' : 'sent'} hearts match "${searchQuery}". Try searching for a category like "Loving" or a username.`
+                : `Heart tokens ${heartFilter === 'received' ? 'blown to you by other users' : 'you have blown to other users'} will appear here.`}
             </p>
           </div>
         ) : (
@@ -1013,9 +1408,13 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
                       {activeCategoryModal.categoryName || 'Heart'} Heart
                     </h2>
                     <p className="text-xs sm:text-sm text-[#808897] font-medium leading-snug">
-                      {(activeCategoryModal.count || 0) === 1
-                        ? '1 person send you this heart'
-                        : `${(activeCategoryModal.count || 0) > 20 ? '648' : (activeCategoryModal.count || 0)} people send you this heart`}
+                      {heartFilter === 'received'
+                        ? (activeCategoryModal.items?.length || activeCategoryModal.count || 0) === 1
+                          ? '1 person sent you this heart'
+                          : `${activeCategoryModal.items?.length || activeCategoryModal.count || 0} people sent you this heart`
+                        : (activeCategoryModal.items?.length || activeCategoryModal.count || 0) === 1
+                          ? 'You sent this heart to 1 person'
+                          : `You sent this heart to ${activeCategoryModal.items?.length || activeCategoryModal.count || 0} people`}
                     </p>
 
                     {/* Share Button Pill */}
@@ -1040,7 +1439,7 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
                     <Search className="w-4 h-4 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
-                      placeholder="Search by username"
+                      placeholder={heartFilter === 'received' ? "Search by sender username" : "Search by recipient username"}
                       value={drawerSearchQuery}
                       onChange={(e) => setDrawerSearchQuery(e.target.value)}
                       className="w-full bg-[#F6F8FA] focus:bg-gray-50 border border-gray-100 rounded-full pl-10 pr-4 py-3 text-xs font-medium text-[#1A1B25] placeholder-gray-400 outline-none transition-all"
@@ -1051,35 +1450,39 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
                 {/* Scrollable Floating Hearts Canvas */}
                 <div className="flex-1 overflow-y-auto px-5 py-3">
                   {(() => {
-                    const categorySenders = (activeCategoryModal.id && categorySendersMap[activeCategoryModal.id]) || sampleSenders;
+                    const categoryItems = activeCategoryModal.items || [];
                     const isSearching = drawerSearchQuery.trim().length > 0;
-                    const filteredSenders = categorySenders.filter((s) =>
-                      s.name.toLowerCase().includes(drawerSearchQuery.trim().toLowerCase())
+                    const filteredList = categoryItems.filter((s: any) =>
+                      s.name.toLowerCase().includes(drawerSearchQuery.trim().toLowerCase()) ||
+                      (s.handle && s.handle.toLowerCase().includes(drawerSearchQuery.trim().toLowerCase())) ||
+                      (s.content && s.content.toLowerCase().includes(drawerSearchQuery.trim().toLowerCase()))
                     );
 
-                    if (isSearching && filteredSenders.length === 0) {
+                    if (isSearching && filteredList.length === 0) {
                       return (
                         <div className="flex flex-col items-center justify-center py-16 px-4 text-center my-auto h-full">
                           <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center text-[#FE6349] mb-3 shrink-0">
                             <Search className="w-5 h-5 stroke-[2]" />
                           </div>
-                          <h4 className="text-sm font-bold text-[#1A1B25]">No hearts found from this user</h4>
+                          <h4 className="text-sm font-bold text-[#1A1B25]">
+                            {heartFilter === 'received' ? 'No hearts found from this sender' : 'No hearts found for this recipient'}
+                          </h4>
                           <p className="text-xs text-[#808897] mt-1 max-w-xs leading-relaxed">
-                            No hearts matching "{drawerSearchQuery}" were found in the {activeCategoryModal.categoryName || 'Heart'} category.
+                            No {heartFilter === 'received' ? 'received' : 'sent'} hearts matching "{drawerSearchQuery}" were found in the {activeCategoryModal.categoryName || 'Heart'} category.
                           </p>
                         </div>
                       );
                     }
 
-                    if (isSearching && filteredSenders.length > 0) {
+                    if (isSearching && filteredList.length > 0) {
                       return (
                         <div className="flex flex-col gap-3 py-2">
                           <p className="text-[11px] font-bold text-[#808897] uppercase tracking-wider px-1">
-                            {filteredSenders.length} {filteredSenders.length === 1 ? 'heart' : 'hearts'} from "{drawerSearchQuery}"
+                            {filteredList.length} {filteredList.length === 1 ? 'heart' : 'hearts'} {heartFilter === 'received' ? 'from' : 'sent to'} "{drawerSearchQuery}"
                           </p>
-                          {filteredSenders.map((sender, idx) => (
+                          {filteredList.map((item: any, idx: number) => (
                             <motion.div
-                              key={`${sender.name}-${idx}`}
+                              key={`${item.id || item.name}-${idx}`}
                               initial={{ opacity: 0, y: 8 }}
                               animate={{ opacity: 1, y: 0 }}
                               transition={{ duration: 0.15, delay: idx * 0.03 }}
@@ -1094,14 +1497,14 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2">
                                   <img
-                                    src={sender.avatar}
-                                    alt={sender.name}
+                                    src={item.avatar}
+                                    alt={item.name}
                                     className="w-5 h-5 rounded-full object-cover border border-gray-200 shrink-0"
                                   />
-                                  <h5 className="text-xs font-bold text-[#1A1B25] truncate">{sender.name}</h5>
+                                  <h5 className="text-xs font-bold text-[#1A1B25] truncate">{item.name}</h5>
                                 </div>
-                                <p className="text-[11px] text-[#808897] mt-0.5 font-medium">
-                                  Blew a {activeCategoryModal.categoryName || 'Heart'} Heart • {sender.date}
+                                <p className="text-[11px] text-[#808897] mt-0.5 font-medium truncate">
+                                  "{item.content}" • {item.date}
                                 </p>
                               </div>
                             </motion.div>
@@ -1110,83 +1513,95 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
                       );
                     }
 
+                    if (categoryItems.length === 0) {
+                      return (
+                        <div className="flex flex-col items-center justify-center py-16 px-4 text-center my-auto h-full">
+                          <div className="w-12 h-12 rounded-full bg-rose-50 flex items-center justify-center text-[#FE6349] mb-3 shrink-0">
+                            <Search className="w-5 h-5 stroke-[2]" />
+                          </div>
+                          <h4 className="text-sm font-bold text-[#1A1B25]">No hearts yet</h4>
+                          <p className="text-xs text-[#808897] mt-1 max-w-xs leading-relaxed">
+                            No hearts have been {heartFilter === 'received' ? 'received' : 'sent'} in this category yet.
+                          </p>
+                        </div>
+                      );
+                    }
+
                     return (
-                      <div className="relative pt-14 pb-6 flex flex-col items-center justify-center gap-3.5 w-full max-w-xs mx-auto">
+                      <div className="relative pt-10 pb-6 flex flex-wrap items-center justify-center gap-4 sm:gap-5 w-full max-w-xs mx-auto">
                         {/* Background scattered dots */}
                         <div className="absolute top-2 left-6 w-2 h-2 rounded-full opacity-50" style={{ backgroundColor: activeCategoryModal.bubbleColor || '#FE6349' }} />
                         <div className="absolute top-10 left-2 w-3 h-3 rounded-full opacity-30" style={{ backgroundColor: activeCategoryModal.bubbleColor || '#FE6349' }} />
                         <div className="absolute top-8 right-8 w-2.5 h-2.5 rounded-full opacity-70" style={{ backgroundColor: activeCategoryModal.bubbleColor || '#FE6349' }} />
                         <div className="absolute top-1/3 right-3 w-2 h-2 rounded-full opacity-60" style={{ backgroundColor: activeCategoryModal.bubbleColor || '#FE6349' }} />
                         <div className="absolute bottom-1/3 left-4 w-3 h-3 rounded-full opacity-40" style={{ backgroundColor: activeCategoryModal.bubbleColor || '#FE6349' }} />
-                        <div className="absolute bottom-10 left-8 w-2 h-2 rounded-full opacity-60" style={{ backgroundColor: activeCategoryModal.bubbleColor || '#FE6349' }} />
-                        <div className="absolute bottom-6 right-6 w-2.5 h-2.5 rounded-full opacity-50" style={{ backgroundColor: activeCategoryModal.bubbleColor || '#FE6349' }} />
 
-                        {/* Alternating row layout: [2, 3, 2, 3, 2, 3] */}
-                        {[2, 3, 2, 3, 2, 3].map((count, rowIndex) => (
-                          <div key={rowIndex} className="flex items-center justify-center gap-3.5 sm:gap-4 w-full">
-                            {Array.from({ length: count }).map((_, itemIndex) => {
-                              const flatIndex = rowIndex * 3 + itemIndex;
-                              const itemKey = `${rowIndex}-${itemIndex}`;
-                              const sender = categorySenders[flatIndex % categorySenders.length];
-                              const isTooltipOpen = activeTooltipIndex === itemKey;
+                        {categoryItems.map((personItem: any, index: number) => {
+                          const itemKey = `person-${personItem.id || index}`;
+                          const isTooltipOpen = activeTooltipIndex === itemKey;
 
-                              return (
-                                <div key={itemKey} className="relative">
-                                  {/* Tooltip Card */}
-                                  <AnimatePresence>
-                                    {isTooltipOpen && (
-                                      <motion.div
-                                        initial={{ opacity: 0, y: 6, scale: 0.9 }}
-                                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                                        exit={{ opacity: 0, y: 4, scale: 0.95 }}
-                                        transition={{ duration: 0.15 }}
-                                        className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 z-30 pointer-events-auto"
-                                        onClick={(e) => e.stopPropagation()}
-                                      >
-                                        <div className="bg-white rounded-2xl px-4 py-3 shadow-xl border border-gray-100/90 flex flex-col items-center min-w-[140px] relative">
-                                          {/* Top: Avatar + Name */}
-                                          <div className="flex items-center gap-2">
-                                            <img
-                                              src={sender.avatar}
-                                              alt={sender.name}
-                                              className="w-6 h-6 rounded-full object-cover border border-gray-100 shrink-0"
-                                            />
-                                            <span className="text-xs font-bold text-[#1A1B25] tracking-tight">
-                                              {sender.name}
-                                            </span>
-                                          </div>
-
-                                          {/* Dotted Line Divider */}
-                                          <div className="w-full border-b border-dashed border-gray-200/90 my-2" />
-
-                                          {/* Date */}
-                                          <span className="text-[11px] text-[#A4ABB8] font-medium whitespace-nowrap">
-                                            {sender.date}
-                                          </span>
-
-                                          {/* Bottom Pointer Tail Arrow */}
-                                          <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-r border-b border-gray-100/90 rotate-45" />
-                                        </div>
-                                      </motion.div>
-                                    )}
-                                  </AnimatePresence>
-
-                                  {/* Heart Bubble Button */}
+                          return (
+                            <div key={itemKey} className="relative">
+                              {/* Tooltip Card */}
+                              <AnimatePresence>
+                                {isTooltipOpen && (
                                   <motion.div
-                                    initial={{ opacity: 0, scale: 0.8 }}
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    transition={{ delay: flatIndex * 0.03 }}
-                                    onClick={() => setActiveTooltipIndex(isTooltipOpen ? null : itemKey)}
-                                    className={`w-16 h-16 sm:w-18 sm:h-18 rounded-full flex items-center justify-center relative transition-transform hover:scale-105 active:scale-95 cursor-pointer shadow-2xs ${isTooltipOpen ? 'scale-105 ring-2 ring-offset-2 ring-purple-300/80' : ''}`}
-                                    style={{ backgroundColor: activeCategoryModal.bgHalo || '#FDF2F8' }}
+                                    initial={{ opacity: 0, y: 6, scale: 0.9 }}
+                                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                                    exit={{ opacity: 0, y: 4, scale: 0.95 }}
+                                    transition={{ duration: 0.15 }}
+                                    className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 z-30 pointer-events-auto min-w-[160px]"
+                                    onClick={(e) => e.stopPropagation()}
                                   >
-                                    <HeartBubbleSVG size={40} bubbleColor={activeCategoryModal.bubbleColor || '#FE6349'} />
+                                    <div className="bg-white rounded-2xl px-4 py-3 shadow-xl border border-gray-100/90 flex flex-col items-center relative">
+                                      {/* Top: Avatar + Name */}
+                                      <div className="flex items-center gap-2">
+                                        <img
+                                          src={personItem.avatar}
+                                          alt={personItem.name}
+                                          className="w-6 h-6 rounded-full object-cover border border-gray-100 shrink-0"
+                                        />
+                                        <span className="text-xs font-bold text-[#1A1B25] tracking-tight">
+                                          {personItem.name}
+                                        </span>
+                                      </div>
+
+                                      {/* Dotted Line Divider */}
+                                      <div className="w-full border-b border-dashed border-gray-200/90 my-2" />
+
+                                      {/* Content Note */}
+                                      <span className="text-[11px] text-[#808897] font-medium text-center line-clamp-2 max-w-[180px]">
+                                        "{personItem.content}"
+                                      </span>
+
+                                      {/* Date */}
+                                      <span className="text-[10px] text-[#A4ABB8] font-semibold mt-1">
+                                        {personItem.date}
+                                      </span>
+
+                                      {/* Bottom Pointer Tail Arrow */}
+                                      <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-r border-b border-gray-100/90 rotate-45" />
+                                    </div>
                                   </motion.div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ))}
+                                )}
+                              </AnimatePresence>
+
+                              {/* Heart Bubble Button */}
+                              <motion.div
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: index * 0.04 }}
+                                onClick={() => setActiveTooltipIndex(isTooltipOpen ? null : itemKey)}
+                                className={`w-16 h-16 sm:w-18 sm:h-18 rounded-full flex items-center justify-center relative transition-transform hover:scale-105 active:scale-95 cursor-pointer shadow-2xs ${
+                                  isTooltipOpen ? 'scale-105 ring-2 ring-offset-2 ring-purple-300/80' : ''
+                                }`}
+                                style={{ backgroundColor: activeCategoryModal.bgHalo || '#FDF2F8' }}
+                              >
+                                <HeartBubbleSVG size={40} bubbleColor={activeCategoryModal.bubbleColor || '#FE6349'} />
+                              </motion.div>
+                            </div>
+                          );
+                        })}
                       </div>
                     );
                   })()}

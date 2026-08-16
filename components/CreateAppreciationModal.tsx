@@ -397,7 +397,7 @@ export const RenderCanvasElementReadOnly: React.FC<RenderCanvasElementReadOnlyPr
 };
 
 export interface CanvasReadOnlyCardProps {
-  canvasElements: CanvasElement[];
+  canvasElements?: CanvasElement[];
   selectedConfetti?: ConfettiType;
   content?: string;
   uploadedImage?: string | null;
@@ -405,6 +405,9 @@ export interface CanvasReadOnlyCardProps {
   recipient?: string;
   selectedHearts?: string[];
   activeType?: 'text' | 'audio' | 'video';
+  isCollaborative?: boolean;
+  visibility?: PostVisibility;
+  showMetadata?: boolean;
 }
 
 export const CanvasReadOnlyCard: React.FC<CanvasReadOnlyCardProps> = ({
@@ -415,6 +418,9 @@ export const CanvasReadOnlyCard: React.FC<CanvasReadOnlyCardProps> = ({
   authorName,
   recipient,
   selectedHearts = [],
+  isCollaborative = false,
+  visibility,
+  showMetadata = false,
 }) => {
   const visibleElements = canvasElements.filter(el => {
     if (el.type === 'text') return Boolean(el.text && el.text.trim());
@@ -426,63 +432,94 @@ export const CanvasReadOnlyCard: React.FC<CanvasReadOnlyCardProps> = ({
   const hasCanvasContent = visibleElements.length > 0;
   const fallbackText = content?.trim();
 
+  const isAnonymous = visibility === PostVisibility.ANONYMOUS || authorName === 'Anon' || authorName === 'Anonymous';
+  const displayAuthorName = isAnonymous ? 'Anon' : authorName;
+
   return (
-    <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-xs w-full max-w-[254px] aspect-[254/304] max-h-full flex flex-col justify-between relative overflow-hidden shrink-0">
-      {/* Confetti Animation Overlay */}
-      <ConfettiOverlay type={selectedConfetti || null} />
+    <div className="relative flex items-center justify-center w-full max-w-[254px] aspect-[254/304] shrink-0">
+      {/* Slanted background layers for collaborative boards - only visible in expanded metadata view */}
+      {showMetadata && isCollaborative && (
+        <>
+          <div 
+            className="absolute inset-0 w-full h-full bg-white/20 rounded-2xl -rotate-[5deg] transform pointer-events-none origin-center" 
+          />
+          <div 
+            className="absolute inset-0 w-full h-full bg-white/20 rounded-2xl rotate-[5deg] transform pointer-events-none origin-center" 
+          />
+        </>
+      )}
 
-      {/* Recipient tag */}
-      <div className="w-full flex justify-end items-center pr-1 relative z-20 pointer-events-none select-none">
-        {recipient?.trim() ? (
-          <span className="text-[10px] font-extrabold text-[#A4ABB8] uppercase tracking-wider bg-gray-50 px-2.5 py-1 rounded-full border border-gray-100 max-w-[130px] truncate">
-            {recipient}
-          </span>
-        ) : (
-          <div className="h-6" />
-        )}
-      </div>
+      {/* Main Board Card */}
+      <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-xs w-full h-full flex flex-col justify-between relative overflow-hidden shrink-0 z-10">
+        {/* Confetti Animation Overlay */}
+        <ConfettiOverlay type={selectedConfetti || null} />
 
-      {/* Full Canvas Layer: Treats entire component as canvas area with zero internal clipping bounds */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none flex items-center justify-center z-10 p-2">
-        {hasCanvasContent ? (
-          visibleElements.map((el) => (
-            <RenderCanvasElementReadOnly key={el.id} el={el} />
-          ))
-        ) : (
-          <div className="flex flex-col items-center justify-center w-full h-full p-4 pointer-events-none my-auto text-center">
-            {uploadedImage && (
-              <img src={uploadedImage} alt="Uploaded attachment" className="max-w-[200px] max-h-[140px] rounded-xl object-contain shadow-xs my-auto" />
-            )}
-            {fallbackText ? (
-              <div className="w-full p-2 my-auto text-center">
-                <p className="text-sm sm:text-base font-bold leading-snug break-words text-[#1A1B25]" style={{ fontFamily: 'Playfair Display, cursive' }}>
-                  "{fallbackText}"
-                </p>
-              </div>
-            ) : !uploadedImage && (
-              <div className="text-center w-full px-4 space-y-0.5 py-1 pointer-events-none">
-                <h3 className="text-[15px] font-semibold text-gray-600 tracking-tight">
-                  Message Card
-                </h3>
+        {/* Header: Privacy indicator (always shown if applicable) & Recipient tag (only in expanded metadata view) */}
+        <div className="w-full flex justify-between items-center relative z-20 pointer-events-none select-none min-h-[20px]">
+          {visibility === PostVisibility.PRIVATE ? (
+            <span className="flex items-center gap-1 text-[9px] font-extrabold text-[#1A1B25] bg-gray-50/90 px-2 py-0.5 rounded-full border border-gray-200/80 shadow-2xs uppercase tracking-wider">
+              <Lock className="w-2.5 h-2.5 text-[#353849] stroke-[2.5]" />
+              <span>Private</span>
+            </span>
+          ) : (
+            <div />
+          )}
+
+          {showMetadata && recipient?.trim() ? (
+            <span className="text-[10px] font-extrabold text-[#A4ABB8] uppercase tracking-wider bg-gray-50 px-2.5 py-1 rounded-full border border-gray-100 max-w-[120px] truncate">
+              {recipient}
+            </span>
+          ) : (
+            <div />
+          )}
+        </div>
+
+        {/* Full Canvas Layer: Treats entire component as canvas area with zero internal clipping bounds */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none flex items-center justify-center z-10 p-2">
+          {hasCanvasContent ? (
+            visibleElements.map((el) => (
+              <RenderCanvasElementReadOnly key={el.id} el={el} />
+            ))
+          ) : (
+            <div className="flex flex-col items-center justify-center w-full h-full p-4 pointer-events-none my-auto text-center">
+              {uploadedImage && (
+                <img src={uploadedImage} alt="Uploaded attachment" className="max-w-[200px] max-h-[140px] rounded-xl object-contain shadow-xs my-auto" />
+              )}
+              {fallbackText ? (
+                <div className="w-full p-2 my-auto text-center">
+                  <p className="text-sm sm:text-base font-bold leading-snug break-words text-[#1A1B25]" style={{ fontFamily: 'Playfair Display, cursive' }}>
+                    "{fallbackText}"
+                  </p>
+                </div>
+              ) : !uploadedImage && (
+                <div className="text-center w-full px-4 space-y-0.5 py-1 pointer-events-none">
+                  <h3 className="text-[15px] font-semibold text-gray-600 tracking-tight">
+                    Message Card
+                  </h3>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Card footer: only shown in expanded metadata view */}
+        {showMetadata ? (
+          <div className="w-full flex justify-between items-center select-none pt-1 relative z-20 pointer-events-none">
+            <span className="text-[9px] font-extrabold text-gray-300 uppercase tracking-widest">
+              {displayAuthorName?.trim() ? `By ${displayAuthorName}` : ''}
+            </span>
+            {selectedHearts.length > 0 && (
+              <div className="flex gap-1 bg-gray-50/70 p-1.5 rounded-full">
+                {selectedHearts.map(id => (
+                  <span key={id} className="text-xs">
+                    {SEMANTIC_HEARTS.find(h => h.id === id)?.emoji}
+                  </span>
+                ))}
               </div>
             )}
           </div>
-        )}
-      </div>
-
-      {/* Card footer */}
-      <div className="w-full flex justify-between items-center select-none pt-1 relative z-20 pointer-events-none">
-        <span className="text-[9px] font-extrabold text-gray-300 uppercase tracking-widest">
-          {authorName?.trim() ? `By ${authorName}` : ''}
-        </span>
-        {selectedHearts.length > 0 && (
-          <div className="flex gap-1 bg-gray-50/70 p-1.5 rounded-full">
-            {selectedHearts.map(id => (
-              <span key={id} className="text-xs">
-                {SEMANTIC_HEARTS.find(h => h.id === id)?.emoji}
-              </span>
-            ))}
-          </div>
+        ) : (
+          <div className="h-1" />
         )}
       </div>
     </div>
@@ -969,15 +1006,22 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
         }
       }
       
+      const effectiveVisibility = (isHashtagRecipient || extractedHashtags.length > 0) && privacyLayer === PostVisibility.PRIVATE 
+        ? PostVisibility.PUBLIC 
+        : privacyLayer;
+      
       const newPost: any = {
         id: 'post-' + Math.random().toString(36).substring(2, 11),
-        authorName: privacyLayer === PostVisibility.ANONYMOUS ? (authorName.trim().split(' ')[0] || 'Anonymous') : (authorName.trim() || 'Curator'),
+        visibility: effectiveVisibility,
+        authorName: effectiveVisibility === PostVisibility.ANONYMOUS ? 'Anon' : (authorName.trim() || 'Curator'),
         content: safeTextCheck,
         caption: caption.trim() || undefined,
         eventType: selectedEventType || 'Appreciation',
         recipients: recipients,
         hashtags: extractedHashtags,
         boardCapacity: boardCapacity,
+        maxCapacity: boardCapacity === 'solo' ? 1 : 20,
+        contributions: [],
         type: activeType,
         mediaType: activeType === 'text' ? 'note' : activeType,
         targetId: finalRecipientsString.replace('#', ''),
@@ -1000,12 +1044,14 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
 
       // Enrich content with semantic hearts if set
       if (selectedHearts.length > 0) {
+        newPost.selectedHearts = [...selectedHearts];
         const heartLabels = selectedHearts.map(id => SEMANTIC_HEARTS.find(h => h.id === id)?.label).filter(Boolean);
         newPost.content = `${newPost.content} (${heartLabels.join(', ')})`;
       }
 
       onPostCreated(newPost);
       setIsModerating(false);
+      setIsPreviewOpen(false);
       setCreatedPostConfirmation(newPost);
     } catch (e) {
       console.error(e);
@@ -1362,7 +1408,9 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                       reactions: 1,
                       theme: '#FAF0EC',
                       frameBg: '#FAF0EC',
+                      selectedHearts: [chosenHeartObj.id],
                       heartDetails: {
+                        id: chosenHeartObj.id,
                         label: chosenHeartObj.label,
                         emoji: chosenHeartObj.emoji,
                         bubbleColor: chosenHeartObj.bubbleColor
@@ -2529,6 +2577,7 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                     recipient={recipient}
                     selectedHearts={selectedHearts}
                     activeType={activeType}
+                    isCollaborative={boardCapacity !== 'solo'}
                   />
                 </div>
 
@@ -2637,14 +2686,14 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                   >
                     <span className="text-sm font-normal text-[#1A1B25]">Select board capacity</span>
                     <span className="text-sm font-normal text-gray-500 flex items-center gap-1">
-                      {boardCapacity === 'collaborative' ? '20 Curation' : 'Only me'}
+                      {boardCapacity === 'collaborative' ? '20 Contributions (Free)' : 'Only Me (1 message)'}
                       <ChevronRight className={`w-4 h-4 text-gray-400 shrink-0 transition-transform duration-200 ${isCapacityModalOpen ? 'rotate-90' : ''}`} />
                     </span>
                   </button>
 
                   {isCapacityModalOpen && (
                     <div className="px-3 pb-3 pt-1 border-t border-gray-200/50 flex flex-col gap-2.5 animate-in fade-in slide-in-from-top-1 duration-200">
-                      {/* Option 1: Only me */}
+                      {/* Option 1: Only Me */}
                       <button
                         type="button"
                         onClick={() => {
@@ -2661,11 +2710,14 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                           ) : (
                             <div className="w-5 h-5 rounded-full border-2 border-gray-300 shrink-0" />
                           )}
-                          <span className="text-sm font-medium text-[#1A1B25]">Only me</span>
+                          <div>
+                            <span className="text-sm font-medium text-[#1A1B25]">Only Me</span>
+                            <p className="text-xs text-gray-400 mt-0.5">1 message total</p>
+                          </div>
                         </div>
                       </button>
 
-                      {/* Option 2: 20 contributors */}
+                      {/* Option 2: 20 Contributions (Free) */}
                       <button
                         type="button"
                         onClick={() => {
@@ -2682,36 +2734,48 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                           ) : (
                             <div className="w-5 h-5 rounded-full border-2 border-gray-300 shrink-0" />
                           )}
-                          <span className="text-sm font-medium text-[#1A1B25]">20 contributors</span>
+                          <div>
+                            <span className="text-sm font-medium text-[#1A1B25]">20 Contributions (Free)</span>
+                            <p className="text-xs text-gray-400 mt-0.5">20 messages total</p>
+                          </div>
                         </div>
                         <span className="text-xs font-semibold text-[#1A1B25]">Free</span>
                       </button>
 
-                      {/* Option 3: 200 contributors (Coming soon) */}
-                      <div className="w-full bg-white rounded-2xl p-3.5 flex items-center justify-between border-0 text-left shadow-2xs opacity-80">
+                      {/* Option 3: 200 Contributions */}
+                      <div className="w-full bg-white rounded-2xl p-3.5 flex items-center justify-between border-0 text-left shadow-2xs opacity-60">
                         <div className="flex items-center gap-3">
                           <div className="w-5 h-5 rounded-full border-2 border-gray-300 shrink-0" />
-                          <span className="text-sm font-medium text-gray-400">200 contributors</span>
+                          <div>
+                            <span className="text-sm font-medium text-gray-400">200 Contributions</span>
+                            <p className="text-xs text-gray-300 mt-0.5">200 messages total</p>
+                          </div>
                         </div>
-                        <span className="bg-[#ECEFF3] text-[#666D80] text-[11px] font-semibold px-2.5 py-1 rounded-full">Coming soon</span>
+                        <span className="bg-[#ECEFF3] text-[#666D80] text-[11px] font-semibold px-2.5 py-1 rounded-full">Paid Option</span>
                       </div>
 
-                      {/* Option 4: 1000 contributors (Coming soon) */}
-                      <div className="w-full bg-white rounded-2xl p-3.5 flex items-center justify-between border-0 text-left shadow-2xs opacity-80">
+                      {/* Option 4: 1,000 Contributions */}
+                      <div className="w-full bg-white rounded-2xl p-3.5 flex items-center justify-between border-0 text-left shadow-2xs opacity-60">
                         <div className="flex items-center gap-3">
                           <div className="w-5 h-5 rounded-full border-2 border-gray-300 shrink-0" />
-                          <span className="text-sm font-medium text-gray-400">1000 contributors</span>
+                          <div>
+                            <span className="text-sm font-medium text-gray-400">1,000 Contributions</span>
+                            <p className="text-xs text-gray-300 mt-0.5">1,000 messages total</p>
+                          </div>
                         </div>
-                        <span className="bg-[#ECEFF3] text-[#666D80] text-[11px] font-semibold px-2.5 py-1 rounded-full">Coming soon</span>
+                        <span className="bg-[#ECEFF3] text-[#666D80] text-[11px] font-semibold px-2.5 py-1 rounded-full">Paid Option</span>
                       </div>
 
-                      {/* Option 5: 1000 curation (Coming soon) */}
-                      <div className="w-full bg-white rounded-2xl p-3.5 flex items-center justify-between border-0 text-left shadow-2xs opacity-80">
+                      {/* Option 5: Unlimited */}
+                      <div className="w-full bg-white rounded-2xl p-3.5 flex items-center justify-between border-0 text-left shadow-2xs opacity-60">
                         <div className="flex items-center gap-3">
                           <div className="w-5 h-5 rounded-full border-2 border-gray-300 shrink-0" />
-                          <span className="text-sm font-medium text-gray-400">1000 curation</span>
+                          <div>
+                            <span className="text-sm font-medium text-gray-400">Unlimited</span>
+                            <p className="text-xs text-gray-300 mt-0.5">Unlimited messages</p>
+                          </div>
                         </div>
-                        <span className="bg-[#ECEFF3] text-[#666D80] text-[11px] font-semibold px-2.5 py-1 rounded-full">Coming soon</span>
+                        <span className="bg-[#ECEFF3] text-[#666D80] text-[11px] font-semibold px-2.5 py-1 rounded-full">Paid Option</span>
                       </div>
                     </div>
                   )}
@@ -2777,7 +2841,7 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                           )}
                           <div>
                             <p className="text-sm font-medium text-[#1A1B25]">Recipient Only</p>
-                            <p className="text-xs text-gray-400 mt-0.5">Only tagged recipients can view it.</p>
+                            <p className="text-xs text-gray-400 mt-0.5">Only creator and selected recipients can view it.</p>
                           </div>
                         </div>
                       </button>
@@ -2801,7 +2865,7 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                           )}
                           <div>
                             <p className="text-sm font-medium text-[#1A1B25]">Public (Anonymous)</p>
-                            <p className="text-xs text-gray-400 mt-0.5">Visible to everyone, but hide creator's surname.</p>
+                            <p className="text-xs text-gray-400 mt-0.5">Visible to everyone, but display creator as “Anon”.</p>
                           </div>
                         </div>
                       </button>
@@ -2847,7 +2911,7 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
 
       {/* Full Page Confirmation Modal for Published Appreciation Card */}
       {createdPostConfirmation && (
-        <div className="fixed inset-0 z-[3500] bg-[#FCF9F8] flex flex-col items-center justify-between p-6 sm:p-10 font-sans select-none animate-in fade-in duration-300 overflow-y-auto">
+        <div className="fixed inset-0 z-[6000] bg-[#FCF9F8] flex flex-col items-center justify-between p-6 sm:p-10 font-sans select-none animate-in fade-in duration-300 overflow-y-auto">
           <ConfettiOverlay active={true} type={createdPostConfirmation.confetti || "heart"} />
           
           {/* Top Header with Close */}
