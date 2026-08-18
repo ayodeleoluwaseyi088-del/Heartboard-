@@ -1491,6 +1491,10 @@ const App: React.FC = () => {
   const [createModalRecipient, setCreateModalRecipient] = useState<{ id?: string; name: string; handle: string; avatar?: string } | undefined>(undefined);
   const [createModalHashtag, setCreateModalHashtag] = useState<string | undefined>(undefined);
   const [createModalMode, setCreateModalMode] = useState<'create_message' | 'send_heart' | undefined>(undefined);
+  const [contributionParentPost, setContributionParentPost] = useState<Post | null>(null);
+  const [editingPost, setEditingPost] = useState<Post | null>(null);
+  const [editingContribution, setEditingContribution] = useState<Contribution | null>(null);
+  const [editMode, setEditMode] = useState<'board' | 'message' | 'contribution' | null>(null);
 
   const handleGiftHeartForUser = (user: RegisteredUser) => {
     setCreateModalRecipient({
@@ -1848,11 +1852,81 @@ const App: React.FC = () => {
               setCreateModalRecipient(undefined);
               setCreateModalHashtag(undefined);
               setCreateModalMode(undefined);
+              setContributionParentPost(null);
+              setEditingPost(null);
+              setEditingContribution(null);
+              setEditMode(null);
             }} 
             onPostCreated={handleNewPost}
             initialRecipient={createModalRecipient}
             initialHashtag={createModalHashtag}
             initialMode={createModalMode}
+            parentBoard={contributionParentPost}
+            isContribution={Boolean(contributionParentPost)}
+            editingPost={editingPost}
+            editingContribution={editingContribution}
+            editMode={editMode}
+            onUpdatePost={(updatedPost) => {
+              setPosts((prevPosts) =>
+                prevPosts.map((p) => (p.id === updatedPost.id ? { ...p, ...updatedPost } : p))
+              );
+              setEditingPost(null);
+              setEditMode(null);
+              setIsCreateModalOpen(false);
+            }}
+            onUpdateContribution={(parentBoardId, updatedContrib) => {
+              setPosts((prevPosts) =>
+                prevPosts.map((p) => {
+                  if (p.id !== parentBoardId) return p;
+                  return {
+                    ...p,
+                    contributions: (p.contributions || []).map((c) =>
+                      c.id === updatedContrib.id ? updatedContrib : c
+                    ),
+                  };
+                })
+              );
+              setEditingContribution(null);
+              setContributionParentPost(null);
+              setEditMode(null);
+              setIsCreateModalOpen(false);
+            }}
+            onDeletePost={(postId) => {
+              setPosts((prevPosts) => prevPosts.filter((p) => p.id !== postId));
+              setSelectedPostIndex(null);
+              setEditingPost(null);
+              setEditMode(null);
+              setIsCreateModalOpen(false);
+            }}
+            onDeleteContribution={(parentBoardId, contribId) => {
+              setPosts((prevPosts) =>
+                prevPosts.map((p) => {
+                  if (p.id !== parentBoardId) return p;
+                  return {
+                    ...p,
+                    contributions: (p.contributions || []).filter((c) => c.id !== contribId),
+                  };
+                })
+              );
+              setEditingContribution(null);
+              setContributionParentPost(null);
+              setEditMode(null);
+              setIsCreateModalOpen(false);
+            }}
+            onAddContribution={(parentBoardId, newContrib) => {
+              setPosts((prevPosts) =>
+                prevPosts.map((p) => {
+                  if (p.id !== parentBoardId) return p;
+                  const currentContribs = p.contributions || [];
+                  return {
+                    ...p,
+                    contributions: [...currentContribs, newContrib],
+                  };
+                })
+              );
+              setContributionParentPost(null);
+              setIsCreateModalOpen(false);
+            }}
           />
         )}
 
@@ -1870,46 +1944,89 @@ const App: React.FC = () => {
           }}
         />
 
-        {(() => {
-          const handleAddContribution = (postId: string, text: string, authorName = 'You') => {
-            setPosts((prevPosts) =>
-              prevPosts.map((p) => {
-                if (p.id !== postId) return p;
-                const maxCap = p.maxCapacity || (p.boardCapacity === 'solo' ? 1 : 20);
-                const currentContribs = p.contributions || [];
-                const totalMessages = 1 + currentContribs.length;
-                if (totalMessages >= maxCap) return p;
-
-                const newContrib: Contribution = {
-                  id: `contrib-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-                  authorName: authorName,
-                  authorHandle: authorName.startsWith('@') ? authorName : `@${authorName.toLowerCase().replace(/\s+/g, '')}`,
-                  content: text,
-                  createdAt: new Date().toISOString(),
-                };
-
-                return {
-                  ...p,
-                  contributions: [...currentContribs, newContrib],
-                };
-              })
-            );
-          };
-
-          return (
-            <>
-              {selectedPostIndex !== null && posts[selectedPostIndex] && (
-                <MediaModal 
-                  post={posts[selectedPostIndex]} 
-                  onClose={() => setSelectedPostIndex(null)}
-                  onPrev={() => setSelectedPostIndex((prev) => prev !== null ? (prev - 1 + posts.length) % posts.length : null)}
-                  onNext={() => setSelectedPostIndex((prev) => prev !== null ? (prev + 1) % posts.length : null)}
-                  onAddContribution={handleAddContribution}
-                />
-              )}
-            </>
-          );
-        })()}
+        {selectedPostIndex !== null && posts[selectedPostIndex] && (
+          <MediaModal 
+            post={posts[selectedPostIndex]} 
+            onClose={() => setSelectedPostIndex(null)}
+            onPrev={() => setSelectedPostIndex((prev) => prev !== null ? (prev - 1 + posts.length) % posts.length : null)}
+            onNext={() => setSelectedPostIndex((prev) => prev !== null ? (prev + 1) % posts.length : null)}
+            onAddContributionClick={(parentPost) => {
+              setContributionParentPost(parentPost);
+              setCreateModalRecipient(undefined);
+              setCreateModalHashtag(undefined);
+              setCreateModalMode('create_message');
+              setEditingPost(null);
+              setEditingContribution(null);
+              setEditMode(null);
+              setIsCreateModalOpen(true);
+            }}
+            onEditBoard={(targetPost) => {
+              setEditingPost(targetPost);
+              setEditingContribution(null);
+              setContributionParentPost(null);
+              setEditMode('board');
+              setIsCreateModalOpen(true);
+            }}
+            onDeleteBoard={(postId) => {
+              setPosts((prevPosts) => prevPosts.filter((p) => p.id !== postId));
+              setSelectedPostIndex(null);
+            }}
+            onEditMessage={(targetPost, targetContribution) => {
+              if (targetContribution) {
+                setContributionParentPost(targetPost);
+                setEditingContribution(targetContribution);
+                setEditingPost(null);
+                setEditMode('contribution');
+              } else {
+                setEditingPost(targetPost);
+                setEditingContribution(null);
+                setContributionParentPost(null);
+                setEditMode('message');
+              }
+              setIsCreateModalOpen(true);
+            }}
+            onDeleteMessage={(targetPost, targetContribution) => {
+              if (targetContribution) {
+                setPosts((prevPosts) =>
+                  prevPosts.map((p) => {
+                    if (p.id !== targetPost.id) return p;
+                    return {
+                      ...p,
+                      contributions: (p.contributions || []).filter(
+                        (c) => c.id !== targetContribution.id
+                      ),
+                    };
+                  })
+                );
+              } else {
+                setPosts((prevPosts) => prevPosts.filter((p) => p.id !== targetPost.id));
+                setSelectedPostIndex(null);
+              }
+            }}
+            onReactionBlown={(postId) => {
+              setPosts((prevPosts) =>
+                prevPosts.map((p) => {
+                  if (p.id !== postId) return p;
+                  return { ...p, reactions: (p.reactions || 0) + 1 };
+                })
+              );
+            }}
+            onUpdateReactions={(postId, counts, userReactions) => {
+              const total = (counts.clap || 0) + (counts.heart || 0) + (counts.smiley || 0) + (counts.fire || 0);
+              setPosts((prevPosts) =>
+                prevPosts.map((p) => {
+                  if (p.id !== postId) return p;
+                  return {
+                    ...p,
+                    reactionCounts: counts,
+                    userReactions: userReactions,
+                    reactions: total,
+                  };
+                })
+              );
+            }}
+          />
+        )}
       </div>
     </Router>
   );

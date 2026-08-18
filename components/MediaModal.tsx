@@ -1,8 +1,28 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { Post, EntityType, PostVisibility } from '../types';
-import { X, ChevronLeft, ChevronRight, Sparkles, Plus, MessageSquare, ShieldAlert, Lock } from 'lucide-react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
+import { Post, Contribution, PostVisibility, ReactionCounts } from '../types';
+import { 
+  X, 
+  ChevronLeft, 
+  ChevronRight, 
+  User, 
+  UserCheck, 
+  LayoutGrid, 
+  Sparkles,
+  Check
+} from 'lucide-react';
+import {
+  HandsClapping,
+  Heart as PhosphorHeart,
+  Smiley as PhosphorSmiley,
+  Fire as PhosphorFire,
+  ShareFat,
+  Flag as PhosphorFlag,
+  Plus as PhosphorPlus
+} from '@phosphor-icons/react';
 import { ConfettiOverlay } from './ConfettiOverlay';
 import { CanvasReadOnlyCard } from './CreateAppreciationModal';
+import { ShareProfileModal } from './ShareProfileModal';
+import { ActionMenuModal } from './ActionMenuModal';
 
 interface MediaModalProps {
   post: Post & { 
@@ -14,407 +34,746 @@ interface MediaModalProps {
     secondaryImage?: string;
     isBlurred?: boolean;
     statusBadge?: string;
+    selectedHearts?: string[];
   };
   onClose: () => void;
   onPrev: () => void;
   onNext: () => void;
-  onAddContribution?: (postId: string, text: string, authorName?: string) => void;
+  onAddContributionClick?: (post: Post) => void;
+  onReactionBlown?: (postId: string) => void;
+  onUpdateReactions?: (postId: string, counts: ReactionCounts, userReactions: ('clap' | 'heart' | 'smiley' | 'fire')[]) => void;
+  onEditBoard?: (post: Post) => void;
+  onDeleteBoard?: (postId: string) => void;
+  onEditMessage?: (post: Post, contribution?: Contribution) => void;
+  onDeleteMessage?: (post: Post, contribution?: Contribution) => void;
 }
 
-export const MediaModal: React.FC<MediaModalProps> = ({ post, onClose, onPrev, onNext, onAddContribution }) => {
-  const [isRevealed, setIsRevealed] = useState(false);
-  const [activeTab, setActiveTab] = useState<'board' | 'contributions'>('board');
-  const [newContributionText, setNewContributionText] = useState('');
-  const [authorInput, setAuthorInput] = useState('You');
-  const [isAdding, setIsAdding] = useState(false);
+export const MediaModal: React.FC<MediaModalProps> = ({ 
+  post, 
+  onClose, 
+  onPrev, 
+  onNext, 
+  onAddContributionClick,
+  onReactionBlown,
+  onUpdateReactions,
+  onEditBoard,
+  onDeleteBoard,
+  onEditMessage,
+  onDeleteMessage
+}) => {
+  // Toggle between 'main' (Main Board) and 'contributions' (Contributions by other curators)
+  const [activeTab, setActiveTab] = useState<'main' | 'contributions'>('main');
+  // Index for navigating through multiple contribution messages
+  const [activeContributionIndex, setActiveContributionIndex] = useState(0);
+  
+  // Helper to get real initial reaction breakdown
+  const getInitialReactionCounts = (p: Post): { clap: number; heart: number; smiley: number; fire: number } => {
+    if (p.reactionCounts) {
+      return {
+        clap: p.reactionCounts.clap ?? 0,
+        heart: p.reactionCounts.heart ?? 0,
+        smiley: p.reactionCounts.smiley ?? 0,
+        fire: p.reactionCounts.fire ?? 0,
+      };
+    }
+    const total = p.reactions || 0;
+    if (total <= 0) return { clap: 0, heart: 0, smiley: 0, fire: 0 };
+    if (total >= 10000) {
+      return {
+        clap: 34,
+        heart: 11200,
+        smiley: 1,
+        fire: 64,
+      };
+    }
+    if (total >= 1000) {
+      return {
+        clap: Math.max(1, Math.floor(total * 0.05)),
+        heart: Math.floor(total * 0.88),
+        smiley: Math.max(1, Math.floor(total * 0.005)),
+        fire: Math.floor(total * 0.065),
+      };
+    }
+    return {
+      clap: Math.floor(total * 0.08),
+      heart: Math.floor(total * 0.82),
+      smiley: Math.max(0, Math.floor(total * 0.02)),
+      fire: Math.floor(total * 0.08),
+    };
+  };
 
+  // Interactive reaction states
+  const [reactionCounts, setReactionCounts] = useState(() => getInitialReactionCounts(post));
+  const [userReactions, setUserReactions] = useState<('clap' | 'heart' | 'smiley' | 'fire')[]>(() => post.userReactions || []);
+  const [isReactionPickerOpen, setIsReactionPickerOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
+  const [showContributorDetails, setShowContributorDetails] = useState(false);
+  const [showFlagToast, setShowFlagToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Single Click vs Double Click Disambiguation Ref
+  const clickTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Contributions list
+  const contributions: Contribution[] = post.contributions || [];
+  const hasContributions = contributions.length > 0;
+
+  // Identify all contributions made by the current user on this board (independent of the currently viewed contribution)
+  const isCreator = Boolean(post.isCreatedByUser ?? true);
+  const userContributions = useMemo(() => {
+    return contributions.filter((c) => 
+      c.isCreatedByUser === true || 
+      c.authorName === 'Nancy98' || 
+      c.authorName === 'Mercy24' || 
+      c.authorHandle === '@nancy98' || 
+      c.authorHandle === '@mercy24'
+    );
+  }, [contributions]);
+  const maxCapacity = post.maxCapacity || (post.boardCapacity === 'solo' ? 1 : 20);
+  const isSoloMode = post.boardCapacity === 'solo' || maxCapacity === 1;
+  const isCapacityReached = contributions.length >= maxCapacity;
+  const canToggleContributions = !isSoloMode && contributions.length > 0;
+  const effectiveActiveTab = canToggleContributions ? activeTab : 'main';
+
+  // Track previous post ID and contribution count to handle smooth contribution addition
+  const prevPostIdRef = useRef(post.id);
+  const prevContribCountRef = useRef((post.contributions || []).length);
+
+  // Reset or update tab and reactions when post changes
   useEffect(() => {
-    // Reset reveal state on post change
-    setIsRevealed(false);
-    setIsAdding(false);
-    setNewContributionText('');
+    const currentContribCount = (post.contributions || []).length;
+    if (prevPostIdRef.current !== post.id) {
+      // Navigated to a different post
+      prevPostIdRef.current = post.id;
+      prevContribCountRef.current = currentContribCount;
+      setActiveTab('main');
+      setActiveContributionIndex(0);
+      setShowContributorDetails(false);
+      setIsActionMenuOpen(false);
+      setIsReactionPickerOpen(false);
+      setReactionCounts(getInitialReactionCounts(post));
+      setUserReactions(post.userReactions || []);
+    } else if (currentContribCount > prevContribCountRef.current) {
+      // New contribution added to this same post -> immediately show contributions tab with the newest contribution
+      prevContribCountRef.current = currentContribCount;
+      setActiveTab('contributions');
+      setActiveContributionIndex(currentContribCount - 1);
+      setReactionCounts(getInitialReactionCounts(post));
+      setUserReactions(post.userReactions || []);
+    } else {
+      prevContribCountRef.current = currentContribCount;
+      setReactionCounts(getInitialReactionCounts(post));
+      setUserReactions(post.userReactions || []);
+    }
   }, [post]);
 
+  // Clean up timer on unmount
   useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+    return () => {
+      if (clickTimerRef.current) {
+        clearTimeout(clickTimerRef.current);
+      }
     };
-    window.addEventListener('keydown', handleEsc);
-    return () => window.removeEventListener('keydown', handleEsc);
-  }, [onClose]);
+  }, []);
 
-  if (!post) return null;
-
-  // Render background style helper
-  const getContainerBgStyle = () => {
-    if (post.theme && post.theme.startsWith('#')) {
-      return { backgroundColor: post.theme };
+  // Board click handler with distinct single-click and double-click behaviors
+  const handleBoardCardClick = (e: React.MouseEvent) => {
+    if (clickTimerRef.current) {
+      // Double click detected! Cancel single click and open Action Page
+      clearTimeout(clickTimerRef.current);
+      clickTimerRef.current = null;
+      setIsActionMenuOpen(true);
+    } else {
+      // First click: wait briefly to see if a second click arrives
+      clickTimerRef.current = setTimeout(() => {
+        clickTimerRef.current = null;
+        setShowContributorDetails((prev) => !prev);
+      }, 240);
     }
-    return {};
   };
 
-  const getContainerBgClass = () => {
-    if (post.theme && !post.theme.startsWith('#')) {
-      return post.theme;
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      } else if (e.key === 'ArrowLeft') {
+        handlePrevMessage();
+      } else if (e.key === 'ArrowRight') {
+        handleNextMessage();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [activeTab, activeContributionIndex, contributions.length, onPrev, onNext]);
+
+  // Current active message depending on tab
+  const activeMessage = effectiveActiveTab === 'main' 
+    ? post 
+    : (contributions[activeContributionIndex] || post);
+
+  // Navigation handlers
+  const handlePrevMessage = () => {
+    if (effectiveActiveTab === 'contributions' && contributions.length > 1) {
+      setActiveContributionIndex((prev) => 
+        (prev - 1 + contributions.length) % contributions.length
+      );
+    } else {
+      onPrev();
     }
-    return 'bg-[#FAF5E8]'; // Sweet natural cream fallback
   };
 
-  const isBlurred = post.isBlurred && !isRevealed;
-
-  // Capacity calculations
-  const maxCapacity = post.maxCapacity || (post.boardCapacity === 'solo' ? 1 : 20);
-  const existingContribs = post.contributions || [];
-  const totalMessages = 1 + existingContribs.length;
-  const isSoloMode = post.boardCapacity === 'solo' || maxCapacity === 1;
-  const isCapacityAvailable = totalMessages < maxCapacity;
-
-  const handleContributionSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newContributionText.trim()) return;
-    if (onAddContribution) {
-      onAddContribution(post.id, newContributionText.trim(), authorInput.trim() || 'You');
+  const handleNextMessage = () => {
+    if (effectiveActiveTab === 'contributions' && contributions.length > 1) {
+      setActiveContributionIndex((prev) => 
+        (prev + 1) % contributions.length
+      );
+    } else {
+      onNext();
     }
-    setNewContributionText('');
-    setIsAdding(false);
+  };
+
+  // Frame Background resolution (reusing main curator's theme consistently)
+  const getFrameBg = () => {
+    const theme = post.theme || '';
+    if (theme.startsWith('#')) return theme;
+    if (theme.includes('bg-[')) {
+      const match = theme.match(/bg-\[(#[0-9a-fA-F]+)\]/);
+      if (match) return match[1];
+    }
+    if (theme.includes('slate') || theme.includes('272835')) return '#272835';
+    if (theme.includes('mint') || theme.includes('ECEFE6')) return '#ECEFE6';
+    if (theme.includes('sunset') || theme.includes('FAF5E8')) return '#FAF5E8';
+    if (theme.includes('lavender') || theme.includes('EEF1FA')) return '#EEF1FA';
+    if (theme.includes('peach') || theme.includes('F7F0ED') || theme.includes('FAF0EC')) return '#F7F0ED';
+    return '#FEA735'; // Warm golden orange default matching mockup
+  };
+
+  const frameBgColor = getFrameBg();
+
+  // Author details
+  const displayAuthorName = effectiveActiveTab === 'main'
+    ? (post.authorName || 'Curator')
+    : (activeMessage.authorName || 'Contributor');
+
+  const isCurator = effectiveActiveTab === 'main';
+
+  // Caption text (1st item below board)
+  const displayCaption = activeMessage.caption || activeMessage.content || post.caption || post.content || 'Heartfelt Tribute Board';
+
+  // Tagged recipients text (2nd item below board)
+  const getDisplayRecipients = () => {
+    if (Array.isArray(post.recipients) && post.recipients.length > 0) {
+      return post.recipients.map(r => r.startsWith('@') || r.startsWith('#') ? r : `@${r}`).join(' ');
+    }
+    if (post.targetId) {
+      const formatted = post.targetId.startsWith('@') || post.targetId.startsWith('#') 
+        ? post.targetId 
+        : `@${post.targetId}`;
+      return `${formatted} ${post.hashtags ? post.hashtags.join(' ') : ''}`.trim();
+    }
+    return '@community';
+  };
+
+  const displayRecipients = getDisplayRecipients();
+
+  // Reaction formatting helper
+  const formatReactionCount = (count?: number) => {
+    if (!count || count <= 0) return null;
+    if (count >= 1000000) {
+      return (count / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+    }
+    if (count >= 1000) {
+      return (count / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+    }
+    return count.toString();
+  };
+
+  // Toggle specific reaction type
+  const handleToggleReaction = (type: 'clap' | 'heart' | 'smiley' | 'fire') => {
+    const isAlreadySelected = userReactions.includes(type);
+    const newUserReactions = isAlreadySelected
+      ? userReactions.filter((r) => r !== type)
+      : [...userReactions, type];
+
+    const currentCount = reactionCounts[type] || 0;
+    const newCount = isAlreadySelected ? Math.max(0, currentCount - 1) : currentCount + 1;
+
+    const newCounts = {
+      ...reactionCounts,
+      [type]: newCount,
+    };
+
+    setUserReactions(newUserReactions);
+    setReactionCounts(newCounts);
+
+    if (onUpdateReactions) {
+      onUpdateReactions(post.id, newCounts, newUserReactions);
+    }
+    if (!isAlreadySelected && onReactionBlown) {
+      onReactionBlown(post.id);
+    }
+  };
+
+  // Handle flag click
+  const handleFlagClick = () => {
+    setShowFlagToast(true);
+    setToastMessage('Board flagged for review. Thank you for keeping Heartboard safe.');
+    setTimeout(() => {
+      setShowFlagToast(false);
+      setToastMessage(null);
+    }, 3000);
   };
 
   return (
-    <div className="fixed inset-0 z-[1000] flex flex-col items-center justify-center bg-gray-900/90 backdrop-blur-lg p-3 sm:p-6 select-none overflow-y-auto">
-      {/* Click outside to close */}
-      <div className="absolute inset-0 cursor-pointer" onClick={onClose} />
-
-      {/* Screen Navigation Triggers */}
-      <button 
-        onClick={(e) => { e.stopPropagation(); onPrev(); }} 
-        className="fixed left-3 md:left-8 top-1/2 -translate-y-1/2 z-[1010] w-10 h-10 md:w-12 md:h-12 rounded-full bg-white/10 hover:bg-white/20 hover:scale-105 active:scale-95 flex items-center justify-center text-white transition-all backdrop-blur-md border border-white/10 cursor-pointer"
-        aria-label="Previous board"
-      >
-        <ChevronLeft size={24} strokeWidth={2.5} />
-      </button>
-
-      <button 
-        onClick={(e) => { e.stopPropagation(); onNext(); }} 
-        className="fixed right-3 md:right-8 top-1/2 -translate-y-1/2 z-[1010] w-10 h-10 md:w-12 md:h-12 rounded-full bg-white/10 hover:bg-white/20 hover:scale-105 active:scale-95 flex items-center justify-center text-white transition-all backdrop-blur-md border border-white/10 cursor-pointer"
-        aria-label="Next board"
-      >
-        <ChevronRight size={24} strokeWidth={2.5} />
-      </button>
-
-      {/* Top Modal Controls (Tabs for Mobile & Close) */}
-      <div className="relative z-[1010] flex items-center justify-between w-full max-w-4xl mb-4 px-2">
-        {/* Mobile View Selector Tabs */}
-        <div className="flex items-center bg-white/10 backdrop-blur-md p-1 rounded-full border border-white/10 text-xs font-bold text-white">
-          <button
-            type="button"
-            onClick={() => setActiveTab('board')}
-            className={`px-4 py-1.5 rounded-full transition-all cursor-pointer ${
-              activeTab === 'board' ? 'bg-white text-gray-900 shadow-sm' : 'text-white/80 hover:text-white'
-            }`}
-          >
-            Main Board
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('contributions')}
-            className={`px-4 py-1.5 rounded-full transition-all cursor-pointer flex items-center gap-1.5 ${
-              activeTab === 'contributions' ? 'bg-white text-gray-900 shadow-sm' : 'text-white/80 hover:text-white'
-            }`}
-          >
-            <span>Contributions / Curation</span>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] ${
-              activeTab === 'contributions' ? 'bg-[#FE6349] text-white' : 'bg-white/20 text-white'
-            }`}>
-              {totalMessages}/{maxCapacity}
-            </span>
-          </button>
-        </div>
-
-        {/* Close Modal Trigger */}
-        <button 
-          onClick={onClose} 
-          className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white hover:scale-105 transition-all cursor-pointer border border-white/10"
-          aria-label="Close modal"
-        >
-          <X size={18} strokeWidth={2.5} />
-        </button>
-      </div>
-
-      {/* Main Container Wrapper - Side-by-side on desktop, tabbed/scrollable on mobile */}
-      <div className="relative z-[1005] flex flex-col lg:flex-row items-center justify-center gap-6 max-w-4xl w-full">
+    <div 
+      className="fixed inset-0 z-[1000] flex flex-col items-center justify-between bg-[#161722] text-white font-sans select-none overflow-y-auto antialiased"
+      style={{ backgroundColor: '#161722' }}
+    >
+      {/* 1. TOP BAR */}
+      <header className="w-full max-w-4xl mx-auto px-4 sm:px-6 pt-5 pb-3 flex items-center justify-between z-30 shrink-0">
         
-        {/* 1. Main Board Container - Strictly 380px x 474px */}
-        <div 
-          onClick={() => { if (isBlurred) setIsRevealed(true); }}
-          className={`relative ${getContainerBgClass()} rounded-[2.5rem] overflow-hidden border border-white/10 cursor-pointer transform transition-all duration-300 hover:scale-[1.01] shrink-0 ${
-            activeTab === 'board' ? 'flex' : 'hidden lg:flex'
-          }`}
-          style={{ 
-            width: '380px', 
-            height: '474px', 
-            ...getContainerBgStyle() 
-          }}
-        >
-          {/* Confetti Animation Effect */}
-          {post.confetti && <ConfettiOverlay type={post.confetti} />}
+        {/* Top-Left: Toggle / Switch Component (Main Board vs. Contributions) */}
+        <div className="flex items-center bg-[#272835] border border-white/10 p-1 rounded-full shadow-md">
+          {/* Main Board Button */}
+          <button
+            type="button"
+            onClick={() => {
+              if (canToggleContributions) {
+                setActiveTab('main');
+              }
+            }}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
+              canToggleContributions ? 'cursor-pointer' : 'cursor-default'
+            } ${
+              effectiveActiveTab === 'main'
+                ? 'bg-white/20 text-white shadow-xs'
+                : 'text-white/50 hover:text-white/80'
+            }`}
+            title="Main Board (Original by Curator)"
+          >
+            <UserCheck className="w-4 h-4 stroke-[2.5]" />
+            <span className="hidden sm:inline">Main Board</span>
+          </button>
 
-          {/* Slanted white 20% opacity background layers for collaborative boards (>1 contribution) */}
-          {!isSoloMode && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-              <div className="w-[280px] h-[360px] bg-white/20 rounded-3xl -rotate-[5deg] transform" />
-              <div className="w-[280px] h-[360px] bg-white/20 rounded-3xl rotate-[5deg] transform absolute" />
-            </div>
-          )}
-
-          {/* Lined paper texture background overlay */}
-          <div 
-            className="absolute inset-0 opacity-15 pointer-events-none mix-blend-multiply rounded-[2.5rem]" 
-            style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/natural-paper.png")' }}
-          ></div>
-
-          {/* Floating Top Header Badges */}
-          <div className="absolute top-5 left-5 right-5 z-[50] flex items-center justify-between pointer-events-none">
-            <div className="flex items-center gap-1.5">
-              <span className="bg-black/20 backdrop-blur-md text-white px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
-                {isSoloMode ? 'Only Me Board' : `Capacity: ${totalMessages}/${maxCapacity}`}
+          {/* Contributions Button */}
+          <button
+            type="button"
+            disabled={!canToggleContributions}
+            onClick={() => {
+              if (!canToggleContributions) return;
+              setActiveTab('contributions');
+              setActiveContributionIndex(0);
+            }}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
+              canToggleContributions
+                ? 'cursor-pointer hover:text-white/80'
+                : 'cursor-not-allowed opacity-40 select-none'
+            } ${
+              effectiveActiveTab === 'contributions'
+                ? 'bg-white/20 text-white shadow-xs'
+                : canToggleContributions
+                  ? 'text-white/50'
+                  : 'text-white/30'
+            }`}
+            title={
+              !canToggleContributions
+                ? isSoloMode
+                  ? 'Contributions disabled (Solo Board)'
+                  : 'No contributions yet'
+                : 'Contributions (Messages by other curators)'
+            }
+          >
+            <LayoutGrid className="w-4 h-4 stroke-[2]" />
+            <span className="hidden sm:inline">Contributions</span>
+            {contributions.length > 0 && (
+              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
+                effectiveActiveTab === 'contributions' ? 'bg-[#FE6349] text-white' : 'bg-white/15 text-white/70'
+              }`}>
+                {contributions.length}
               </span>
-              {post.visibility === PostVisibility.PRIVATE && (
-                <span className="bg-[#1A1B25] text-amber-300 border border-amber-300/30 px-2.5 py-1 rounded-full text-[9px] font-extrabold tracking-wider uppercase flex items-center gap-1 shadow-2xs">
-                  <Lock size={10} className="text-amber-300 stroke-[2.5]" /> RECIPIENT ONLY
-                </span>
-              )}
-            </div>
-            {post.statusBadge ? (
-              <div className="bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full text-[9px] font-extrabold tracking-wider text-gray-800 uppercase">
-                {post.statusBadge}
-              </div>
-            ) : (
-              <div className="bg-[#FE6349] text-white px-3 py-1.5 rounded-full text-[9px] font-extrabold tracking-wider uppercase">
-                ✨ HEARTH MEMORY
-              </div>
             )}
-          </div>
-
-          {/* Expanded Content View */}
-          <div className={`w-full h-full p-8 flex flex-col justify-between relative transition-all duration-500 ${isBlurred ? 'blur-[8px] scale-98 pointer-events-none' : ''}`}>
-            
-            {/* Top spacer */}
-            <div className="h-8" />
-
-            {/* Central Appreciation Body */}
-            <div className="flex-grow flex flex-col justify-center text-right select-text">
-              {post.canvasElements && post.canvasElements.length > 0 ? (
-                <div className="relative w-full h-[280px] flex items-center justify-center">
-                  <CanvasReadOnlyCard
-                    canvasElements={post.canvasElements}
-                    selectedConfetti={post.confetti}
-                    content={post.content}
-                    uploadedImage={post.imageUrl || post.mediaUrl}
-                    authorName={post.authorName}
-                    recipient={Array.isArray((post as any).recipients) ? (post as any).recipients[0] : (post.recipientName || post.targetId)}
-                    selectedHearts={(post as any).selectedHearts || []}
-                    activeType={post.mediaType || post.type || 'text'}
-                    isCollaborative={!isSoloMode}
-                    visibility={post.visibility}
-                    showMetadata={true}
-                  />
-                </div>
-              ) : post.imageUrl || post.mediaUrl ? (
-                <div className="flex flex-col items-end gap-3">
-                  <div className="w-full max-h-60 rounded-none overflow-hidden border border-black/5 bg-gray-50 flex items-center justify-center p-1">
-                    <img src={post.imageUrl || post.mediaUrl} className="max-w-full max-h-full w-auto h-auto object-contain rounded-none" alt="Memory" referrerPolicy="no-referrer" />
-                  </div>
-                  {post.content && (
-                    <p className="text-gray-800 handwriting text-xl leading-tight font-bold mt-2">
-                      {post.content}
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <p className="handwriting text-[1.45rem] text-gray-800 font-extrabold leading-relaxed text-right">
-                    "{post.content}"
-                  </p>
-                  {post.secondaryImage && (
-                    <div className="flex justify-end mt-4">
-                      <div className="w-24 h-32 bg-white p-1.5 rounded-xl border border-gray-100 rotate-3 ring-4 ring-black/5 overflow-hidden">
-                        <img src={post.secondaryImage} className="w-full h-full object-cover rounded-lg" alt="Grandpa" referrerPolicy="no-referrer" />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Bottom reaction metrics signature */}
-            <div className="flex flex-col items-end justify-end mt-6 text-right">
-              <div className="flex items-center gap-1.5 bg-white/95 backdrop-blur-sm px-3.5 py-2 rounded-full text-xs font-bold text-gray-800">
-                <span className="text-rose-500">💖</span> {post.reactions.toLocaleString()} blown
-              </div>
-              <div className="mt-3">
-                <p className="text-gray-950 font-extrabold text-sm tracking-tight inline-flex items-center gap-1">
-                  <span>By</span>
-                  <span className="underline decoration-[#FE6349] decoration-2">
-                    @{post.visibility === PostVisibility.ANONYMOUS || post.authorName === 'Anon' || post.authorName === 'Anonymous' ? 'Anon' : post.authorName}
-                  </span>
-                </p>
-                <p className="text-gray-500 font-bold text-[10px] uppercase tracking-wide mt-0.5">
-                  Target: {post.targetId} ({post.targetType.toLowerCase()})
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Curiosity Lock Screen Overlay */}
-          {isBlurred && (
-            <div className="absolute inset-0 bg-[#FAF5E8]/40 backdrop-blur-[4px] flex flex-col items-center justify-center p-6 text-center z-50">
-              <div className="w-14 h-14 rounded-full bg-gray-900 text-white flex items-center justify-center mb-4 animate-bounce">
-                <Sparkles size={22} className="text-amber-400" />
-              </div>
-              <h3 className="text-gray-900 font-extrabold text-base tracking-tight uppercase">
-                Tear-Jerker Locked 😭
-              </h3>
-              <p className="text-xs text-gray-600 font-bold mt-2 max-w-[240px] leading-relaxed">
-                Tap inside this board to unlock and reveal the full heartwarming tribute page.
-              </p>
-            </div>
-          )}
+          </button>
         </div>
 
-        {/* 2. Contributions / Curation Side Panel - Strictly 380px x 474px */}
-        <div 
-          className={`relative bg-white rounded-[2.5rem] p-6 shadow-2xl border border-gray-100 flex flex-col justify-between overflow-hidden shrink-0 ${
-            activeTab === 'contributions' ? 'flex' : 'hidden lg:flex'
-          }`}
-          style={{ width: '380px', height: '474px' }}
+        {/* Top-Right: Close Button */}
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-white/90 hover:text-white flex items-center justify-center transition-all cursor-pointer border border-white/10"
+          aria-label="Close message board"
         >
-          {/* Panel Header */}
-          <div className="border-b border-gray-100 pb-4 mb-3 flex items-center justify-between shrink-0">
-            <div>
-              <h3 className="text-base font-extrabold text-[#1A1B25] tracking-tight">
-                Contributions / Curation
+          <X className="w-5 h-5 stroke-[2.5]" />
+        </button>
+      </header>
+
+      {/* Screen Left & Right Chevrons Navigation for Desktop */}
+      <button 
+        onClick={handlePrevMessage} 
+        className="hidden md:flex fixed left-4 lg:left-8 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 hover:scale-105 active:scale-95 items-center justify-center text-white transition-all backdrop-blur-md border border-white/10 cursor-pointer shadow-lg"
+        aria-label="Previous message"
+      >
+        <ChevronLeft className="w-6 h-6 stroke-[2.5]" />
+      </button>
+
+      <button 
+        onClick={handleNextMessage} 
+        className="hidden md:flex fixed right-4 lg:right-8 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 hover:scale-105 active:scale-95 items-center justify-center text-white transition-all backdrop-blur-md border border-white/10 cursor-pointer shadow-lg"
+        aria-label="Next message"
+      >
+        <ChevronRight className="w-6 h-6 stroke-[2.5]" />
+      </button>
+
+      {/* 2. MIDDLE: ACTUAL MESSAGE BOARD / CONTENT */}
+      <main className="w-full flex-1 flex flex-col items-center justify-center px-4 py-2 my-auto z-10">
+        
+        {effectiveActiveTab === 'contributions' && !hasContributions ? (
+          /* Empty state when there are no contributions yet */
+          <div 
+            style={{ backgroundColor: frameBgColor }}
+            className="w-full max-w-[340px] sm:max-w-[380px] h-[380px] sm:h-[430px] rounded-[2.5rem] p-6 flex flex-col items-center justify-center text-center shadow-2xl relative"
+          >
+            <div className="bg-white rounded-3xl w-full h-full p-6 flex flex-col items-center justify-center text-center shadow-xs">
+              <div className="w-14 h-14 rounded-full bg-rose-50 flex items-center justify-center text-[#FE6349] mb-3">
+                <Sparkles className="w-7 h-7" />
+              </div>
+              <h3 className="text-base font-extrabold text-[#1A1B25] mb-1">
+                No Contributions Yet
               </h3>
-              <p className="text-xs text-gray-400 font-medium">
-                Messages inside this board
+              <p className="text-xs text-gray-500 font-medium max-w-[220px] mb-5 leading-relaxed">
+                {isSoloMode 
+                  ? "This board is set to Solo Mode (Only Me)."
+                  : "Be the first to add a heartfelt message to this board!"}
               </p>
-            </div>
-            <span className={`text-xs font-bold px-3 py-1 rounded-full ${
-              isCapacityAvailable 
-                ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' 
-                : 'bg-amber-50 text-amber-700 border border-amber-100'
-            }`}>
-              {totalMessages} / {maxCapacity} Total
-            </span>
-          </div>
-
-          {/* Scrollable Contributions Feed */}
-          <div className="flex-1 overflow-y-auto space-y-3 pr-1 scrollbar-none">
-            {/* Main Original Message Card (1st message) */}
-            <div className="bg-[#FAF5E8] rounded-2xl p-4 border border-amber-100/60 relative">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs font-extrabold text-[#1A1B25]">@{post.authorName}</span>
-                <span className="bg-[#FE6349] text-white text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                  Board Creator
-                </span>
-              </div>
-              <p className="text-xs font-medium text-gray-800 leading-relaxed">
-                "{post.content}"
-              </p>
-              <span className="text-[10px] text-gray-400 font-semibold block text-right mt-2">
-                Original Message • 1 of {maxCapacity}
-              </span>
-            </div>
-
-            {/* Additional Contributions List */}
-            {existingContribs.map((contrib, idx) => (
-              <div key={contrib.id || idx} className="bg-[#F8F9FB] rounded-2xl p-4 border border-gray-100">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-bold text-[#1A1B25]">
-                    {contrib.authorHandle || `@${contrib.authorName}`}
-                  </span>
-                  <span className="text-[10px] font-semibold text-gray-400">
-                    Message {idx + 2} of {maxCapacity}
-                  </span>
-                </div>
-                <p className="text-xs text-gray-700 font-medium leading-relaxed">
-                  "{contrib.content}"
-                </p>
-              </div>
-            ))}
-
-            {existingContribs.length === 0 && (
-              <div className="bg-gray-50 rounded-2xl p-4 text-center border border-dashed border-gray-200 my-2">
-                <MessageSquare className="w-5 h-5 text-gray-300 mx-auto mb-1" />
-                <p className="text-xs font-semibold text-gray-500">No additional contributions yet</p>
-                <p className="text-[11px] text-gray-400 mt-0.5">
-                  {isSoloMode 
-                    ? "This board is set to Only Me." 
-                    : `Up to ${maxCapacity - 1} more messages can be added to this board.`}
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Panel Footer: Add Message Form / Action */}
-          <div className="pt-3 border-t border-gray-100 mt-3 shrink-0">
-            {isCapacityAvailable ? (
-              isAdding ? (
-                <form onSubmit={handleContributionSubmit} className="space-y-2">
-                  <input
-                    type="text"
-                    value={authorInput}
-                    onChange={(e) => setAuthorInput(e.target.value)}
-                    placeholder="Your handle or name"
-                    className="w-full bg-[#F6F8FA] border border-gray-200 text-xs text-[#1A1B25] rounded-xl px-3 py-1.5 focus:outline-none focus:border-[#FE6349]"
-                  />
-                  <textarea
-                    rows={2}
-                    value={newContributionText}
-                    onChange={(e) => setNewContributionText(e.target.value)}
-                    placeholder="Write your message contribution..."
-                    className="w-full bg-[#F6F8FA] border border-gray-200 text-xs text-[#1A1B25] rounded-xl p-2.5 focus:outline-none focus:border-[#FE6349] resize-none"
-                    autoFocus
-                  />
-                  <div className="flex items-center justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setIsAdding(false)}
-                      className="px-3 py-1.5 rounded-full text-xs font-bold text-gray-500 hover:bg-gray-100 cursor-pointer"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={!newContributionText.trim()}
-                      className="bg-[#FE6349] hover:bg-[#e05234] disabled:opacity-50 text-white font-bold text-xs px-4 py-1.5 rounded-full shadow-2xs cursor-pointer transition-all active:scale-95"
-                    >
-                      Add Message
-                    </button>
-                  </div>
-                </form>
-              ) : (
+              
+              {!isSoloMode && !isCapacityReached && onAddContributionClick && (
                 <button
                   type="button"
-                  onClick={() => setIsAdding(true)}
-                  className="w-full bg-[#FE6349] hover:bg-[#e05234] text-white font-bold text-xs py-3 rounded-2xl flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs active:scale-95"
+                  onClick={() => onAddContributionClick(post)}
+                  className="bg-[#FE6349] hover:bg-[#e05234] text-white px-5 py-2.5 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer"
                 >
-                  <Plus className="w-4 h-4 stroke-[2.5]" />
-                  <span>Add Message to Board ({maxCapacity - totalMessages} slots left)</span>
+                  <Plus className="w-4 h-4 stroke-[3]" />
+                  <span>Add First Contribution</span>
                 </button>
-              )
+              )}
+            </div>
+          </div>
+        ) : (
+          /* The Actual Message Board Frame (Fixed & Pristine) */
+          <div 
+            onClick={handleBoardCardClick}
+            style={{ backgroundColor: frameBgColor }}
+            className="w-full max-w-[320px] sm:max-w-[360px] md:max-w-[380px] h-[400px] sm:h-[450px] md:h-[474px] rounded-[2.2rem] sm:rounded-[2.5rem] p-5 sm:p-6 md:p-7 flex items-center justify-center shadow-[0_20px_60px_rgba(0,0,0,0.45)] relative overflow-hidden transition-all duration-300 cursor-pointer active:scale-[0.995]"
+            title="Single-click for contributor details, double-click for action menu"
+          >
+            {/* Confetti Overlay inside frame if enabled */}
+            {(activeMessage.confetti || post.confetti) && (
+              <ConfettiOverlay type={(activeMessage.confetti || post.confetti) as any} />
+            )}
+
+            {/* Inner White Card Canvas (Preserving exact visual appearance from Create Page) */}
+            <div className="bg-white rounded-[1.8rem] sm:rounded-[2rem] md:rounded-3xl w-full h-full flex flex-col justify-between p-4 sm:p-5 relative overflow-hidden shadow-xs">
+              <CanvasReadOnlyCard
+                canvasElements={activeMessage.canvasElements || (effectiveActiveTab === 'main' ? post.canvasElements : undefined) || []}
+                content={activeMessage.content || post.content}
+                uploadedImage={activeMessage.imageUrl || activeMessage.mediaUrl || (effectiveActiveTab === 'main' ? (post.imageUrl || post.mediaUrl) : undefined)}
+                selectedConfetti={(activeMessage.confetti || post.confetti) as any}
+                authorName={activeMessage.authorName}
+                recipient={Array.isArray(post.recipients) ? post.recipients[0] : (post.recipientName || post.targetId)}
+                selectedHearts={activeMessage.selectedHearts || post.selectedHearts || []}
+                activeType={activeMessage.mediaType === 'audio' ? 'audio' : activeMessage.mediaType === 'video' ? 'video' : 'text'}
+                isCollaborative={!isSoloMode}
+                visibility={post.visibility}
+                showMetadata={false} // Strictly clean: No status pills, capacity info, or duplicate badges on the board!
+              />
+
+              {/* Single Click — Contributor Details Overlay (Image 1 reference) */}
+              {showContributorDetails && (
+                <div className="absolute inset-x-0 bottom-0 pt-16 pb-3.5 px-4 sm:px-5 bg-gradient-to-t from-black/85 via-black/45 to-transparent rounded-b-[1.8rem] sm:rounded-b-[2rem] md:rounded-b-3xl flex items-center gap-2.5 z-30 transition-all duration-300 animate-in fade-in slide-in-from-bottom-2 pointer-events-none">
+                  <div className="w-8 h-8 rounded-full bg-[#FAF0EC] border border-white/30 flex items-center justify-center text-xs font-extrabold text-[#FE6349] shrink-0 overflow-hidden shadow-xs">
+                    {activeMessage.authorAvatar || post.authorAvatar ? (
+                      <img 
+                        src={activeMessage.authorAvatar || post.authorAvatar} 
+                        alt={displayAuthorName} 
+                        className="w-full h-full object-cover" 
+                      />
+                    ) : (
+                      <User className="w-4 h-4 text-[#FE6349]" />
+                    )}
+                  </div>
+                  <div className="flex flex-col text-left">
+                    <span className="text-xs sm:text-sm font-bold text-white tracking-tight leading-tight drop-shadow-sm">
+                      {displayAuthorName}
+                    </span>
+                    <span className="text-[10px] sm:text-[11px] font-medium text-white/75 leading-tight mt-0.5">
+                      {isCurator ? 'Message Creator' : 'Contributor'}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 3. BOARD NAVIGATION: Circular navigation indicator below the board */}
+        {effectiveActiveTab === 'contributions' && contributions.length > 1 && (
+          <div className="flex items-center justify-center gap-2 mt-3.5 mb-1 z-20">
+            {contributions.map((_, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => setActiveContributionIndex(idx)}
+                className={`transition-all duration-300 rounded-full cursor-pointer ${
+                  activeContributionIndex === idx
+                    ? 'w-6 h-2 bg-white'
+                    : 'w-2 h-2 bg-white/30 hover:bg-white/60'
+                }`}
+                aria-label={`Jump to message ${idx + 1}`}
+              />
+            ))}
+          </div>
+        )}
+
+      </main>
+
+      {/* 4. BELOW THE BOARD (Strictly in specified order) */}
+      <footer className="w-full max-w-[380px] mx-auto px-4 pb-6 pt-1 flex flex-col items-start text-left z-20 shrink-0">
+        
+        {/* A. Caption */}
+        <h2 className="text-base sm:text-lg font-bold text-white tracking-tight leading-snug break-words">
+          {displayCaption}
+        </h2>
+
+        {/* B. Tagged recipient(s) */}
+        <p className="text-xs sm:text-sm font-semibold text-[#808897] mt-1 break-words">
+          {displayRecipients}
+        </p>
+
+        {/* C. Curator information/bio */}
+        <div className="flex items-center gap-2 mt-2.5">
+          <div className="w-6 h-6 rounded-full bg-[#353849] border border-white/20 flex items-center justify-center text-[10px] font-extrabold text-white shrink-0 overflow-hidden">
+            {post.authorAvatar ? (
+              <img src={post.authorAvatar} alt={displayAuthorName} className="w-full h-full object-cover" />
             ) : (
-              <div className="bg-amber-50 border border-amber-100 rounded-2xl p-3 text-center flex items-center justify-center gap-2 text-amber-800">
-                <ShieldAlert className="w-4 h-4 shrink-0 text-amber-600" />
-                <span className="text-xs font-bold">
-                  {isSoloMode ? "Only Me Board (1 message total)" : "Board Capacity Reached (20/20 messages)"}
-                </span>
-              </div>
+              displayAuthorName.charAt(0).toUpperCase()
             )}
           </div>
+          <span className="text-xs sm:text-sm font-semibold text-gray-300">
+            {displayAuthorName} {isCurator ? '(Curator)' : '(Contributor)'}
+          </span>
         </div>
 
-      </div>
+        {/* D. Reaction Picker & Action Bar */}
+        <div className="w-full mt-4 relative">
+          
+          {/* Dismiss backdrop when picker is open */}
+          {isReactionPickerOpen && (
+            <div 
+              className="fixed inset-0 z-20 cursor-default" 
+              onClick={() => setIsReactionPickerOpen(false)} 
+            />
+          )}
+
+          {/* Top Floating Pill: Reaction Picker (Absolute overlay - zero layout shift) */}
+          {isReactionPickerOpen && (
+            <div 
+              className="absolute bottom-[calc(100%+10px)] left-0 w-full flex items-center justify-between bg-[#272835] border border-white/10 rounded-full px-5 py-2.5 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-150 z-30"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* 1. Clap */}
+              <button
+                type="button"
+                onClick={() => handleToggleReaction('clap')}
+                className="flex items-center gap-1.5 transition-transform active:scale-90 cursor-pointer py-1 px-1 rounded-full hover:bg-white/5"
+                title="Clap"
+              >
+                <HandsClapping 
+                  size={24} 
+                  weight={userReactions.includes('clap') ? "fill" : "bold"} 
+                  color={userReactions.includes('clap') ? "#00D09C" : "#FFFFFF"} 
+                />
+                {formatReactionCount(reactionCounts.clap) && (
+                  <span className="text-xs font-bold text-white tracking-tight ml-0.5">
+                    {formatReactionCount(reactionCounts.clap)}
+                  </span>
+                )}
+              </button>
+
+              {/* 2. Heart */}
+              <button
+                type="button"
+                onClick={() => handleToggleReaction('heart')}
+                className="flex items-center gap-1.5 transition-transform active:scale-90 cursor-pointer py-1 px-1 rounded-full hover:bg-white/5"
+                title="Heart / Love"
+              >
+                <PhosphorHeart 
+                  size={24} 
+                  weight="fill" 
+                  color={userReactions.includes('heart') ? "#FF3838" : "#FFFFFF"} 
+                />
+                {formatReactionCount(reactionCounts.heart) && (
+                  <span className="text-xs font-bold text-white tracking-tight ml-0.5">
+                    {formatReactionCount(reactionCounts.heart)}
+                  </span>
+                )}
+              </button>
+
+              {/* 3. Smiley */}
+              <button
+                type="button"
+                onClick={() => handleToggleReaction('smiley')}
+                className="flex items-center gap-1.5 transition-transform active:scale-90 cursor-pointer py-1 px-1 rounded-full hover:bg-white/5"
+                title="Smiley"
+              >
+                <PhosphorSmiley 
+                  size={24} 
+                  weight={userReactions.includes('smiley') ? "fill" : "bold"} 
+                  color={userReactions.includes('smiley') ? "#FFC72C" : "#FFFFFF"} 
+                />
+                {formatReactionCount(reactionCounts.smiley) && (
+                  <span className="text-xs font-bold text-white tracking-tight ml-0.5">
+                    {formatReactionCount(reactionCounts.smiley)}
+                  </span>
+                )}
+              </button>
+
+              {/* 4. Fire */}
+              <button
+                type="button"
+                onClick={() => handleToggleReaction('fire')}
+                className="flex items-center gap-1.5 transition-transform active:scale-90 cursor-pointer py-1 px-1 rounded-full hover:bg-white/5"
+                title="Fire"
+              >
+                <PhosphorFire 
+                  size={24} 
+                  weight="fill" 
+                  color={userReactions.includes('fire') ? "#FF7629" : "#FFFFFF"} 
+                />
+                {formatReactionCount(reactionCounts.fire) && (
+                  <span className="text-xs font-bold text-white tracking-tight ml-0.5">
+                    {formatReactionCount(reactionCounts.fire)}
+                  </span>
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* Bottom Pill: Action Bar */}
+          <div className="w-full flex items-center justify-between bg-[#272835] border border-white/10 rounded-full px-5 py-2.5 shadow-xl relative z-30">
+            
+            {/* 1. Reaction Button (Smiley) - Default State has no count, only icon */}
+            <button
+              type="button"
+              onClick={() => setIsReactionPickerOpen((prev) => !prev)}
+              className={`flex items-center justify-center p-1 rounded-full active:scale-95 transition-all cursor-pointer ${
+                isReactionPickerOpen ? 'bg-white/15 text-white' : 'text-white/90 hover:text-white'
+              }`}
+              title="Reactions"
+            >
+              <PhosphorSmiley size={24} weight="bold" color="#FFFFFF" />
+            </button>
+
+            {/* 2. Share Button */}
+            <button
+              type="button"
+              onClick={() => setIsShareModalOpen(true)}
+              className="text-white/90 hover:text-white active:scale-95 transition-all cursor-pointer p-1"
+              title="Share board link & image"
+            >
+              <ShareFat size={24} weight="bold" color="#FFFFFF" />
+            </button>
+
+            {/* 3. Flag Button */}
+            <button
+              type="button"
+              onClick={handleFlagClick}
+              className="text-white/90 hover:text-white active:scale-95 transition-all cursor-pointer p-1"
+              title="Flag / Report this board"
+            >
+              <PhosphorFlag size={24} weight="bold" color="#FFFFFF" />
+            </button>
+
+            {/* 4. + / Add Message Button (ONLY if collaborative and capacity not reached) */}
+            {!isSoloMode && !isCapacityReached && onAddContributionClick && (
+              <button
+                type="button"
+                onClick={() => onAddContributionClick(post)}
+                className="text-white hover:text-[#FE6349] active:scale-95 transition-all cursor-pointer p-1 flex items-center justify-center"
+                title="Add a message to this board"
+              >
+                <PhosphorPlus size={24} weight="bold" color="#FFFFFF" />
+              </button>
+            )}
+
+          </div>
+
+        </div>
+
+      </footer>
+
+      {/* Flag / Report Toast Feedback */}
+      {showFlagToast && toastMessage && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[1100] bg-[#272835] text-white text-xs font-bold px-4 py-2.5 rounded-full border border-white/20 shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2">
+          <Check className="w-4 h-4 text-emerald-400" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Share Modal Integration */}
+      {isShareModalOpen && (
+        <ShareProfileModal
+          isOpen={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          userHandle={post.authorName ? `@${post.authorName.toLowerCase().replace(/\s+/g, '')}` : '@curator'}
+          userName={post.authorName}
+          profileImage={post.authorAvatar || null}
+          onShowToast={(msg) => {
+            setToastMessage(msg);
+            setShowFlagToast(true);
+            setTimeout(() => {
+              setShowFlagToast(false);
+              setToastMessage(null);
+            }, 3000);
+          }}
+        />
+      )}
+
+      {/* Action Menu Pop-up Modal (Double Click / Action Page) */}
+      {isActionMenuOpen && (
+        <ActionMenuModal
+          isOpen={isActionMenuOpen}
+          onClose={() => setIsActionMenuOpen(false)}
+          post={post}
+          isCreator={isCreator}
+          userContributions={userContributions}
+          onAddPost={() => {
+            onAddContributionClick?.(post);
+          }}
+          onShare={() => {
+            setIsShareModalOpen(true);
+          }}
+          onEditBoard={() => {
+            onEditBoard?.(post);
+          }}
+          onDeleteBoard={() => {
+            onDeleteBoard?.(post.id);
+          }}
+          onEditMainMessage={() => {
+            onEditMessage?.(post);
+          }}
+          onDeleteMainMessage={() => {
+            onDeleteMessage?.(post);
+          }}
+          onEditContribution={(contribution) => {
+            onEditMessage?.(post, contribution);
+          }}
+          onDeleteContribution={(contribution) => {
+            onDeleteMessage?.(post, contribution);
+          }}
+        />
+      )}
+
     </div>
   );
 };
-

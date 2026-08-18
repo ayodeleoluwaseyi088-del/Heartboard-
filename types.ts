@@ -183,13 +183,32 @@ export const MOCK_REGISTERED_USERS: RegisteredUser[] = [
   }
 ];
 
+export interface ReactionCounts {
+  clap?: number;
+  heart?: number;
+  smiley?: number;
+  fire?: number;
+}
+
 export interface Contribution {
   id: string;
   authorName: string;
   authorHandle?: string;
   authorAvatar?: string;
   content: string;
+  caption?: string;
   createdAt: string;
+  canvasElements?: any[];
+  imageUrl?: string;
+  mediaUrl?: string;
+  type?: 'text' | 'image' | 'audio';
+  mediaType?: 'audio' | 'video' | 'image' | 'text' | 'note';
+  sticker?: string;
+  confetti?: string;
+  reactions?: number;
+  reactionCounts?: ReactionCounts;
+  userReactions?: ('clap' | 'heart' | 'smiley' | 'fire')[];
+  isCreatedByUser?: boolean;
 }
 
 export interface Post {
@@ -206,6 +225,8 @@ export interface Post {
   targetId: string;
   targetType: EntityType;
   reactions: number;
+  reactionCounts?: ReactionCounts;
+  userReactions?: ('clap' | 'heart' | 'smiley' | 'fire')[];
   canvasElements?: any[];
   eventType?: string;
   recipients?: string[];

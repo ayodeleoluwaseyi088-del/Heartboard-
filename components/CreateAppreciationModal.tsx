@@ -527,7 +527,7 @@ export const CanvasReadOnlyCard: React.FC<CanvasReadOnlyCardProps> = ({
 };
 
 import { moderateContent } from '../services/geminiService';
-import { EntityType, PostVisibility } from '../types';
+import { EntityType, PostVisibility, Post, Contribution } from '../types';
 
 export interface CreateAppreciationModalProps {
   onClose: () => void;
@@ -535,6 +535,16 @@ export interface CreateAppreciationModalProps {
   initialRecipient?: { id?: string; name: string; handle: string; avatar?: string };
   initialHashtag?: string;
   initialMode?: 'create_message' | 'send_heart';
+  parentBoard?: any;
+  isContribution?: boolean;
+  onAddContribution?: (parentBoardId: string, contribution: any) => void;
+  editingPost?: Post | null;
+  editingContribution?: Contribution | null;
+  editMode?: 'board' | 'message' | 'contribution' | null;
+  onUpdatePost?: (updatedPost: Post) => void;
+  onUpdateContribution?: (parentBoardId: string, updatedContrib: Contribution) => void;
+  onDeletePost?: (postId: string) => void;
+  onDeleteContribution?: (parentBoardId: string, contribId: string) => void;
 }
 
 // Spacing System conforming to additional guide elements:
@@ -750,29 +760,112 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
   onPostCreated,
   initialRecipient,
   initialHashtag,
-  initialMode
+  initialMode,
+  parentBoard,
+  isContribution,
+  onAddContribution,
+  editingPost,
+  editingContribution,
+  editMode,
+  onUpdatePost,
+  onUpdateContribution,
+  onDeletePost,
+  onDeleteContribution
 }) => {
-  const [activeType, setActiveType] = useState<'text' | 'audio' | 'video'>('text');
+  const [activeType, setActiveType] = useState<'text' | 'audio' | 'video'>(() => {
+    if (editingContribution?.type) return editingContribution.type === 'image' ? 'text' : editingContribution.type as any;
+    if (editingPost?.type) return editingPost.type === 'image' ? 'text' : editingPost.type as any;
+    return 'text';
+  });
   
   // Customization & Core Information States
-  const [content, setContent] = useState('');
-  const [authorName, setAuthorName] = useState('');
-  const [recipient, setRecipient] = useState<string>(
-    initialRecipient ? (initialRecipient.handle || initialRecipient.name) : ''
-  );
+  const isContributorFlow = Boolean(isContribution || editMode === 'contribution' || editingContribution);
+  const isEditingContributor = Boolean(editingContribution || editMode === 'contribution');
+
+  const [content, setContent] = useState(() => {
+    return editingContribution?.content || editingPost?.content || '';
+  });
+  const [authorName, setAuthorName] = useState(() => {
+    return editingContribution?.authorName || editingPost?.authorName || '';
+  });
+  const [recipient, setRecipient] = useState<string>(() => {
+    if (editingPost) {
+      if (Array.isArray(editingPost.recipients) && editingPost.recipients.length > 0) {
+        return editingPost.recipients[0];
+      }
+      return editingPost.targetId || '';
+    }
+    if (initialRecipient) return initialRecipient.handle || initialRecipient.name;
+    if (parentBoard) {
+      if (Array.isArray(parentBoard.recipients) && parentBoard.recipients.length > 0) {
+        return parentBoard.recipients[0];
+      }
+      return parentBoard.targetId || '';
+    }
+    return '';
+  });
   
-  const [selectedFrame, setSelectedFrame] = useState<FrameTemplate>(FRAME_TEMPLATES[0]);
-  const [selectedSticker, setSelectedSticker] = useState<StickerItem | null>(null);
-  const [selectedConfetti, setSelectedConfetti] = useState<ConfettiType>(null);
+  // Automatically inherit and lock the parent curator's frame background when creating a contribution
+  const [selectedFrame, setSelectedFrame] = useState<FrameTemplate>(() => {
+    const targetTheme = editingPost?.theme || parentBoard?.theme;
+    if (targetTheme) {
+      const found = FRAME_TEMPLATES.find(f => 
+        targetTheme.includes(f.id) || 
+        f.bgHex.toLowerCase() === targetTheme.toLowerCase() ||
+        (targetTheme.startsWith('#') && f.bgHex.toLowerCase() === targetTheme.toLowerCase())
+      );
+      if (found) return found;
+      if (targetTheme.startsWith('#')) {
+        return { id: 'custom-theme', name: 'Board Theme', bgHex: targetTheme, pillBg: '#FAF5E8', pillText: '#806840' };
+      }
+    }
+    return FRAME_TEMPLATES[0];
+  });
+  const [selectedSticker, setSelectedSticker] = useState<StickerItem | null>(() => {
+    const stickerId = editingContribution?.sticker || editingPost?.sticker;
+    if (stickerId) {
+      return STICKERS.find(s => s.id === stickerId) || null;
+    }
+    return null;
+  });
+  const [selectedConfetti, setSelectedConfetti] = useState<ConfettiType>(() => {
+    return (editingContribution?.confetti || editingPost?.confetti || null) as ConfettiType;
+  });
   const [isConfettiPickerOpen, setIsConfettiPickerOpen] = useState(false);
-  const [selectedHearts, setSelectedHearts] = useState<string[]>([]);
+  const [selectedHearts, setSelectedHearts] = useState<string[]>(() => {
+    return editingPost?.selectedHearts || [];
+  });
   const [isCursive, setIsCursive] = useState(true);
   const [canvasAspectRatio] = useState<'portrait'>('portrait');
-  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [uploadedImage, setUploadedImage] = useState<string | null>(() => {
+    return editingContribution?.imageUrl || editingContribution?.mediaUrl || editingPost?.imageUrl || editingPost?.mediaUrl || null;
+  });
   const imageInputRef = useRef<HTMLInputElement>(null);
 
   // Dynamic Canvas Elements state
-  const [canvasElements, setCanvasElements] = useState<CanvasElement[]>([]);
+  const [canvasElements, setCanvasElements] = useState<CanvasElement[]>(() => {
+    if (editingContribution?.canvasElements && editingContribution.canvasElements.length > 0) {
+      return editingContribution.canvasElements;
+    }
+    if (editingPost?.canvasElements && editingPost.canvasElements.length > 0) {
+      return editingPost.canvasElements;
+    }
+    const initialText = editingContribution?.content || editingPost?.content;
+    if (initialText && initialText.trim()) {
+      return [
+        {
+          id: 'text-initial-' + Date.now(),
+          type: 'text',
+          text: initialText,
+          isCursive: true,
+          fontFamily: 'Caveat, cursive',
+          color: '#1A1B25',
+          fontSize: 28,
+        }
+      ];
+    }
+    return [];
+  });
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [editingElementId, setEditingElementId] = useState<string | null>(null);
 
@@ -884,16 +977,25 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
   };
 
   // Advanced variables
-  const [privacyLayer, setPrivacyLayer] = useState<PostVisibility>(PostVisibility.PUBLIC);
+  const [privacyLayer, setPrivacyLayer] = useState<PostVisibility>(() => {
+    return editingPost?.visibility || PostVisibility.PUBLIC;
+  });
   const [isCollaborative, setIsCollaborative] = useState(false);
   const [isPremiumUnlocked, setIsPremiumUnlocked] = useState(false);
   
-  // Preview Page State
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const [caption, setCaption] = useState('');
-  const [selectedEventType, setSelectedEventType] = useState<string>('');
+  // Preview Page State: Never open preview page for any contributor flow
+  const [isPreviewOpen, setIsPreviewOpen] = useState(() => Boolean(editMode === 'board' && !isContributorFlow));
+  const [caption, setCaption] = useState(() => {
+    return editingContribution?.caption || editingPost?.caption || '';
+  });
+  const [selectedEventType, setSelectedEventType] = useState<string>(() => {
+    return editingPost?.eventType || '';
+  });
   const [isEventDropdownOpen, setIsEventDropdownOpen] = useState(false);
   const [recipients, setRecipients] = useState<string[]>(() => {
+    if (editingPost?.recipients && editingPost.recipients.length > 0) {
+      return editingPost.recipients;
+    }
     const list: string[] = ['@you'];
     if (initialRecipient) {
       const handleOrName = initialRecipient.handle || initialRecipient.name;
@@ -910,12 +1012,16 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
     return list;
   });
   const [newRecipientInput, setNewRecipientInput] = useState('');
-  const [boardCapacity, setBoardCapacity] = useState<'collaborative' | 'solo'>('collaborative');
+  const [boardCapacity, setBoardCapacity] = useState<'collaborative' | 'solo'>(() => {
+    return (editingPost?.boardCapacity as any) || 'collaborative';
+  });
   const [isCapacityModalOpen, setIsCapacityModalOpen] = useState(false);
   const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
 
-  // Control States
-  const [isExpanded, setIsExpanded] = useState(false);
+  // Control States: Contributor flows immediately open the full Canva workspace
+  const [isExpanded, setIsExpanded] = useState(() => {
+    return Boolean(isContributorFlow || editMode === 'message');
+  });
   const [expandedActiveTool, setExpandedActiveTool] = useState<'none' | 'image' | 'text' | 'vector' | 'bg'>('none');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isHeartsOnlyPickerOpen, setIsHeartsOnlyPickerOpen] = useState(false);
@@ -1010,6 +1116,99 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
         ? PostVisibility.PUBLIC 
         : privacyLayer;
       
+      // 1. Editing Existing Contribution
+      if (editingContribution && onUpdateContribution && parentBoard) {
+        const updatedContrib: any = {
+          ...editingContribution,
+          authorName: effectiveVisibility === PostVisibility.ANONYMOUS ? 'Anon' : (authorName.trim() || editingContribution.authorName || 'Contributor'),
+          authorHandle: authorName.trim() ? (authorName.startsWith('@') ? authorName.trim() : `@${authorName.trim().toLowerCase().replace(/\s+/g, '')}`) : editingContribution.authorHandle,
+          content: safeTextCheck,
+          caption: caption.trim() || undefined,
+          type: activeType,
+          mediaType: activeType === 'text' ? 'note' : activeType,
+          imageUrl: uploadedImage || undefined,
+          mediaUrl: uploadedImage || undefined,
+          sticker: selectedSticker ? selectedSticker.id : undefined,
+          confetti: selectedConfetti || undefined,
+          canvasElements: canvasElements.filter(hasElementContent),
+        };
+
+        onUpdateContribution(parentBoard.id, updatedContrib);
+        setIsModerating(false);
+        setIsPreviewOpen(false);
+        onClose();
+        return;
+      }
+
+      // 2. Editing Existing Post/Board
+      if (editingPost && onUpdatePost) {
+        const updatedPost: any = {
+          ...editingPost,
+          visibility: effectiveVisibility,
+          authorName: effectiveVisibility === PostVisibility.ANONYMOUS ? 'Anon' : (authorName.trim() || editingPost.authorName || 'Curator'),
+          content: safeTextCheck,
+          caption: caption.trim() || undefined,
+          eventType: selectedEventType || editingPost.eventType || 'Appreciation',
+          recipients: recipients,
+          hashtags: extractedHashtags,
+          boardCapacity: boardCapacity,
+          maxCapacity: boardCapacity === 'solo' ? 1 : 20,
+          type: activeType,
+          mediaType: activeType === 'text' ? 'note' : activeType,
+          targetId: finalRecipientsString.replace('#', ''),
+          targetType: isHashtagRecipient ? EntityType.WALL : EntityType.BOARD,
+          imageUrl: uploadedImage || undefined,
+          theme: selectedFrame.id === 'slate' ? 'bg-[#272835] text-white' : 
+                 selectedFrame.id === 'mint' ? 'bg-[#ECEFE6]' :
+                 selectedFrame.id === 'sunset' ? 'bg-[#FAF5E8]' :
+                 selectedFrame.id === 'lavender' ? 'bg-[#EEF1FA]' : 'bg-[#FAF0EC]',
+          sticker: selectedSticker ? selectedSticker.id : undefined,
+          confetti: selectedConfetti || undefined,
+          sponsor: boardCapacity === 'collaborative' ? "Community Coauthored" : undefined,
+          canvasElements: canvasElements.filter(hasElementContent),
+        };
+
+        if (selectedHearts.length > 0) {
+          updatedPost.selectedHearts = [...selectedHearts];
+        }
+
+        onUpdatePost(updatedPost);
+        setIsModerating(false);
+        setIsPreviewOpen(false);
+        onClose();
+        return;
+      }
+
+      // 3. New Contribution Flow
+      if (isContribution && parentBoard) {
+        const newContrib: any = {
+          id: 'contrib-' + Math.random().toString(36).substring(2, 11),
+          authorName: effectiveVisibility === PostVisibility.ANONYMOUS ? 'Anon' : (authorName.trim() || 'Nancy98'),
+          authorHandle: authorName.trim() ? (authorName.startsWith('@') ? authorName.trim() : `@${authorName.trim().toLowerCase().replace(/\s+/g, '')}`) : '@nancy98',
+          authorAvatar: effectiveVisibility === PostVisibility.ANONYMOUS ? undefined : 'https://api.dicebear.com/7.x/avataaars/svg?seed=Nancy98',
+          content: safeTextCheck,
+          caption: caption.trim() || undefined,
+          type: activeType,
+          mediaType: activeType === 'text' ? 'note' : activeType,
+          imageUrl: uploadedImage || undefined,
+          mediaUrl: uploadedImage || undefined,
+          createdAt: new Date().toISOString(),
+          sticker: selectedSticker ? selectedSticker.id : undefined,
+          confetti: selectedConfetti || undefined,
+          reactions: 0,
+          canvasElements: canvasElements.filter(hasElementContent),
+          isCreatedByUser: true,
+        };
+
+        if (onAddContribution) {
+          onAddContribution(parentBoard.id, newContrib);
+        }
+        setIsModerating(false);
+        setIsPreviewOpen(false);
+        onClose();
+        return;
+      }
+
       const newPost: any = {
         id: 'post-' + Math.random().toString(36).substring(2, 11),
         visibility: effectiveVisibility,
@@ -1861,15 +2060,21 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
           <div className="bg-white px-6 py-4 border-b border-gray-100 flex items-center justify-between relative shrink-0">
             {/* Top row: Close X button on left, Title in center */}
             <button 
-              onClick={() => setIsExpanded(false)}
+              onClick={() => {
+                if (isContributorFlow) {
+                  onClose();
+                } else {
+                  setIsExpanded(false);
+                }
+              }}
               className="text-[#1A1B25] hover:bg-black/5 p-2 rounded-full transition-all active:scale-95 cursor-pointer"
-              aria-label="Close expanded editor"
+              aria-label="Close editor"
             >
               <X className="w-6 h-6 stroke-[2]" />
             </button>
 
             <h2 className="text-xl font-bold text-[#1A1B25] tracking-tight">
-              Drop a message
+              {isEditingContributor ? 'Edit message' : isContributorFlow ? 'Add a message' : editMode === 'message' ? 'Edit message' : 'Drop a message'}
             </h2>
 
             <div className="w-10" />
@@ -1878,21 +2083,48 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
           {/* B. SUB-HEADER / ACTION CONTROL BAR */}
           <div className="px-6 py-3 flex items-center justify-between shrink-0">
             <button 
-              onClick={() => setIsExpanded(false)}
+              onClick={() => {
+                if (isContributorFlow) {
+                  onClose();
+                } else {
+                  setIsExpanded(false);
+                }
+              }}
               className="w-9 h-9 flex items-center justify-center hover:bg-black/5 rounded-full text-gray-800 transition-all cursor-pointer"
-              aria-label="Back to default view"
+              aria-label="Back"
             >
               <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
             </button>
 
             <div className="flex items-center gap-2.5">
-              {/* Save button */}
-              <button 
-                onClick={() => setIsExpanded(false)}
-                className="h-9 inline-flex items-center justify-center bg-white hover:bg-gray-50 text-[#1A1B25] text-xs font-bold px-4 rounded-full transition-all cursor-pointer active:scale-95"
-              >
-                Save
-              </button>
+              {/* Save or Publish button */}
+              {isContributorFlow ? (
+                <button 
+                  type="button"
+                  onClick={handleFinalSubmitMessage}
+                  disabled={isModerating}
+                  className="h-9 inline-flex items-center justify-center bg-[#FE6349] hover:bg-[#e05234] text-white text-xs font-bold px-5 rounded-full shadow-xs transition-all cursor-pointer active:scale-95 gap-1.5 disabled:opacity-50"
+                >
+                  {isModerating ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Publishing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Publish</span>
+                      <Sparkles className="w-3.5 h-3.5 fill-white" />
+                    </>
+                  )}
+                </button>
+              ) : (
+                <button 
+                  onClick={() => setIsExpanded(false)}
+                  className="h-9 inline-flex items-center justify-center bg-white hover:bg-gray-50 text-[#1A1B25] text-xs font-bold px-4 rounded-full transition-all cursor-pointer active:scale-95"
+                >
+                  Save
+                </button>
+              )}
             </div>
           </div>
 
@@ -1909,8 +2141,13 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
             >
               {/* Inner white card canvas */}
               <div 
-                onClick={() => setSelectedElementId(null)}
-                className="rounded-[1.8rem] sm:rounded-[2.2rem] bg-white flex flex-col justify-between relative p-4 sm:p-6 transition-all duration-300 shadow-xs max-w-full max-h-full w-[254px] h-[360px] overflow-hidden cursor-default"
+                onClick={() => {
+                  setSelectedElementId(null);
+                  if (canvasElements.length === 0 && activeType === 'text') {
+                    handleAddTextElement();
+                  }
+                }}
+                className="rounded-[1.8rem] sm:rounded-[2.2rem] bg-white flex flex-col justify-between relative p-4 sm:p-6 transition-all duration-300 shadow-xs max-w-full max-h-full w-[254px] h-[360px] overflow-hidden cursor-pointer"
               >
                 {/* Confetti Animation Overlay */}
                 <ConfettiOverlay type={selectedConfetti} />
@@ -1921,7 +2158,16 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                       {(() => {
                         const visibleElements = canvasElements.filter(hasElementContent);
                         if (visibleElements.length === 0) {
-                          return null;
+                          return (
+                            <div className="text-center w-full px-4 space-y-0.5 py-1 pointer-events-none">
+                              <h3 className="text-[15px] font-semibold text-gray-600 tracking-tight">
+                                Tap to create message
+                              </h3>
+                              <p className="text-[11px] text-[#808897] font-semibold">
+                                {isContributorFlow ? "Add your tribute to this board" : "Create beautiful message with stunning visuals"}
+                              </p>
+                            </div>
+                          );
                         }
                         return visibleElements.map((el) => (
                           <RenderCanvasElement
@@ -2029,16 +2275,18 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                   <span className="text-[11px] font-medium text-gray-700">Vector</span>
                 </button>
 
-                {/* 4. BG */}
-                <button
-                  type="button"
-                  onClick={handleAddBgElement}
-                  className="bg-white border border-dashed border-gray-200/80 hover:bg-gray-50 rounded-2xl w-[64px] h-[58px] flex flex-col items-center justify-center gap-1 cursor-pointer transition-all active:scale-95"
-                  title="Add new BG element"
-                >
-                  <Palette className="w-4 h-4 text-[#1A1B25]" />
-                  <span className="text-[11px] font-medium text-gray-700">BG</span>
-                </button>
+                {/* 4. BG (Only for main board, hidden for contributions to ensure visual consistency) */}
+                {!isContributorFlow && (
+                  <button
+                    type="button"
+                    onClick={handleAddBgElement}
+                    className="bg-white border border-dashed border-gray-200/80 hover:bg-gray-50 rounded-2xl w-[64px] h-[58px] flex flex-col items-center justify-center gap-1 cursor-pointer transition-all active:scale-95"
+                    title="Add new BG element"
+                  >
+                    <Palette className="w-4 h-4 text-[#1A1B25]" />
+                    <span className="text-[11px] font-medium text-gray-700">BG</span>
+                  </button>
+                )}
 
                 {/* 5. Confetti */}
                 <button
@@ -2053,6 +2301,35 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                   </span>
                 </button>
               </div>
+
+              {/* Moderation Error Display */}
+              {moderationError && (
+                <div className="text-center text-xs font-bold text-red-500 bg-red-50 px-4 py-2 rounded-xl border border-red-100 mt-1 max-w-sm animate-pulse">
+                  {moderationError}
+                </div>
+              )}
+
+              {/* Contributor Bottom Primary Publish Button */}
+              {isContributorFlow && (
+                <button
+                  type="button"
+                  onClick={handleFinalSubmitMessage}
+                  disabled={isModerating}
+                  className="w-full max-w-[280px] mt-1 py-3 bg-[#FE6349] hover:bg-[#e05234] text-white rounded-full font-bold text-sm shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                >
+                  {isModerating ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Publishing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Publish</span>
+                      <Sparkles className="w-4 h-4 fill-white" />
+                    </>
+                  )}
+                </button>
+              )}
 
             </div>
           )}
