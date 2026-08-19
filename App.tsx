@@ -8,6 +8,8 @@ import { CreateAppreciationModal } from './components/CreateAppreciationModal';
 import { FilterModal, FILTER_OPTIONS } from './components/FilterModal';
 import { HeartboardView } from './components/HeartboardView';
 import { HashtagView } from './components/HashtagView';
+import { AuthView } from './components/AuthModal';
+import { WelcomeModal } from './components/WelcomeModal';
 import { 
   SlidersHorizontal, 
   Search, 
@@ -352,6 +354,9 @@ interface TopNavigationProps {
   onSelectBoard: (post: any) => void;
   onSelectUser?: (user: RegisteredUser) => void;
   onSelectHashtag?: (hashtag: string) => void;
+  currentUser?: RegisteredUser | null;
+  onOpenAuth?: (mode?: 'login' | 'signup', prompt?: string) => void;
+  onGoToProfile?: () => void;
 }
 
 const TopNavigation: React.FC<TopNavigationProps> = ({ 
@@ -361,7 +366,10 @@ const TopNavigation: React.FC<TopNavigationProps> = ({
   posts, 
   onSelectBoard,
   onSelectUser,
-  onSelectHashtag
+  onSelectHashtag,
+  currentUser,
+  onOpenAuth,
+  onGoToProfile
 }) => {
   const [isFullPageOpen, setIsFullPageOpen] = useState(false);
   const [activeSearchTab, setActiveSearchTab] = useState<'all' | 'users' | 'boards' | 'hashtags'>('all');
@@ -477,14 +485,45 @@ const TopNavigation: React.FC<TopNavigationProps> = ({
           )}
         </div>
 
-        {/* Sliders config - right */}
-        <button 
-          onClick={onFilterClick}
-          aria-label="Open filters"
-          className="w-10 h-10 shrink-0 aspect-square rounded-full bg-gray-25 flex items-center justify-center text-gray-500 hover:text-gray-800 transition-all cursor-pointer hover:bg-gray-100"
-        >
-          <SlidersHorizontal size={18} strokeWidth={2.5} />
-        </button>
+        {/* Header Right Controls */}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Sliders config */}
+          <button 
+            onClick={onFilterClick}
+            aria-label="Open filters"
+            className="w-10 h-10 shrink-0 aspect-square rounded-full bg-gray-25 flex items-center justify-center text-gray-500 hover:text-gray-800 transition-all cursor-pointer hover:bg-gray-100"
+          >
+            <SlidersHorizontal size={18} strokeWidth={2.5} />
+          </button>
+
+          {/* User Profile or Sign In button */}
+          {currentUser ? (
+            <button
+              onClick={onGoToProfile}
+              className="flex items-center gap-2 p-1 pl-1.5 pr-2 rounded-full bg-gray-25 hover:bg-gray-100 border border-gray-100 transition-all cursor-pointer"
+              title={`${currentUser.name} (${currentUser.handle})`}
+            >
+              <div className="w-7 h-7 rounded-full bg-rose-100 overflow-hidden flex items-center justify-center border border-rose-200">
+                {currentUser.avatar ? (
+                  <img src={currentUser.avatar} alt={currentUser.name} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-xs font-bold text-[#FE6349]">{currentUser.name.charAt(0)}</span>
+                )}
+              </div>
+              <span className="text-xs font-bold text-gray-800 hidden sm:inline max-w-[80px] truncate">
+                {currentUser.name.split(' ')[0]}
+              </span>
+            </button>
+          ) : (
+            <button
+              onClick={() => onOpenAuth && onOpenAuth('login', 'Sign in to access your Heartboard, blow hearts, and post tributes.')}
+              className="px-3.5 py-2 rounded-full bg-[#1A1B25] hover:bg-black text-white font-extrabold text-xs shadow-2xs whitespace-nowrap cursor-pointer transition-all flex items-center gap-1.5"
+            >
+              <User size={13} strokeWidth={2.5} />
+              <span>Sign In</span>
+            </button>
+          )}
+        </div>
       </header>
 
       {/* Full Page Expanded Search Overlay */}
@@ -1121,7 +1160,7 @@ const HeroPulseFeed: React.FC<HeroPulseFeedProps> = ({ posts = [], onGiftVouchCl
       </div>
 
       {/* Highly Animated Real-Time Ticker */}
-      <div className="mt-8 relative h-10 w-full max-w-md overflow-hidden flex items-center justify-center">
+      <div className="mt-8 relative min-h-[52px] h-auto w-full max-w-md overflow-hidden flex items-center justify-center">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeMessageIndex}
@@ -1129,7 +1168,7 @@ const HeroPulseFeed: React.FC<HeroPulseFeedProps> = ({ posts = [], onGiftVouchCl
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -15 }}
             transition={{ duration: 0.4 }}
-            className="bg-gray-25/90 backdrop-blur-sm py-2 px-2 rounded-full flex items-center gap-1 text-[13px] text-gray-800"
+            className="bg-gray-25/90 backdrop-blur-sm py-4 px-3 rounded-full flex items-center gap-1 text-[13px] text-gray-800"
           >
             <span className="font-bold text-gray-900">{currentActivity.sender}</span>
             <span>blew a</span>
@@ -1485,6 +1524,80 @@ const App: React.FC = () => {
   const [heartFilter, setHeartFilter] = useState<'received' | 'sent'>('received');
   const [liveReactionTicks, setLiveReactionTicks] = useState(0);
 
+  // Authentication & Onboarding State
+  const [currentUser, setCurrentUser] = useState<RegisteredUser | null>(() => {
+    try {
+      const saved = localStorage.getItem('heartboard_current_user');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      // ignore
+    }
+    return null;
+  });
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<'login' | 'signup'>('login');
+  const [authModalPrompt, setAuthModalPrompt] = useState<string | undefined>(undefined);
+  const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
+
+  const handleOpenAuth = (mode: 'login' | 'signup' = 'login', prompt?: string) => {
+    setAuthModalMode(mode);
+    setAuthModalPrompt(prompt);
+    setIsAuthModalOpen(true);
+  };
+
+  const handleAuthSuccess = (user: RegisteredUser, isNewRegistration?: boolean) => {
+    setCurrentUser(user);
+    try {
+      localStorage.setItem('heartboard_current_user', JSON.stringify(user));
+    } catch (e) {
+      // ignore
+    }
+    setIsAuthModalOpen(false);
+    setAuthModalPrompt(undefined);
+
+    if (isNewRegistration) {
+      // Return user to Home Page and show welcome popup
+      setActiveNavTab('home');
+      setSelectedFilterId('moment');
+      setViewingProfileUser(null);
+      setViewingHashtag(null);
+      setIsWelcomeModalOpen(true);
+    }
+  };
+
+  const handleSignOut = () => {
+    setCurrentUser(null);
+    try {
+      localStorage.removeItem('heartboard_current_user');
+    } catch (e) {
+      // ignore
+    }
+    setActiveNavTab('home');
+    setSelectedFilterId('moment');
+    setViewingProfileUser(null);
+    setViewingHashtag(null);
+  };
+
+  const handleWelcomeSendMessageNow = () => {
+    setIsWelcomeModalOpen(false);
+    setContributionParentPost(null);
+    setEditingPost(null);
+    setEditingContribution(null);
+    setEditMode(null);
+    setCreateModalRecipient(undefined);
+    setCreateModalHashtag(undefined);
+    setCreateModalMode('create_message');
+    setIsCreateModalOpen(true);
+  };
+
+  const handleWelcomeCheckOutMoments = () => {
+    setIsWelcomeModalOpen(false);
+    setActiveNavTab('home');
+    setSelectedFilterId('moment');
+    setActiveFilter('all');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   // Profile and Hashtag view states
   const [viewingProfileUser, setViewingProfileUser] = useState<RegisteredUser | null>(null);
   const [viewingHashtag, setViewingHashtag] = useState<string | null>(null);
@@ -1497,6 +1610,10 @@ const App: React.FC = () => {
   const [editMode, setEditMode] = useState<'board' | 'message' | 'contribution' | null>(null);
 
   const handleGiftHeartForUser = (user: RegisteredUser) => {
+    if (!currentUser) {
+      handleOpenAuth('login', `Please sign in or create an account to gift a heart token to ${user.name}.`);
+      return;
+    }
     setCreateModalRecipient({
       id: user.id,
       name: user.name,
@@ -1509,6 +1626,10 @@ const App: React.FC = () => {
   };
 
   const handleSendMessageForUser = (user: RegisteredUser) => {
+    if (!currentUser) {
+      handleOpenAuth('login', `Please sign in or create an account to send a message to ${user.name}.`);
+      return;
+    }
     setCreateModalRecipient({
       id: user.id,
       name: user.name,
@@ -1531,6 +1652,10 @@ const App: React.FC = () => {
   };
 
   const handleCreateBoardForHashtag = (tag: string) => {
+    if (!currentUser) {
+      handleOpenAuth('login', `Please sign in or create an account to contribute to ${tag}.`);
+      return;
+    }
     setCreateModalHashtag(tag);
     setCreateModalRecipient(undefined);
     setCreateModalMode('create_message');
@@ -1579,7 +1704,30 @@ const App: React.FC = () => {
   };
 
   const handleNewPost = (newPost: any) => {
-    // Determine target category
+    // If it's a heart token (from Send Heart / Blow Heart)
+    const isHeart = Boolean(
+      newPost.isHeartToken || 
+      newPost.type === 'heart_token' || 
+      newPost.section === 'hearts' || 
+      (Array.isArray(newPost.selectedHearts) && newPost.selectedHearts.length > 0 && !newPost.mediaType && newPost.type !== 'image' && newPost.type !== 'audio' && newPost.type !== 'text')
+    );
+
+    if (isHeart) {
+      const heartPost = {
+        visibility: PostVisibility.PUBLIC,
+        targetType: newPost.targetType || EntityType.WALL,
+        ...newPost,
+        reactions: newPost.reactions ?? 1,
+        isHeartToken: true,
+        isCreatedByUser: true,
+        section: 'hearts',
+        type: 'heart_token'
+      };
+      setPosts([heartPost, ...posts]);
+      return;
+    }
+
+    // Determine target category for standard message boards
     let inferredCategory: 'tears' | 'vouch' | 'hype' = 'hype';
     let label = '🔥 NEW VIBE';
     if (newPost.type === 'text') {
@@ -1599,7 +1747,8 @@ const App: React.FC = () => {
       ...newPost,
       reactions: newPost.reactions ?? 0,
       isCreatedByUser: true,
-      section: 'board',
+      isHeartToken: false,
+      section: newPost.section || 'board',
       theme: newPost.theme || '#FAF5E8',
       mediaType: newPost.type === 'text' ? 'note' : newPost.type,
       category: inferredCategory,
@@ -1641,6 +1790,8 @@ const App: React.FC = () => {
     if (query) {
       const author = (post.authorName || '').toLowerCase();
       const recipient = (post.recipientName || post.targetId || '').toLowerCase();
+      const recipientsList = Array.isArray(post.recipients) ? post.recipients.join(' ').toLowerCase() : '';
+      const hashtagsList = Array.isArray(post.hashtags) ? post.hashtags.join(' ').toLowerCase() : '';
       const content = (post.content || '').toLowerCase();
       const badge = (post.statusBadge || '').toLowerCase();
       const cat = (post.category || '').toLowerCase();
@@ -1648,6 +1799,8 @@ const App: React.FC = () => {
       return (
         author.includes(query) ||
         recipient.includes(query) ||
+        recipientsList.includes(query) ||
+        hashtagsList.includes(query) ||
         content.includes(query) ||
         badge.includes(query) ||
         cat.includes(query)
@@ -1671,9 +1824,22 @@ const App: React.FC = () => {
   return (
     <Router>
       <div className="min-h-screen flex flex-col bg-white font-sans selection:bg-orange-100">
-        {viewingHashtag ? (
+        {isAuthModalOpen ? (
+          <main className="flex-grow bg-[#F8F9FB] min-h-screen">
+            <AuthView
+              isOpen={isAuthModalOpen}
+              initialMode={authModalMode}
+              promptMessage={authModalPrompt}
+              onClose={() => {
+                setIsAuthModalOpen(false);
+                setAuthModalPrompt(undefined);
+              }}
+              onAuthSuccess={handleAuthSuccess}
+            />
+          </main>
+        ) : viewingHashtag ? (
           <main className="flex-grow bg-white">
-            <HashtagView
+            <HashtagView 
               hashtag={viewingHashtag}
               posts={posts}
               onBack={() => setViewingHashtag(null)}
@@ -1693,6 +1859,8 @@ const App: React.FC = () => {
           <main className="flex-grow bg-white">
             <HeartboardView  
               profileUser={viewingProfileUser}
+              currentUser={currentUser}
+              onSignOut={handleSignOut}
               onBack={() => setViewingProfileUser(null)}
               onGiftHeart={handleGiftHeartForUser}
               onSendMessage={handleSendMessageForUser}
@@ -1727,6 +1895,13 @@ const App: React.FC = () => {
               onSelectBoard={handleSelectBoardFromSearch}
               onSelectUser={handleSelectUser}
               onSelectHashtag={handleSelectHashtag}
+              currentUser={currentUser}
+              onOpenAuth={handleOpenAuth}
+              onGoToProfile={() => {
+                setActiveNavTab('hearts');
+                setViewingProfileUser(null);
+                setViewingHashtag(null);
+              }}
             />
             
             {selectedFilterId === 'moment' ? (
@@ -1735,6 +1910,10 @@ const App: React.FC = () => {
                 <HeroPulseFeed 
                   posts={momentPosts}
                   onGiftVouchClick={() => {
+                    if (!currentUser) {
+                      handleOpenAuth('login', 'Please sign in or create an account to gift a vouch.');
+                      return;
+                    }
                     setCreateModalRecipient(undefined);
                     setCreateModalHashtag(undefined);
                     setCreateModalMode(undefined);
@@ -1795,6 +1974,10 @@ const App: React.FC = () => {
                   }}
                   onPostClick={(index) => setSelectedPostIndex(index)}
                   onCreateBoard={() => {
+                    if (!currentUser) {
+                      handleOpenAuth('login', 'Please sign in or create an account to create a board.');
+                      return;
+                    }
                     setCreateModalRecipient(undefined);
                     setCreateModalHashtag(undefined);
                     setCreateModalMode('create_message');
@@ -1810,6 +1993,8 @@ const App: React.FC = () => {
           <main className="flex-grow bg-white">
             <HeartboardView  
               posts={posts}
+              currentUser={currentUser}
+              onSignOut={handleSignOut}
               selectedFilterId={selectedFilterId}
               onClearFilter={() => setSelectedFilterId('moment')}
               heartFilter={heartFilter}
@@ -1830,20 +2015,30 @@ const App: React.FC = () => {
           </main>
         )}
 
-        <BottomNav 
-          activeTab={activeNavTab} 
-          setActiveTab={(tab) => {
-            handleTabChange(tab);
-            setViewingProfileUser(null);
-            setViewingHashtag(null);
-          }} 
-          onPlusClick={() => {
-            setCreateModalRecipient(undefined);
-            setCreateModalHashtag(undefined);
-            setCreateModalMode(undefined);
-            setIsCreateModalOpen(true);
-          }} 
-        />
+        {!isAuthModalOpen && (
+          <BottomNav 
+            activeTab={activeNavTab} 
+            setActiveTab={(tab) => {
+              if (tab === 'hearts' && !currentUser) {
+                handleOpenAuth('login', 'Please sign in or create an account to access your personal Heartboard.');
+                return;
+              }
+              handleTabChange(tab);
+              setViewingProfileUser(null);
+              setViewingHashtag(null);
+            }} 
+            onPlusClick={() => {
+              if (!currentUser) {
+                handleOpenAuth('login', 'Please sign in or create an account to create a board or message.');
+                return;
+              }
+              setCreateModalRecipient(undefined);
+              setCreateModalHashtag(undefined);
+              setCreateModalMode(undefined);
+              setIsCreateModalOpen(true);
+            }} 
+          />
+        )}
 
         {isCreateModalOpen && (
           <CreateAppreciationModal 
@@ -1947,10 +2142,24 @@ const App: React.FC = () => {
         {selectedPostIndex !== null && posts[selectedPostIndex] && (
           <MediaModal 
             post={posts[selectedPostIndex]} 
+            currentUser={currentUser}
+            onRequireAuth={(prompt) => handleOpenAuth('login', prompt)}
             onClose={() => setSelectedPostIndex(null)}
             onPrev={() => setSelectedPostIndex((prev) => prev !== null ? (prev - 1 + posts.length) % posts.length : null)}
             onNext={() => setSelectedPostIndex((prev) => prev !== null ? (prev + 1) % posts.length : null)}
+            onSelectUser={(user) => {
+              setSelectedPostIndex(null);
+              handleSelectUser(user);
+            }}
+            onSelectHashtag={(tag) => {
+              setSelectedPostIndex(null);
+              handleSelectHashtag(tag);
+            }}
             onAddContributionClick={(parentPost) => {
+              if (!currentUser) {
+                handleOpenAuth('login', 'Please sign in or create an account to add a contribution.');
+                return;
+              }
               setContributionParentPost(parentPost);
               setCreateModalRecipient(undefined);
               setCreateModalHashtag(undefined);
@@ -2027,6 +2236,15 @@ const App: React.FC = () => {
             }}
           />
         )}
+
+        {/* Welcome Onboarding Modal */}
+        <WelcomeModal
+          isOpen={isWelcomeModalOpen}
+          user={currentUser}
+          onClose={() => setIsWelcomeModalOpen(false)}
+          onSendMessageNow={handleWelcomeSendMessageNow}
+          onCheckOutMoments={handleWelcomeCheckOutMoments}
+        />
       </div>
     </Router>
   );

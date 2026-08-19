@@ -46,6 +46,7 @@ export interface HeartboardViewProps {
   onPostClick?: (post: any) => void;
   onFilterClick?: (subTab?: 'board' | 'tagged' | 'hearts') => void;
   profileUser?: UserProfileData | null;
+  currentUser?: RegisteredUser | null;
   onBack?: () => void;
   onGiftHeart?: (user: UserProfileData) => void;
   onSendMessage?: (user: UserProfileData) => void;
@@ -55,6 +56,7 @@ export interface HeartboardViewProps {
   defaultTab?: 'board' | 'tagged' | 'hearts';
   heartFilter?: 'received' | 'sent';
   onHeartFilterChange?: (filter: 'received' | 'sent') => void;
+  onSignOut?: () => void;
 }
 
 // Re-use the exact HeartBubbleSvg component from Page 2 (Send/Blow Heart)
@@ -599,7 +601,8 @@ const MOCK_HEARTBOARD_ITEMS = [
     paperBg: '#FFFDF9',
     stickers: ['giant_heart'],
     aspectRatio: 'tall_note',
-    tab: 'hearts'
+    tab: 'board',
+    section: 'board'
   }
 ];
 
@@ -616,6 +619,7 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
   onPostClick, 
   onFilterClick,
   profileUser = null,
+  currentUser = null,
   onBack,
   onGiftHeart,
   onSendMessage,
@@ -624,7 +628,8 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
   onClearFilter,
   defaultTab = 'board',
   heartFilter: heartFilterProp,
-  onHeartFilterChange
+  onHeartFilterChange,
+  onSignOut
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'board' | 'tagged' | 'hearts'>(defaultTab);
   const [internalHeartFilter, setInternalHeartFilter] = useState<'received' | 'sent'>(heartFilterProp || 'received');
@@ -656,11 +661,25 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
   };
 
   // Profile State
-  const [userName, setUserName] = useState('Micky Mouse');
-  const [userHandle, setUserHandle] = useState('@mickymouse');
-  const [userEmail, setUserEmail] = useState('Aminuolawale@gmail.com');
-  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [userName, setUserName] = useState(currentUser ? currentUser.name : 'Micky Mouse');
+  const [userHandle, setUserHandle] = useState(currentUser ? currentUser.handle : '@mickymouse');
+  const [userEmail, setUserEmail] = useState(currentUser?.email || 'Aminuolawale@gmail.com');
+  const [profileImage, setProfileImage] = useState<string | null>(currentUser?.avatar || null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+
+  // Sync profile details when currentUser changes
+  React.useEffect(() => {
+    if (currentUser) {
+      setUserName(currentUser.name);
+      setUserHandle(currentUser.handle);
+      if (currentUser.avatar) {
+        setProfileImage(currentUser.avatar);
+      }
+      if (currentUser.email) {
+        setUserEmail(currentUser.email);
+      }
+    }
+  }, [currentUser]);
 
   // File Input Ref
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -814,15 +833,48 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
 
   const allAvailableItems = posts.length > 0 ? posts : MOCK_HEARTBOARD_ITEMS;
 
-  // Build separate Received and Sent datasets from dynamic posts and defaults
-  const userHeartPosts = allAvailableItems.filter((p: any) => 
-    p.isHeartToken || p.section === 'hearts' || p.type === 'heart_token' || (Array.isArray(p.selectedHearts) && p.selectedHearts.length > 0) || p.heartDetails
-  );
+  // Helper to reliably identify heart token items vs message boards
+  const isHeartPost = (item: any) => {
+    return Boolean(
+      item.isHeartToken || 
+      item.type === 'heart_token' || 
+      item.section === 'hearts' || 
+      item.tab === 'hearts'
+    );
+  };
 
-  // Dynamic user-sent hearts: items created by user
-  const dynamicSentHearts = userHeartPosts.filter((p: any) => p.isCreatedByUser === true);
-  // Dynamic user-received hearts: items not created by user or targeted at user
-  const dynamicReceivedHearts = userHeartPosts.filter((p: any) => p.isCreatedByUser !== true);
+  // Is this viewing another user's profile or own heartboard?
+  const isViewingOtherUser = Boolean(profileUser);
+  const currentUserName = isViewingOtherUser ? profileUser!.name : userName;
+  const currentUserHandle = isViewingOtherUser ? profileUser!.handle : userHandle;
+
+  // Extract all heart token posts from dynamic posts
+  const allHeartTokenPosts = posts.filter((p: any) => isHeartPost(p));
+
+  // Dynamic user-sent hearts: hearts sent BY the active user/profile
+  const dynamicSentHearts = allHeartTokenPosts.filter((p: any) => {
+    if (isViewingOtherUser) {
+      const auth = (p.authorName || '').toLowerCase();
+      const authH = (p.authorHandle || '').toLowerCase();
+      const target = currentUserName.toLowerCase();
+      const targetH = currentUserHandle.toLowerCase();
+      return auth === target || authH === targetH;
+    }
+    return p.isCreatedByUser === true || (p.authorName && p.authorName.toLowerCase() === userName.toLowerCase());
+  });
+
+  // Dynamic user-received hearts: hearts sent TO the active user/profile
+  const dynamicReceivedHearts = allHeartTokenPosts.filter((p: any) => {
+    if (isViewingOtherUser) {
+      const rec = (p.recipientName || p.targetId || '').toLowerCase();
+      const recH = (p.recipientHandle || '').toLowerCase();
+      const target = currentUserName.toLowerCase();
+      const targetH = currentUserHandle.toLowerCase();
+      const recs = (p.recipients || []).map((r: string) => r.toLowerCase());
+      return rec === target || recH === targetH || recs.includes(target) || recs.includes(targetH);
+    }
+    return p.isCreatedByUser !== true;
+  });
 
   // Combine defaults with user actions without duplicates
   const allReceivedHearts = [
@@ -982,14 +1034,16 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
     let matchesTab = false;
 
     if (activeSubTab === 'board') {
-      // 1. Created Messages / Boards
-      matchesTab = item.section === 'board' || item.isCreatedByUser === true || (!item.section && item.tab === 'board');
+      // 1. Board section = Message boards only (NEVER heart tokens!)
+      if (isHeartPost(item)) return false;
+      matchesTab = item.section === 'board' || item.tab === 'board' || (!item.section && !item.tab) || (item.isCreatedByUser === true && item.section !== 'tagged');
     } else if (activeSubTab === 'tagged') {
-      // 2. Tagged / Recipient Messages
+      // 2. Tagged section = Tagged message boards only (NEVER heart tokens!)
+      if (isHeartPost(item)) return false;
       matchesTab = item.section === 'tagged' || item.isTaggedForUser === true || item.tab === 'tagged';
     } else if (activeSubTab === 'hearts') {
       // 3. Hearts
-      matchesTab = item.section === 'hearts' || item.isHeartToken === true || item.tab === 'hearts';
+      matchesTab = isHeartPost(item);
     }
 
     if (!matchesTab) return false;
@@ -1190,7 +1244,7 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
       )}
 
       {/* 3. Filter Sub-Tabs */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-start gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         {/* Filter Sub-Tabs */}
         <div className="flex items-center gap-2">
           <button
@@ -1227,6 +1281,32 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
             Hearts
           </button>
         </div>
+
+        {/* Quick switcher for Received vs Sent when viewing Hearts */}
+        {activeSubTab === 'hearts' && (
+          <div className="flex items-center bg-gray-25 p-1 rounded-full border border-gray-100/80 shrink-0">
+            <button
+              onClick={() => setHeartFilter('received')}
+              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                heartFilter === 'received'
+                  ? 'bg-white text-[#1A1B25] shadow-2xs'
+                  : 'text-[#808897] hover:text-[#1A1B25]'
+              }`}
+            >
+              Received ({totalReceivedHeartsCount})
+            </button>
+            <button
+              onClick={() => setHeartFilter('sent')}
+              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                heartFilter === 'sent'
+                  ? 'bg-white text-[#1A1B25] shadow-2xs'
+                  : 'text-[#808897] hover:text-[#1A1B25]'
+              }`}
+            >
+              Sent ({totalSentHeartsCount})
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Active Filter Banner when user selects an event filter on Heartboard */}
@@ -1898,6 +1978,9 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
                   onClick={() => {
                     showToast('Signed out of Heartboard session');
                     setIsSettingsOpen(false);
+                    if (onSignOut) {
+                      onSignOut();
+                    }
                   }}
                   className="w-full py-3 px-4 rounded-2xl bg-gray-25 hover:bg-red-50 text-red-600 font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer"
                 >

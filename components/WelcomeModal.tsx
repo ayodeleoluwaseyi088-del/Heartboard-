@@ -1,0 +1,144 @@
+import React from 'react';
+import { 
+  X, 
+  Heart, 
+  Sparkles, 
+  Send, 
+  Layers, 
+  Trophy, 
+  ArrowRight, 
+  Compass 
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { RegisteredUser } from '../types';
+
+interface WelcomeModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  user: RegisteredUser | null;
+  onSendMessageNow: () => void;
+  onCheckOutMoments: () => void;
+}
+
+export const WelcomeModal: React.FC<WelcomeModalProps> = ({
+  isOpen,
+  onClose,
+  user,
+  onSendMessageNow,
+  onCheckOutMoments,
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[320] bg-black/65 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+      <div className="relative w-full max-w-lg bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-gray-100 overflow-hidden my-auto text-left">
+        
+        {/* Decorative Top Background Accent */}
+        <div className="absolute top-0 left-0 right-0 h-2.5 bg-gradient-to-r from-[#FE6349] via-[#FF8A65] to-[#7B62FF]" />
+
+        {/* Close Button */}
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute top-5 right-5 w-8 h-8 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-gray-900 transition-colors cursor-pointer"
+          aria-label="Close welcome modal"
+        >
+          <X size={16} />
+        </button>
+
+        {/* Header with Avatar / Badge */}
+        <div className="flex items-center gap-3.5 mb-5 mt-1">
+          <div className="relative">
+            <div className="w-14 h-14 rounded-2xl bg-rose-50 flex items-center justify-center overflow-hidden border-2 border-[#FE6349]/30 shadow-xs">
+              {user?.avatar ? (
+                <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+              ) : (
+                <Heart size={28} className="text-[#FE6349]" fill="currentColor" />
+              )}
+            </div>
+            <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-[#FE6349] text-white flex items-center justify-center shadow-xs">
+              <Sparkles size={12} />
+            </div>
+          </div>
+
+          <div>
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-50 text-[#FE6349] text-[10px] font-extrabold uppercase tracking-wider mb-1">
+              <span>Onboarding Complete</span>
+            </div>
+            <h2 className="text-xl sm:text-2xl font-extrabold text-[#1A1B25] tracking-tight">
+              Welcome to Heartboard, {user?.name?.split(' ')[0] || 'Friend'}!
+            </h2>
+          </div>
+        </div>
+
+        {/* Subtitle / Description */}
+        <p className="text-xs sm:text-sm text-[#666D80] font-medium leading-relaxed mb-6">
+          You now have an active profile on the world's wall of love and reputation engine. Here is what you can do on Heartboard:
+        </p>
+
+        {/* Feature Explanations */}
+        <div className="space-y-3 mb-6">
+          <div className="p-3.5 bg-gray-50 rounded-2xl flex items-start gap-3 border border-gray-100">
+            <div className="w-8 h-8 rounded-xl bg-rose-100/80 text-[#FE6349] flex items-center justify-center shrink-0 mt-0.5">
+              <Send size={16} />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-[#1A1B25]">Create & Send Heartfelt Messages</h4>
+              <p className="text-[11px] text-[#666D80] mt-0.5 leading-normal">
+                Craft custom digital boards enhanced with rich imagery, warm notes, and audio tributes for friends, family, coworkers, or global hashtags.
+              </p>
+            </div>
+          </div>
+
+          <div className="p-3.5 bg-gray-50 rounded-2xl flex items-start gap-3 border border-gray-100">
+            <div className="w-8 h-8 rounded-xl bg-indigo-100/80 text-indigo-600 flex items-center justify-center shrink-0 mt-0.5">
+              <Heart size={16} fill="currentColor" />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-[#1A1B25]">Blow Semantic Heart Tokens</h4>
+              <p className="text-[11px] text-[#666D80] mt-0.5 leading-normal">
+                Gift structured hearts across the spectrum—Loving Partner, Reliability, Hard Work, Leadership, and Workspace Legend.
+              </p>
+            </div>
+          </div>
+
+          <div className="p-3.5 bg-gray-50 rounded-2xl flex items-start gap-3 border border-gray-100">
+            <div className="w-8 h-8 rounded-xl bg-amber-100/80 text-amber-700 flex items-center justify-center shrink-0 mt-0.5">
+              <Trophy size={16} />
+            </div>
+            <div>
+              <h4 className="text-xs font-bold text-[#1A1B25]">Build Your Reputation Trophy Case</h4>
+              <p className="text-[11px] text-[#666D80] mt-0.5 leading-normal">
+                Accumulate genuine testimonials, vouch tokens, and collaborative cards in your permanent personal digital trophy case.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Two CTAs Required by the specification */}
+        <div className="flex flex-col sm:flex-row gap-3 pt-2">
+          {/* CTA 1: Send a Message to Someone Now */}
+          <button
+            type="button"
+            onClick={onSendMessageNow}
+            className="flex-1 py-3.5 px-4 rounded-2xl bg-[#FE6349] hover:bg-rose-600 text-white font-extrabold text-xs sm:text-sm transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <span>Send a Message to Someone Now</span>
+            <Send size={15} />
+          </button>
+
+          {/* CTA 2: Check Out the Moments */}
+          <button
+            type="button"
+            onClick={onCheckOutMoments}
+            className="flex-1 py-3.5 px-4 rounded-2xl bg-gray-100 hover:bg-gray-200 text-[#1A1B25] font-extrabold text-xs sm:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <Compass size={15} />
+            <span>Check Out the Moments</span>
+          </button>
+        </div>
+
+      </div>
+    </div>
+  );
+};

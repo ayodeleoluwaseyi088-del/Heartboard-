@@ -31,7 +31,9 @@ import {
   Loader2,
   PartyPopper,
   Search,
-  UserX
+  UserX,
+  Hash,
+  User
 } from 'lucide-react';
 import { refineText } from '../services/geminiService';
 import { VectorPicker, PHOSPHOR_VECTORS } from './VectorPicker';
@@ -374,8 +376,8 @@ export const RenderCanvasElementReadOnly: React.FC<RenderCanvasElementReadOnlyPr
             }}
             className={`font-bold leading-snug break-words ${
               el.isCursive || el.fontFamily?.includes('Playfair') || el.fontFamily?.includes('Caveat') 
-                ? 'text-xl sm:text-2xl' 
-                : 'text-sm sm:text-base'
+                ? 'text-xl' 
+                : 'text-sm'
             }`}
           >
             "{el.text}"
@@ -408,6 +410,7 @@ export interface CanvasReadOnlyCardProps {
   isCollaborative?: boolean;
   visibility?: PostVisibility;
   showMetadata?: boolean;
+  scale?: number;
 }
 
 export const CanvasReadOnlyCard: React.FC<CanvasReadOnlyCardProps> = ({
@@ -421,7 +424,37 @@ export const CanvasReadOnlyCard: React.FC<CanvasReadOnlyCardProps> = ({
   isCollaborative = false,
   visibility,
   showMetadata = false,
+  scale: externalScale,
 }) => {
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const [measuredScale, setMeasuredScale] = React.useState<number>(1);
+
+  const BASE_WIDTH = 254;
+  const BASE_HEIGHT = 350;
+
+  React.useEffect(() => {
+    if (externalScale !== undefined) return;
+    const container = containerRef.current;
+    if (!container) return;
+
+    const updateScale = () => {
+      const rect = container.getBoundingClientRect();
+      const w = rect.width;
+      const h = rect.height;
+      if (w > 0 && h > 0) {
+        const s = Math.min(w / BASE_WIDTH, h / BASE_HEIGHT);
+        setMeasuredScale(s);
+      }
+    };
+
+    updateScale();
+    const observer = new ResizeObserver(updateScale);
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [externalScale]);
+
+  const effectiveScale = externalScale !== undefined ? externalScale : (measuredScale || 1);
+
   const visibleElements = canvasElements.filter(el => {
     if (el.type === 'text') return Boolean(el.text && el.text.trim());
     if (el.type === 'image') return Boolean(el.imageUrl && el.imageUrl.trim());
@@ -436,21 +469,36 @@ export const CanvasReadOnlyCard: React.FC<CanvasReadOnlyCardProps> = ({
   const displayAuthorName = isAnonymous ? 'Anon' : authorName;
 
   return (
-    <div className="relative flex items-center justify-center w-full max-w-[254px] aspect-[254/304] shrink-0">
+    <div 
+      ref={containerRef}
+      className="w-full h-full relative flex items-center justify-center overflow-hidden shrink-0 select-none"
+    >
       {/* Slanted background layers for collaborative boards - only visible in expanded metadata view */}
       {showMetadata && isCollaborative && (
-        <>
-          <div 
-            className="absolute inset-0 w-full h-full bg-white/20 rounded-2xl -rotate-[5deg] transform pointer-events-none origin-center" 
-          />
-          <div 
-            className="absolute inset-0 w-full h-full bg-white/20 rounded-2xl rotate-[5deg] transform pointer-events-none origin-center" 
-          />
-        </>
+        <div 
+          style={{
+            width: `${BASE_WIDTH}px`,
+            height: `${BASE_HEIGHT}px`,
+            transform: `scale(${effectiveScale})`,
+            transformOrigin: 'center center',
+          }}
+          className="absolute pointer-events-none origin-center"
+        >
+          <div className="absolute inset-0 w-full h-full bg-white/20 rounded-[1.8rem] -rotate-[5deg] transform origin-center" />
+          <div className="absolute inset-0 w-full h-full bg-white/20 rounded-[1.8rem] rotate-[5deg] transform origin-center" />
+        </div>
       )}
 
-      {/* Main Board Card */}
-      <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-xs w-full h-full flex flex-col justify-between relative overflow-hidden shrink-0 z-10">
+      {/* Main Board Canvas Card: Fixed 254x350 base dimensions, scaled proportionally to fit container */}
+      <div 
+        style={{
+          width: `${BASE_WIDTH}px`,
+          height: `${BASE_HEIGHT}px`,
+          transform: `scale(${effectiveScale})`,
+          transformOrigin: 'center center',
+        }}
+        className="bg-white rounded-[1.8rem] p-5 shadow-xs flex flex-col justify-between relative overflow-hidden shrink-0 z-10 select-none"
+      >
         {/* Confetti Animation Overlay */}
         <ConfettiOverlay type={selectedConfetti || null} />
 
@@ -487,7 +535,7 @@ export const CanvasReadOnlyCard: React.FC<CanvasReadOnlyCardProps> = ({
               )}
               {fallbackText ? (
                 <div className="w-full p-2 my-auto text-center">
-                  <p className="text-sm sm:text-base font-bold leading-snug break-words text-[#1A1B25]" style={{ fontFamily: 'Playfair Display, cursive' }}>
+                  <p className="text-xl font-bold leading-snug break-words text-[#1A1B25]" style={{ fontFamily: 'Playfair Display, cursive' }}>
                     "{fallbackText}"
                   </p>
                 </div>
@@ -595,7 +643,7 @@ export const REGISTERED_USERS: RegisteredUser[] = [
     name: 'Ronike', 
     handle: '@ronike', 
     avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=150', 
-    isVerified: false 
+    isVerified: true 
   },
   { 
     id: 'u-ronny', 
@@ -603,6 +651,13 @@ export const REGISTERED_USERS: RegisteredUser[] = [
     handle: '@ronny', 
     avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=150', 
     isVerified: false 
+  },
+  { 
+    id: 'u-mercy24', 
+    name: 'Mercy24', 
+    handle: '@mercy24', 
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Mercy24', 
+    isVerified: true 
   },
   { 
     id: 'u-messi', 
@@ -623,7 +678,21 @@ export const REGISTERED_USERS: RegisteredUser[] = [
     name: 'Amino', 
     handle: '@amino', 
     avatar: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&q=80&w=150', 
+    isVerified: true 
+  },
+  { 
+    id: 'u-tyler', 
+    name: 'Tyler', 
+    handle: '@tyler_grandson', 
+    avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=150', 
     isVerified: false 
+  },
+  { 
+    id: 'u-davido', 
+    name: 'Davido Fans', 
+    handle: '@davido_30bg', 
+    avatar: 'https://images.unsplash.com/photo-1493225255756-d9584f8606e9?auto=format&fit=crop&q=80&w=150', 
+    isVerified: true 
   },
   { 
     id: 'u-sarah', 
@@ -639,6 +708,23 @@ export const REGISTERED_USERS: RegisteredUser[] = [
     avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=150', 
     isVerified: false 
   },
+];
+
+export const KNOWN_HASHTAGS = [
+  '#loveRonaldo',
+  '#ronaldo13',
+  '#cr7',
+  '#messi',
+  '#birthday',
+  '#appreciation',
+  '#goodwill',
+  '#graduation',
+  '#wedding',
+  '#anniversary',
+  '#retirement',
+  '#promotion',
+  '#mom',
+  '#legend',
 ];
 
 // Semantic Heart Spectrum matching the 6 screenshot items
@@ -1012,6 +1098,78 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
     return list;
   });
   const [newRecipientInput, setNewRecipientInput] = useState('');
+  const [isRecipientSuggestionsOpen, setIsRecipientSuggestionsOpen] = useState(false);
+
+  const cleanRecipientQuery = newRecipientInput.trim().replace(/^[@#]/, '').toLowerCase();
+  const isHashtagSearch = newRecipientInput.trim().startsWith('#');
+
+  const matchingRegisteredUsers = React.useMemo(() => {
+    if (isHashtagSearch) return [];
+    if (!cleanRecipientQuery) {
+      return REGISTERED_USERS.slice(0, 5);
+    }
+    return REGISTERED_USERS.filter(u => 
+      u.name.toLowerCase().includes(cleanRecipientQuery) || 
+      u.handle.toLowerCase().includes(cleanRecipientQuery)
+    );
+  }, [cleanRecipientQuery, isHashtagSearch]);
+
+  const matchingHashtagsList = React.useMemo(() => {
+    const queryTag = cleanRecipientQuery;
+    let list = KNOWN_HASHTAGS.filter(tag => 
+      !queryTag || tag.toLowerCase().includes(queryTag)
+    );
+    if (queryTag) {
+      const customTag = `#${queryTag}`;
+      if (!list.some(t => t.toLowerCase() === customTag.toLowerCase())) {
+        list = [...list, customTag];
+      }
+    }
+    return list;
+  }, [cleanRecipientQuery]);
+
+  const handleSelectRegisteredUser = (user: RegisteredUser) => {
+    const tagName = user.name;
+    if (!recipients.includes(tagName)) {
+      setRecipients(prev => [...prev, tagName]);
+    }
+    setRecipient(user.name);
+    setNewRecipientInput('');
+    setIsRecipientSuggestionsOpen(false);
+  };
+
+  const handleSelectHashtag = (tag: string) => {
+    const formatted = tag.startsWith('#') ? tag : `#${tag.toLowerCase()}`;
+    if (!recipients.includes(formatted)) {
+      setRecipients(prev => [...prev, formatted]);
+    }
+    setNewRecipientInput('');
+    setIsRecipientSuggestionsOpen(false);
+  };
+
+  const handleRecipientKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const val = newRecipientInput.trim();
+      if (!val) return;
+      if (val.startsWith('#')) {
+        handleSelectHashtag(val);
+      } else {
+        const clean = val.replace(/^@/, '').toLowerCase();
+        const found = REGISTERED_USERS.find(u => 
+          u.name.toLowerCase() === clean || 
+          u.handle.toLowerCase() === `@${clean}` || 
+          u.name.toLowerCase().includes(clean)
+        );
+        if (found) {
+          handleSelectRegisteredUser(found);
+        } else if (matchingRegisteredUsers.length > 0) {
+          handleSelectRegisteredUser(matchingRegisteredUsers[0]);
+        }
+      }
+    }
+  };
+
   const [boardCapacity, setBoardCapacity] = useState<'collaborative' | 'solo'>(() => {
     return (editingPost?.boardCapacity as any) || 'collaborative';
   });
@@ -1150,6 +1308,7 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
           caption: caption.trim() || undefined,
           eventType: selectedEventType || editingPost.eventType || 'Appreciation',
           recipients: recipients,
+          recipientName: recipients.filter(r => r !== '@you').join(', ') || recipient || editingPost.recipientName || 'Curator',
           hashtags: extractedHashtags,
           boardCapacity: boardCapacity,
           maxCapacity: boardCapacity === 'solo' ? 1 : 20,
@@ -1217,6 +1376,7 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
         caption: caption.trim() || undefined,
         eventType: selectedEventType || 'Appreciation',
         recipients: recipients,
+        recipientName: recipients.filter(r => r !== '@you').join(', ') || recipient || 'Curator',
         hashtags: extractedHashtags,
         boardCapacity: boardCapacity,
         maxCapacity: boardCapacity === 'solo' ? 1 : 20,
@@ -2913,44 +3073,117 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                   )}
                 </div>
 
-                {/* 3. Recipients Input Tag Box */}
-                <div className="bg-[#F6F8FA] rounded-2xl px-4 py-3 flex items-center justify-between gap-2 border border-transparent focus-within:border-gray-200 transition-all">
-                  <input
-                    type="text"
-                    value={newRecipientInput}
-                    onChange={(e) => setNewRecipientInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && newRecipientInput.trim()) {
-                        e.preventDefault();
-                        const val = newRecipientInput.trim();
-                        const tag = val.startsWith('@') || val.startsWith('#') ? val : `@${val}`;
-                        if (!recipients.includes(tag)) {
-                          setRecipients([...recipients, tag]);
-                        }
-                        setNewRecipientInput('');
-                      }
-                    }}
-                    placeholder="Add more recipient or #tag"
-                    className="flex-1 bg-transparent text-sm text-[#1A1B25] placeholder:text-gray-400 focus:outline-none border-none p-0 font-normal min-w-[100px]"
-                  />
-                  <div className="flex items-center gap-1.5 flex-wrap shrink-0">
-                    {recipients.map((rec) => (
-                      <span
-                        key={rec}
-                        className="bg-white text-xs font-medium text-[#1A1B25] px-2.5 py-1 rounded-full border border-gray-200/60 flex items-center gap-1 shadow-2xs"
-                      >
-                        {rec}
-                        {rec !== '@you' && (
-                          <button
-                            type="button"
-                            onClick={() => setRecipients(recipients.filter(r => r !== rec))}
-                            className="text-gray-400 hover:text-gray-600 p-0.5 rounded-full"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
+                {/* 3. Recipients Input Tag Box with Suggestion Pop-up */}
+                <div className="relative">
+                  {/* Recipient Suggestion Pop-up */}
+                  {(isRecipientSuggestionsOpen || newRecipientInput.trim().length > 0) && (
+                    <div 
+                      className="absolute bottom-full mb-2.5 left-0 right-0 z-50 bg-white rounded-[1.8rem] p-4 shadow-[0_12px_36px_rgba(0,0,0,0.12)] border border-gray-100/90 space-y-3 max-h-72 overflow-y-auto animate-in fade-in zoom-in-95 duration-150"
+                      onMouseDown={(e) => e.preventDefault()}
+                    >
+                      {/* 1. User section (Hidden if typing # for hashtags only) */}
+                      {!isHashtagSearch && (
+                        <div className="space-y-1.5">
+                          <div className="text-xs font-semibold text-[#808897] px-2">User</div>
+                          {matchingRegisteredUsers.length > 0 ? (
+                            <div className="space-y-0.5">
+                              {matchingRegisteredUsers.map((user) => (
+                                <button
+                                  type="button"
+                                  key={user.id}
+                                  onClick={() => handleSelectRegisteredUser(user)}
+                                  className="w-full flex items-center gap-3 p-2 hover:bg-[#F6F8FA] rounded-2xl transition-colors text-left cursor-pointer group"
+                                >
+                                  <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 bg-gray-100 border border-gray-100 flex items-center justify-center">
+                                    {user.avatar ? (
+                                      <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                      <User className="w-4 h-4 text-gray-500" />
+                                    )}
+                                  </div>
+                                  <span className="text-sm font-bold text-[#1A1B25] group-hover:text-[#FE6349] transition-colors truncate">
+                                    {user.name}
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="text-xs text-gray-400 px-2 py-1">No matching registered user</div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* 2. #Tag section */}
+                      <div className="space-y-1.5">
+                        <div className="text-xs font-semibold text-[#808897] px-2">#Tag</div>
+                        {matchingHashtagsList.length > 0 ? (
+                          <div className="space-y-0.5">
+                            {matchingHashtagsList.map((tag) => (
+                              <button
+                                type="button"
+                                key={tag}
+                                onClick={() => handleSelectHashtag(tag)}
+                                className="w-full flex items-center gap-3 p-2 hover:bg-[#F6F8FA] rounded-2xl transition-colors text-left cursor-pointer group"
+                              >
+                                <div className="w-8 h-8 rounded-full bg-[#ECEFF3] flex items-center justify-center text-gray-500 shrink-0">
+                                  <Hash className="w-4 h-4 text-[#808897]" />
+                                </div>
+                                <span className="text-sm font-bold text-[#1A1B25] group-hover:text-[#FE6349] transition-colors truncate">
+                                  {tag.startsWith('#') ? tag : `#${tag}`}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-xs text-gray-400 px-2 py-1">Type to create a hashtag</div>
                         )}
-                      </span>
-                    ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Input Box and Chips */}
+                  <div className="bg-[#F6F8FA] rounded-2xl px-4 py-3 flex items-center justify-between gap-2 border border-transparent focus-within:border-gray-200 transition-all">
+                    <input
+                      type="text"
+                      value={newRecipientInput}
+                      onChange={(e) => {
+                        setNewRecipientInput(e.target.value);
+                        setIsRecipientSuggestionsOpen(true);
+                      }}
+                      onFocus={() => setIsRecipientSuggestionsOpen(true)}
+                      onBlur={() => {
+                        setTimeout(() => setIsRecipientSuggestionsOpen(false), 200);
+                      }}
+                      onKeyDown={handleRecipientKeyDown}
+                      placeholder="Add more recipient or #tag"
+                      className="flex-1 bg-transparent text-sm text-[#1A1B25] placeholder:text-gray-400 focus:outline-none border-none p-0 font-normal min-w-[100px]"
+                    />
+                    <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+                      {recipients.map((rec) => (
+                        <span
+                          key={rec}
+                          className="bg-white text-xs font-medium text-[#1A1B25] px-2.5 py-1 rounded-full border border-gray-200/60 flex items-center gap-1 shadow-2xs"
+                        >
+                          {rec}
+                          {rec !== '@you' && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const remaining = recipients.filter(r => r !== rec);
+                                setRecipients(remaining);
+                                if (recipient === rec) {
+                                  const nextRec = remaining.find(r => r !== '@you' && !r.startsWith('#')) || '';
+                                  setRecipient(nextRec);
+                                }
+                              }}
+                              className="text-gray-400 hover:text-gray-600 p-0.5 rounded-full"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </div>
 

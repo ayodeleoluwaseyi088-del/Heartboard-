@@ -180,6 +180,28 @@ export const MOCK_REGISTERED_USERS: RegisteredUser[] = [
     boardsCount: 4,
     bio: 'Goodwill Ambassador & Heartboard Curator',
     role: 'Verified Curator'
+  },
+  {
+    id: 'u13',
+    name: 'Ronny',
+    handle: '@ronny',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200',
+    isVerified: false,
+    heartsCount: 75,
+    boardsCount: 2,
+    bio: 'Heartboard member',
+    role: 'Registered Member'
+  },
+  {
+    id: 'u14',
+    name: 'Ronaldo',
+    handle: '@ronaldo',
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Cristiano',
+    isVerified: true,
+    heartsCount: 890000,
+    boardsCount: 150,
+    bio: 'Claimed Official Profile • Football Legend & Global Icon',
+    role: 'Verified Celebrity'
   }
 ];
 

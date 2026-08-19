@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
-import { Post, Contribution, PostVisibility, ReactionCounts } from '../types';
+import { Post, Contribution, PostVisibility, ReactionCounts, RegisteredUser, MOCK_REGISTERED_USERS } from '../types';
 import { 
   X, 
   ChevronLeft, 
@@ -36,6 +36,8 @@ interface MediaModalProps {
     statusBadge?: string;
     selectedHearts?: string[];
   };
+  currentUser?: RegisteredUser | null;
+  onRequireAuth?: (prompt?: string) => void;
   onClose: () => void;
   onPrev: () => void;
   onNext: () => void;
@@ -46,10 +48,14 @@ interface MediaModalProps {
   onDeleteBoard?: (postId: string) => void;
   onEditMessage?: (post: Post, contribution?: Contribution) => void;
   onDeleteMessage?: (post: Post, contribution?: Contribution) => void;
+  onSelectUser?: (user: RegisteredUser) => void;
+  onSelectHashtag?: (tag: string) => void;
 }
 
 export const MediaModal: React.FC<MediaModalProps> = ({ 
   post, 
+  currentUser,
+  onRequireAuth,
   onClose, 
   onPrev, 
   onNext, 
@@ -59,7 +65,9 @@ export const MediaModal: React.FC<MediaModalProps> = ({
   onEditBoard,
   onDeleteBoard,
   onEditMessage,
-  onDeleteMessage
+  onDeleteMessage,
+  onSelectUser,
+  onSelectHashtag
 }) => {
   // Toggle between 'main' (Main Board) and 'contributions' (Contributions by other curators)
   const [activeTab, setActiveTab] = useState<'main' | 'contributions'>('main');
@@ -252,31 +260,125 @@ export const MediaModal: React.FC<MediaModalProps> = ({
 
   const frameBgColor = getFrameBg();
 
-  // Author details
-  const displayAuthorName = effectiveActiveTab === 'main'
+  // Permanent Main Board Details (always retained regardless of active tab / contributions navigation)
+  const mainBoardCaption = post.caption || post.content || 'Heartfelt Tribute Board';
+  const mainCuratorName = post.authorName || 'Curator';
+  const mainCuratorAvatar = post.authorAvatar;
+
+  // Active message contributor details (for single-click contributor details overlay on the board)
+  const activeContributorName = effectiveActiveTab === 'main'
     ? (post.authorName || 'Curator')
     : (activeMessage.authorName || 'Contributor');
+  const activeContributorAvatar = effectiveActiveTab === 'main'
+    ? post.authorAvatar
+    : activeMessage.authorAvatar;
 
-  const isCurator = effectiveActiveTab === 'main';
+  // Helper to find or build registered user object
+  const findRegisteredUser = (input: string): RegisteredUser => {
+    const clean = input.trim().replace(/^@/, '').toLowerCase();
+    // 1. Direct match on handle, id, or name
+    const directMatch = MOCK_REGISTERED_USERS.find(u => 
+      u.name.toLowerCase() === clean ||
+      u.handle.toLowerCase() === `@${clean}` ||
+      u.handle.toLowerCase() === clean ||
+      u.id.toLowerCase() === clean ||
+      u.id.toLowerCase() === `u-${clean}` ||
+      u.name.toLowerCase().replace(/\s+/g, '') === clean.replace(/\s+/g, '')
+    );
+    if (directMatch) return directMatch;
 
-  // Caption text (1st item below board)
-  const displayCaption = activeMessage.caption || activeMessage.content || post.caption || post.content || 'Heartfelt Tribute Board';
+    // 2. Partial match on name/handle
+    const partialMatch = MOCK_REGISTERED_USERS.find(u => 
+      u.name.toLowerCase().includes(clean) ||
+      clean.includes(u.name.toLowerCase()) ||
+      u.handle.toLowerCase().includes(clean)
+    );
+    if (partialMatch) return partialMatch;
 
-  // Tagged recipients text (2nd item below board)
-  const getDisplayRecipients = () => {
-    if (Array.isArray(post.recipients) && post.recipients.length > 0) {
-      return post.recipients.map(r => r.startsWith('@') || r.startsWith('#') ? r : `@${r}`).join(' ');
-    }
-    if (post.targetId) {
-      const formatted = post.targetId.startsWith('@') || post.targetId.startsWith('#') 
-        ? post.targetId 
-        : `@${post.targetId}`;
-      return `${formatted} ${post.hashtags ? post.hashtags.join(' ') : ''}`.trim();
-    }
-    return '@community';
+    // 3. Fallback dynamically constructed RegisteredUser
+    const rawDisplayName = input.trim().replace(/^@/, '');
+    return {
+      id: `u-${rawDisplayName.toLowerCase().replace(/[^a-z0-9]/g, '-') || 'user'}`,
+      name: rawDisplayName.charAt(0).toUpperCase() + rawDisplayName.slice(1),
+      handle: input.startsWith('@') ? input.trim() : `@${rawDisplayName.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
+      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(rawDisplayName)}`,
+      isVerified: false,
+      heartsCount: 1,
+      boardsCount: 1,
+      bio: 'Heartboard member',
+      role: 'Registered Member'
+    };
   };
 
-  const displayRecipients = getDisplayRecipients();
+  const handleUserClick = (userNameOrHandle: string) => {
+    const user = findRegisteredUser(userNameOrHandle);
+    if (onSelectUser) {
+      onSelectUser(user);
+    }
+  };
+
+  const handleHashtagClick = (tag: string) => {
+    const cleanTag = tag.trim().startsWith('#') ? tag.trim() : `#${tag.trim()}`;
+    if (onSelectHashtag) {
+      onSelectHashtag(cleanTag);
+    }
+  };
+
+  // Extract structured recipient & hashtag tokens for display and interaction
+  const displayTokens = useMemo(() => {
+    interface RecipientToken {
+      text: string;
+      isHashtag: boolean;
+      cleanTag?: string;
+      userQuery?: string;
+    }
+    const tokens: RecipientToken[] = [];
+    const added = new Set<string>();
+
+    const addToken = (raw: string) => {
+      const trimmed = raw.trim();
+      if (!trimmed || trimmed === '@you') return;
+      if (added.has(trimmed.toLowerCase())) return;
+      added.add(trimmed.toLowerCase());
+
+      if (trimmed.startsWith('#')) {
+        tokens.push({
+          text: trimmed,
+          isHashtag: true,
+          cleanTag: trimmed,
+        });
+      } else {
+        const formatted = trimmed.startsWith('@') ? trimmed : `@${trimmed}`;
+        tokens.push({
+          text: formatted,
+          isHashtag: false,
+          userQuery: trimmed,
+        });
+      }
+    };
+
+    if (Array.isArray(post.recipients) && post.recipients.length > 0) {
+      post.recipients.forEach(r => addToken(r));
+    } else if (post.recipientName) {
+      post.recipientName.split(',').forEach(r => addToken(r));
+    } else if (post.targetId) {
+      addToken(post.targetId);
+    }
+
+    if (Array.isArray(post.hashtags)) {
+      post.hashtags.forEach(h => addToken(h));
+    }
+
+    if (tokens.length === 0) {
+      tokens.push({
+        text: '@community',
+        isHashtag: false,
+        userQuery: 'community',
+      });
+    }
+
+    return tokens;
+  }, [post.recipients, post.recipientName, post.targetId, post.hashtags]);
 
   // Reaction formatting helper
   const formatReactionCount = (count?: number) => {
@@ -292,6 +394,12 @@ export const MediaModal: React.FC<MediaModalProps> = ({
 
   // Toggle specific reaction type
   const handleToggleReaction = (type: 'clap' | 'heart' | 'smiley' | 'fire') => {
+    if (!currentUser && onRequireAuth) {
+      setIsReactionPickerOpen(false);
+      onRequireAuth('Please sign in or create an account to react and blow hearts.');
+      return;
+    }
+
     const isAlreadySelected = userReactions.includes(type);
     const newUserReactions = isAlreadySelected
       ? userReactions.filter((r) => r !== type)
@@ -472,15 +580,15 @@ export const MediaModal: React.FC<MediaModalProps> = ({
               <ConfettiOverlay type={(activeMessage.confetti || post.confetti) as any} />
             )}
 
-            {/* Inner White Card Canvas (Preserving exact visual appearance from Create Page) */}
-            <div className="bg-white rounded-[1.8rem] sm:rounded-[2rem] md:rounded-3xl w-full h-full flex flex-col justify-between p-4 sm:p-5 relative overflow-hidden shadow-xs">
+            {/* Inner Canvas Container (Preserving exact visual appearance from Create Page) */}
+            <div className="relative z-10 w-full h-full flex items-center justify-center">
               <CanvasReadOnlyCard
                 canvasElements={activeMessage.canvasElements || (effectiveActiveTab === 'main' ? post.canvasElements : undefined) || []}
                 content={activeMessage.content || post.content}
                 uploadedImage={activeMessage.imageUrl || activeMessage.mediaUrl || (effectiveActiveTab === 'main' ? (post.imageUrl || post.mediaUrl) : undefined)}
                 selectedConfetti={(activeMessage.confetti || post.confetti) as any}
                 authorName={activeMessage.authorName}
-                recipient={Array.isArray(post.recipients) ? post.recipients[0] : (post.recipientName || post.targetId)}
+                recipient={Array.isArray(post.recipients) ? post.recipients.filter(r => r !== '@you').join(', ') || post.recipients[0] : (post.recipientName || post.targetId)}
                 selectedHearts={activeMessage.selectedHearts || post.selectedHearts || []}
                 activeType={activeMessage.mediaType === 'audio' ? 'audio' : activeMessage.mediaType === 'video' ? 'video' : 'text'}
                 isCollaborative={!isSoloMode}
@@ -488,14 +596,14 @@ export const MediaModal: React.FC<MediaModalProps> = ({
                 showMetadata={false} // Strictly clean: No status pills, capacity info, or duplicate badges on the board!
               />
 
-              {/* Single Click — Contributor Details Overlay (Image 1 reference) */}
+              {/* Single Click — Contributor Details Overlay */}
               {showContributorDetails && (
                 <div className="absolute inset-x-0 bottom-0 pt-16 pb-3.5 px-4 sm:px-5 bg-gradient-to-t from-black/85 via-black/45 to-transparent rounded-b-[1.8rem] sm:rounded-b-[2rem] md:rounded-b-3xl flex items-center gap-2.5 z-30 transition-all duration-300 animate-in fade-in slide-in-from-bottom-2 pointer-events-none">
                   <div className="w-8 h-8 rounded-full bg-[#FAF0EC] border border-white/30 flex items-center justify-center text-xs font-extrabold text-[#FE6349] shrink-0 overflow-hidden shadow-xs">
-                    {activeMessage.authorAvatar || post.authorAvatar ? (
+                    {activeContributorAvatar ? (
                       <img 
-                        src={activeMessage.authorAvatar || post.authorAvatar} 
-                        alt={displayAuthorName} 
+                        src={activeContributorAvatar} 
+                        alt={activeContributorName} 
                         className="w-full h-full object-cover" 
                       />
                     ) : (
@@ -504,10 +612,10 @@ export const MediaModal: React.FC<MediaModalProps> = ({
                   </div>
                   <div className="flex flex-col text-left">
                     <span className="text-xs sm:text-sm font-bold text-white tracking-tight leading-tight drop-shadow-sm">
-                      {displayAuthorName}
+                      {activeContributorName}
                     </span>
                     <span className="text-[10px] sm:text-[11px] font-medium text-white/75 leading-tight mt-0.5">
-                      {isCurator ? 'Message Creator' : 'Contributor'}
+                      {effectiveActiveTab === 'main' ? 'Message Creator' : 'Contributor'}
                     </span>
                   </div>
                 </div>
@@ -537,32 +645,58 @@ export const MediaModal: React.FC<MediaModalProps> = ({
 
       </main>
 
-      {/* 4. BELOW THE BOARD (Strictly in specified order) */}
+      {/* 4. BELOW THE BOARD (Strictly permanent main board metadata) */}
       <footer className="w-full max-w-[380px] mx-auto px-4 pb-6 pt-1 flex flex-col items-start text-left z-20 shrink-0">
         
-        {/* A. Caption */}
+        {/* A. Caption (Permanent Main Board Creator's Caption) */}
         <h2 className="text-base sm:text-lg font-bold text-white tracking-tight leading-snug break-words">
-          {displayCaption}
+          {mainBoardCaption}
         </h2>
 
-        {/* B. Tagged recipient(s) */}
-        <p className="text-xs sm:text-sm font-semibold text-[#808897] mt-1 break-words">
-          {displayRecipients}
+        {/* B. Tagged recipient(s) (Permanent Main Board Recipients) */}
+        <p className="text-xs sm:text-sm font-semibold text-[#808897] mt-1 break-words flex flex-wrap items-center gap-x-2 gap-y-1">
+          {displayTokens.map((token, idx) => (
+            <button
+              key={`${token.text}-${idx}`}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (token.isHashtag) {
+                  handleHashtagClick(token.cleanTag || token.text);
+                } else {
+                  handleUserClick(token.userQuery || token.text);
+                }
+              }}
+              className={`transition-colors cursor-pointer hover:underline text-left inline-block ${
+                token.isHashtag 
+                  ? 'text-[#808897] hover:text-[#FE6349]' 
+                  : 'text-[#808897] hover:text-white'
+              }`}
+              title={token.isHashtag ? `View all boards for ${token.text}` : `View ${token.text}'s Heartboard`}
+            >
+              {token.text}
+            </button>
+          ))}
         </p>
 
-        {/* C. Curator information/bio */}
-        <div className="flex items-center gap-2 mt-2.5">
-          <div className="w-6 h-6 rounded-full bg-[#353849] border border-white/20 flex items-center justify-center text-[10px] font-extrabold text-white shrink-0 overflow-hidden">
-            {post.authorAvatar ? (
-              <img src={post.authorAvatar} alt={displayAuthorName} className="w-full h-full object-cover" />
+        {/* C. Curator information/bio (Permanent Main Board Owner/Curator) */}
+        <button
+          type="button"
+          onClick={() => handleUserClick(mainCuratorName)}
+          className="flex items-center gap-2 mt-2.5 group cursor-pointer text-left transition-opacity hover:opacity-95"
+          title={`View ${mainCuratorName}'s Heartboard`}
+        >
+          <div className="w-6 h-6 rounded-full bg-[#353849] border border-white/20 flex items-center justify-center text-[10px] font-extrabold text-white shrink-0 overflow-hidden group-hover:border-[#FE6349] transition-colors">
+            {mainCuratorAvatar ? (
+              <img src={mainCuratorAvatar} alt={mainCuratorName} className="w-full h-full object-cover" />
             ) : (
-              displayAuthorName.charAt(0).toUpperCase()
+              mainCuratorName.charAt(0).toUpperCase()
             )}
           </div>
-          <span className="text-xs sm:text-sm font-semibold text-gray-300">
-            {displayAuthorName} {isCurator ? '(Curator)' : '(Contributor)'}
+          <span className="text-xs sm:text-sm font-semibold text-gray-300 group-hover:text-white group-hover:underline transition-colors">
+            {mainCuratorName} (Curator)
           </span>
-        </div>
+        </button>
 
         {/* D. Reaction Picker & Action Bar */}
         <div className="w-full mt-4 relative">
