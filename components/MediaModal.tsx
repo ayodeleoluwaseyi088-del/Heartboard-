@@ -122,6 +122,14 @@ export const MediaModal: React.FC<MediaModalProps> = ({
 
   // Single Click vs Double Click Disambiguation Ref
   const clickTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const touchStartRef = useRef<{ x: number; y: number; time: number; isEdgeLeft: boolean; isEdgeRight: boolean } | null>(null);
+  const gestureDirectionRef = useRef<'horizontal' | 'vertical' | null>(null);
+  const hasMovedRef = useRef<boolean>(false);
+  const isTransitioningRef = useRef<boolean>(false);
+
+  // Swipe gesture tracking for mobile expanded view
+  const [dragOffset, setDragOffset] = useState<number>(0);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
 
   // Contributions list
   const contributions: Contribution[] = post.contributions || [];
@@ -187,6 +195,12 @@ export const MediaModal: React.FC<MediaModalProps> = ({
 
   // Board click handler with distinct single-click and double-click behaviors
   const handleBoardCardClick = (e: React.MouseEvent) => {
+    // If the user was dragging/swiping, do not fire card clicks
+    if (hasMovedRef.current || Math.abs(dragOffset) > 6) {
+      hasMovedRef.current = false;
+      return;
+    }
+
     if (clickTimerRef.current) {
       // Double click detected! Cancel single click and open Action Page
       clearTimeout(clickTimerRef.current);
@@ -198,6 +212,185 @@ export const MediaModal: React.FC<MediaModalProps> = ({
         clickTimerRef.current = null;
         setShowContributorDetails((prev) => !prev);
       }, 240);
+    }
+  };
+
+  // Touch Gesture Handling for Mobile Swipe Navigation
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1 || isTransitioningRef.current) return;
+    const touch = e.touches[0];
+    const clientX = touch.clientX;
+    const clientY = touch.clientY;
+    const screenWidth = window.innerWidth;
+
+    // Detect if swipe initiates from screen edge (within 48px of left or right screen border)
+    const isEdgeLeft = clientX <= 48;
+    const isEdgeRight = clientX >= screenWidth - 48;
+
+    touchStartRef.current = {
+      x: clientX,
+      y: clientY,
+      time: Date.now(),
+      isEdgeLeft,
+      isEdgeRight
+    };
+    gestureDirectionRef.current = null;
+    hasMovedRef.current = false;
+    setIsDragging(false);
+    setDragOffset(0);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartRef.current || e.touches.length !== 1 || isTransitioningRef.current) return;
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - touchStartRef.current.x;
+    const deltaY = touch.clientY - touchStartRef.current.y;
+
+    // Lock gesture direction once threshold is crossed
+    if (gestureDirectionRef.current === null) {
+      if (Math.abs(deltaX) > 8 || Math.abs(deltaY) > 8) {
+        if (Math.abs(deltaX) >= Math.abs(deltaY)) {
+          gestureDirectionRef.current = 'horizontal';
+          setIsDragging(true);
+          hasMovedRef.current = true;
+        } else {
+          gestureDirectionRef.current = 'vertical';
+        }
+      }
+    }
+
+    if (gestureDirectionRef.current === 'horizontal') {
+      hasMovedRef.current = true;
+      // Damped direct finger following
+      setDragOffset(deltaX);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStartRef.current) {
+      setDragOffset(0);
+      setIsDragging(false);
+      return;
+    }
+
+    const startInfo = touchStartRef.current;
+    const deltaX = dragOffset;
+    const elapsed = Date.now() - startInfo.time;
+    const velocity = Math.abs(deltaX) / (elapsed || 1);
+    const isHorizontal = gestureDirectionRef.current === 'horizontal';
+
+    touchStartRef.current = null;
+    gestureDirectionRef.current = null;
+    setIsDragging(false);
+
+    if (!isHorizontal || Math.abs(deltaX) < 8) {
+      setDragOffset(0);
+      return;
+    }
+
+    const swipeThreshold = 50;
+    const isFastSwipe = velocity > 0.35 && Math.abs(deltaX) > 20;
+    const hasTriggered = Math.abs(deltaX) > swipeThreshold || isFastSwipe;
+
+    if (hasTriggered) {
+      isTransitioningRef.current = true;
+      const isLeftSwipe = deltaX < 0; // Swipe left -> advance forward
+      const isRightSwipe = deltaX > 0; // Swipe right -> go backward
+
+      // 1. Edge Swipe: Swiping from screen edges directly moves to next/previous board
+      if (startInfo.isEdgeLeft && isRightSwipe) {
+        setDragOffset(window.innerWidth * 0.4);
+        setTimeout(() => {
+          onPrev();
+          setDragOffset(0);
+          isTransitioningRef.current = false;
+          hasMovedRef.current = false;
+        }, 160);
+        return;
+      }
+
+      if (startInfo.isEdgeRight && isLeftSwipe) {
+        setDragOffset(-window.innerWidth * 0.4);
+        setTimeout(() => {
+          onNext();
+          setDragOffset(0);
+          isTransitioningRef.current = false;
+          hasMovedRef.current = false;
+        }, 160);
+        return;
+      }
+
+      // 2. Normal Board Swipe: Move between Main Message and Contributed Messages, or between Boards
+      const totalContributions = canToggleContributions ? contributions.length : 0;
+
+      if (isLeftSwipe) {
+        // Advancing forward
+        if (effectiveActiveTab === 'main' && totalContributions > 0) {
+          // Switch to first contribution inside expanded view
+          setDragOffset(-120);
+          setTimeout(() => {
+            setActiveTab('contributions');
+            setActiveContributionIndex(0);
+            setDragOffset(0);
+            isTransitioningRef.current = false;
+            hasMovedRef.current = false;
+          }, 140);
+        } else if (effectiveActiveTab === 'contributions' && activeContributionIndex < totalContributions - 1) {
+          // Advance to next contribution
+          setDragOffset(-120);
+          setTimeout(() => {
+            setActiveContributionIndex((prev) => prev + 1);
+            setDragOffset(0);
+            isTransitioningRef.current = false;
+            hasMovedRef.current = false;
+          }, 140);
+        } else {
+          // Reached end of board sequence -> Advance to next board
+          setDragOffset(-window.innerWidth * 0.4);
+          setTimeout(() => {
+            onNext();
+            setDragOffset(0);
+            isTransitioningRef.current = false;
+            hasMovedRef.current = false;
+          }, 160);
+        }
+      } else if (isRightSwipe) {
+        // Going backward
+        if (effectiveActiveTab === 'contributions') {
+          if (activeContributionIndex > 0) {
+            // Go to previous contribution
+            setDragOffset(120);
+            setTimeout(() => {
+              setActiveContributionIndex((prev) => prev - 1);
+              setDragOffset(0);
+              isTransitioningRef.current = false;
+              hasMovedRef.current = false;
+            }, 140);
+          } else {
+            // Go back to the main message
+            setDragOffset(120);
+            setTimeout(() => {
+              setActiveTab('main');
+              setDragOffset(0);
+              isTransitioningRef.current = false;
+              hasMovedRef.current = false;
+            }, 140);
+          }
+        } else {
+          // Already on main message -> Go to previous board
+          setDragOffset(window.innerWidth * 0.4);
+          setTimeout(() => {
+            onPrev();
+            setDragOffset(0);
+            isTransitioningRef.current = false;
+            hasMovedRef.current = false;
+          }, 160);
+        }
+      }
+    } else {
+      // Snap back smoothly
+      setDragOffset(0);
+      hasMovedRef.current = false;
     }
   };
 
@@ -436,14 +629,14 @@ export const MediaModal: React.FC<MediaModalProps> = ({
 
   return (
     <div 
-      className="fixed inset-0 z-[1000] flex flex-col items-center justify-between bg-[#161722] text-white font-sans select-none overflow-y-auto antialiased"
-      style={{ backgroundColor: '#161722' }}
+      className="fixed inset-0 z-[1000] flex flex-col items-center justify-between bg-[#1A1B25] text-white font-sans select-none overflow-y-auto antialiased"
+      style={{ backgroundColor: '#1A1B25' }}
     >
       {/* 1. TOP BAR */}
-      <header className="w-full max-w-4xl mx-auto px-4 sm:px-6 pt-5 pb-3 flex items-center justify-between z-30 shrink-0">
+      <header className="w-full px-4 sm:px-8 md:px-16 lg:px-24 xl:px-[192px] pt-5 pb-3 flex items-center justify-between z-30 shrink-0">
         
         {/* Top-Left: Toggle / Switch Component (Main Board vs. Contributions) */}
-        <div className="flex items-center bg-[#272835] border border-white/10 p-1 rounded-full shadow-md">
+        <div className="flex items-center bg-[#272835] p-1 rounded-full">
           {/* Main Board Button */}
           <button
             type="button"
@@ -452,17 +645,17 @@ export const MediaModal: React.FC<MediaModalProps> = ({
                 setActiveTab('main');
               }
             }}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
+            className={`w-8 h-8 flex items-center justify-center rounded-full transition-all ${
               canToggleContributions ? 'cursor-pointer' : 'cursor-default'
             } ${
               effectiveActiveTab === 'main'
-                ? 'bg-white/20 text-white shadow-xs'
+                ? 'bg-white/20 text-white'
                 : 'text-white/50 hover:text-white/80'
             }`}
             title="Main Board (Original by Curator)"
+            aria-label="Main Board"
           >
-            <UserCheck className="w-4 h-4 stroke-[2.5]" />
-            <span className="hidden sm:inline">Main Board</span>
+            <UserCheck className="w-4 h-4" />
           </button>
 
           {/* Contributions Button */}
@@ -474,13 +667,13 @@ export const MediaModal: React.FC<MediaModalProps> = ({
               setActiveTab('contributions');
               setActiveContributionIndex(0);
             }}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
+            className={`w-8 h-8 flex items-center justify-center rounded-full transition-all relative ${
               canToggleContributions
                 ? 'cursor-pointer hover:text-white/80'
                 : 'cursor-not-allowed opacity-40 select-none'
             } ${
               effectiveActiveTab === 'contributions'
-                ? 'bg-white/20 text-white shadow-xs'
+                ? 'bg-white/20 text-white'
                 : canToggleContributions
                   ? 'text-white/50'
                   : 'text-white/30'
@@ -492,16 +685,9 @@ export const MediaModal: React.FC<MediaModalProps> = ({
                   : 'No contributions yet'
                 : 'Contributions (Messages by other curators)'
             }
+            aria-label="Contributions"
           >
-            <LayoutGrid className="w-4 h-4 stroke-[2]" />
-            <span className="hidden sm:inline">Contributions</span>
-            {contributions.length > 0 && (
-              <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
-                effectiveActiveTab === 'contributions' ? 'bg-[#FE6349] text-white' : 'bg-white/15 text-white/70'
-              }`}>
-                {contributions.length}
-              </span>
-            )}
+            <LayoutGrid className="w-4 h-4" />
           </button>
         </div>
 
@@ -509,38 +695,49 @@ export const MediaModal: React.FC<MediaModalProps> = ({
         <button
           type="button"
           onClick={onClose}
-          className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-white/90 hover:text-white flex items-center justify-center transition-all cursor-pointer border border-white/10"
+          className="w-10 h-10 rounded-full bg-[#222330] hover:bg-[#2c2e3e] active:scale-95 text-white/60 hover:text-white flex items-center justify-center transition-all cursor-pointer"
           aria-label="Close message board"
         >
-          <X className="w-5 h-5 stroke-[2.5]" />
+          <X className="w-5 h-5 text-white/60 hover:text-white transition-colors" />
         </button>
       </header>
 
       {/* Screen Left & Right Chevrons Navigation for Desktop */}
       <button 
         onClick={handlePrevMessage} 
-        className="hidden md:flex fixed left-4 lg:left-8 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 hover:scale-105 active:scale-95 items-center justify-center text-white transition-all backdrop-blur-md border border-white/10 cursor-pointer shadow-lg"
+        className="hidden md:flex fixed left-4 sm:left-8 md:left-16 lg:left-24 xl:left-[192px] top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full hover:scale-105 active:scale-95 items-center justify-center text-white/60 hover:text-white transition-all cursor-pointer"
         aria-label="Previous message"
       >
-        <ChevronLeft className="w-6 h-6 stroke-[2.5]" />
+        <ChevronLeft className="w-6 h-6 text-white/60 hover:text-white transition-colors" />
       </button>
 
       <button 
         onClick={handleNextMessage} 
-        className="hidden md:flex fixed right-4 lg:right-8 top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 hover:scale-105 active:scale-95 items-center justify-center text-white transition-all backdrop-blur-md border border-white/10 cursor-pointer shadow-lg"
+        className="hidden md:flex fixed right-4 sm:right-8 md:right-16 lg:right-24 xl:right-[192px] top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full hover:scale-105 active:scale-95 items-center justify-center text-white/60 hover:text-white transition-all cursor-pointer"
         aria-label="Next message"
       >
-        <ChevronRight className="w-6 h-6 stroke-[2.5]" />
+        <ChevronRight className="w-6 h-6 text-white/60 hover:text-white transition-colors" />
       </button>
 
       {/* 2. MIDDLE: ACTUAL MESSAGE BOARD / CONTENT */}
-      <main className="w-full flex-1 flex flex-col items-center justify-center px-4 py-2 my-auto z-10">
+      <main 
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={handleTouchEnd}
+        className="w-full flex-1 flex flex-col items-center justify-center px-4 py-2 my-auto z-10 touch-pan-y"
+      >
         
         {effectiveActiveTab === 'contributions' && !hasContributions ? (
           /* Empty state when there are no contributions yet */
           <div 
-            style={{ backgroundColor: frameBgColor }}
-            className="w-full max-w-[340px] sm:max-w-[380px] h-[380px] sm:h-[430px] rounded-[2.5rem] p-6 flex flex-col items-center justify-center text-center shadow-2xl relative"
+            style={{ 
+              backgroundColor: frameBgColor,
+              transform: `translateX(${dragOffset}px) rotate(${dragOffset * 0.015}deg)`,
+              transition: isDragging ? 'none' : 'transform 0.24s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.24s ease',
+              opacity: isDragging ? Math.max(0.72, 1 - Math.abs(dragOffset) / 500) : 1
+            }}
+            className="w-full max-w-[340px] sm:max-w-[380px] h-[380px] sm:h-[430px] rounded-[2.5rem] p-6 flex flex-col items-center justify-center text-center shadow-2xl relative select-none will-change-transform"
           >
             <div className="bg-white rounded-3xl w-full h-full p-6 flex flex-col items-center justify-center text-center shadow-xs">
               <div className="w-14 h-14 rounded-full bg-rose-50 flex items-center justify-center text-[#FE6349] mb-3">
@@ -571,8 +768,13 @@ export const MediaModal: React.FC<MediaModalProps> = ({
           /* The Actual Message Board Frame (Fixed & Pristine) */
           <div 
             onClick={handleBoardCardClick}
-            style={{ backgroundColor: frameBgColor }}
-            className="w-full max-w-[320px] sm:max-w-[360px] md:max-w-[380px] h-[400px] sm:h-[450px] md:h-[474px] rounded-[2.2rem] sm:rounded-[2.5rem] p-5 sm:p-6 md:p-7 flex items-center justify-center shadow-[0_20px_60px_rgba(0,0,0,0.45)] relative overflow-hidden transition-all duration-300 cursor-pointer active:scale-[0.995]"
+            style={{ 
+              backgroundColor: frameBgColor,
+              transform: `translateX(${dragOffset}px) rotate(${dragOffset * 0.015}deg)`,
+              transition: isDragging ? 'none' : 'transform 0.24s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.24s ease',
+              opacity: isDragging ? Math.max(0.72, 1 - Math.abs(dragOffset) / 500) : 1
+            }}
+            className="w-full max-w-[320px] sm:max-w-[360px] md:max-w-[380px] h-[400px] sm:h-[450px] md:h-[474px] rounded-[2.2rem] sm:rounded-[2.5rem] p-5 sm:p-6 md:p-7 flex items-center justify-center shadow-[0_20px_60px_rgba(0,0,0,0.45)] relative overflow-hidden cursor-pointer active:scale-[0.995] select-none will-change-transform"
             title="Single-click for contributor details, double-click for action menu"
           >
             {/* Confetti Overlay inside frame if enabled */}
@@ -646,15 +848,15 @@ export const MediaModal: React.FC<MediaModalProps> = ({
       </main>
 
       {/* 4. BELOW THE BOARD (Strictly permanent main board metadata) */}
-      <footer className="w-full max-w-[380px] mx-auto px-4 pb-6 pt-1 flex flex-col items-start text-left z-20 shrink-0">
+      <footer className="w-full max-w-[320px] sm:max-w-[360px] md:max-w-[380px] mx-auto px-0 pb-6 pt-1 flex flex-col items-start text-left gap-3 z-20 shrink-0">
         
         {/* A. Caption (Permanent Main Board Creator's Caption) */}
-        <h2 className="text-base sm:text-lg font-bold text-white tracking-tight leading-snug break-words">
+        <h2 className="w-full text-base sm:text-lg font-bold text-white tracking-tight leading-snug truncate" title={mainBoardCaption}>
           {mainBoardCaption}
         </h2>
 
         {/* B. Tagged recipient(s) (Permanent Main Board Recipients) */}
-        <p className="text-xs sm:text-sm font-semibold text-[#808897] mt-1 break-words flex flex-wrap items-center gap-x-2 gap-y-1">
+        <p className="text-xs sm:text-sm font-semibold text-white/60 break-words flex flex-wrap items-center gap-x-2 gap-y-1">
           {displayTokens.map((token, idx) => (
             <button
               key={`${token.text}-${idx}`}
@@ -667,10 +869,10 @@ export const MediaModal: React.FC<MediaModalProps> = ({
                   handleUserClick(token.userQuery || token.text);
                 }
               }}
-              className={`transition-colors cursor-pointer hover:underline text-left inline-block ${
+              className={`transition-colors cursor-pointer hover:underline text-left inline-block text-white/60 ${
                 token.isHashtag 
-                  ? 'text-[#808897] hover:text-[#FE6349]' 
-                  : 'text-[#808897] hover:text-white'
+                  ? 'hover:text-[#FE6349]' 
+                  : 'hover:text-white'
               }`}
               title={token.isHashtag ? `View all boards for ${token.text}` : `View ${token.text}'s Heartboard`}
             >
@@ -683,7 +885,7 @@ export const MediaModal: React.FC<MediaModalProps> = ({
         <button
           type="button"
           onClick={() => handleUserClick(mainCuratorName)}
-          className="flex items-center gap-2 mt-2.5 group cursor-pointer text-left transition-opacity hover:opacity-95"
+          className="flex items-center gap-2 group cursor-pointer text-left transition-opacity hover:opacity-95"
           title={`View ${mainCuratorName}'s Heartboard`}
         >
           <div className="w-6 h-6 rounded-full bg-[#353849] border border-white/20 flex items-center justify-center text-[10px] font-extrabold text-white shrink-0 overflow-hidden group-hover:border-[#FE6349] transition-colors">
@@ -693,13 +895,13 @@ export const MediaModal: React.FC<MediaModalProps> = ({
               mainCuratorName.charAt(0).toUpperCase()
             )}
           </div>
-          <span className="text-xs sm:text-sm font-semibold text-gray-300 group-hover:text-white group-hover:underline transition-colors">
+          <span className="text-xs sm:text-sm font-semibold text-white/60 group-hover:text-white group-hover:underline transition-colors">
             {mainCuratorName} (Curator)
           </span>
         </button>
 
         {/* D. Reaction Picker & Action Bar */}
-        <div className="w-full mt-4 relative">
+        <div className="w-fit relative flex flex-col items-start">
           
           {/* Dismiss backdrop when picker is open */}
           {isReactionPickerOpen && (
@@ -712,7 +914,7 @@ export const MediaModal: React.FC<MediaModalProps> = ({
           {/* Top Floating Pill: Reaction Picker (Absolute overlay - zero layout shift) */}
           {isReactionPickerOpen && (
             <div 
-              className="absolute bottom-[calc(100%+10px)] left-0 w-full flex items-center justify-between bg-[#272835] border border-white/10 rounded-full px-5 py-2.5 shadow-2xl animate-in fade-in slide-in-from-bottom-2 duration-150 z-30"
+              className="absolute bottom-[calc(100%+10px)] left-0 w-fit whitespace-nowrap flex items-center justify-start gap-4 bg-[#272835] rounded-full px-5 py-2.5 animate-in fade-in slide-in-from-bottom-2 duration-150 z-30"
               onClick={(e) => e.stopPropagation()}
             >
               {/* 1. Clap */}
@@ -794,7 +996,7 @@ export const MediaModal: React.FC<MediaModalProps> = ({
           )}
 
           {/* Bottom Pill: Action Bar */}
-          <div className="w-full flex items-center justify-between bg-[#272835] border border-white/10 rounded-full px-5 py-2.5 shadow-xl relative z-30">
+          <div className="w-fit flex items-center justify-center gap-4 bg-[#272835] rounded-full px-5 py-2.5 relative z-30">
             
             {/* 1. Reaction Button (Smiley) - Default State has no count, only icon */}
             <button
@@ -848,7 +1050,7 @@ export const MediaModal: React.FC<MediaModalProps> = ({
 
       {/* Flag / Report Toast Feedback */}
       {showFlagToast && toastMessage && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[1100] bg-[#272835] text-white text-xs font-bold px-4 py-2.5 rounded-full border border-white/20 shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2">
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[1100] bg-[#272835] text-white text-xs font-bold px-4 py-2.5 rounded-full shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2">
           <Check className="w-4 h-4 text-emerald-400" />
           <span>{toastMessage}</span>
         </div>

@@ -417,14 +417,6 @@ export const AuthView: React.FC<AuthModalProps> = ({
 
       {/* Main Full-Page Content Viewport */}
       <main className="w-full max-w-[480px] mx-auto px-4 py-8 sm:py-12 flex-1 flex flex-col justify-center">
-        
-        {/* Action Prompt Banner (if user clicked a restricted action like gift vouch/heart) */}
-        {promptMessage && (currentStep === 'login' || currentStep === 'signup') && (
-          <div className="mb-6 p-4 bg-rose-50 rounded-2xl flex items-center gap-3 text-xs font-bold text-[#FE6349] border border-rose-100 shadow-2xs">
-            <Sparkles size={18} className="shrink-0" />
-            <span>{promptMessage}</span>
-          </div>
-        )}
 
         {/* Global Error Banner */}
         {errorMessage && (
@@ -444,7 +436,7 @@ export const AuthView: React.FC<AuthModalProps> = ({
 
         {/* ================= STEP 1: FULL-PAGE LOGIN ================= */}
         {currentStep === 'login' && (
-          <div className="bg-white rounded-3xl p-6 sm:p-10 shadow-xs border border-[#ECEFF3]">
+          <div className="bg-white rounded-3xl p-6 sm:p-10 shadow-xs">
             <div className="text-left mb-6">
               <h1 className="text-2xl sm:text-3xl font-extrabold text-[#1A1B25] tracking-tight">
                 Welcome back
@@ -458,7 +450,7 @@ export const AuthView: React.FC<AuthModalProps> = ({
             <button
               type="button"
               onClick={handleGoogleAuth}
-              className="w-full py-3 px-4 rounded-2xl bg-[#F8F9FB] hover:bg-[#ECEFF3] text-[#1A1B25] font-bold text-xs sm:text-sm flex items-center justify-center gap-3 transition-all cursor-pointer border border-[#ECEFF3] mb-5"
+              className="w-full py-3 px-4 rounded-2xl bg-[#F8F9FB] hover:bg-[#ECEFF3] text-[#1A1B25] font-bold text-xs sm:text-sm flex items-center justify-center gap-3 transition-all cursor-pointer mb-5"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -477,7 +469,7 @@ export const AuthView: React.FC<AuthModalProps> = ({
             </div>
 
             {/* Method Tabs (Email vs Phone) */}
-            <div className="flex bg-[#F8F9FB] p-1 rounded-2xl mb-4 border border-[#ECEFF3]">
+            <div className="flex bg-[#F8F9FB] p-1 rounded-2xl mb-4">
               <button
                 type="button"
                 onClick={() => {
@@ -521,7 +513,7 @@ export const AuthView: React.FC<AuthModalProps> = ({
                     value={emailOrPhone}
                     onChange={(e) => setEmailOrPhone(e.target.value)}
                     placeholder={authMethod === 'email' ? 'you@domain.com' : '+1 (555) 000-0000'}
-                    className="w-full bg-[#F8F9FB] focus:bg-white border border-[#ECEFF3] focus:border-[#FE6349] rounded-2xl py-3 pl-10 pr-4 text-xs sm:text-sm font-semibold text-[#1A1B25] placeholder:text-gray-400 focus:outline-none focus:ring-4 focus:ring-rose-500/10 transition-all"
+                    className="w-full bg-[#F8F9FB] focus:bg-[#ECEFF3]/50 border-none rounded-2xl py-3 pl-10 pr-4 text-xs sm:text-sm font-semibold text-[#1A1B25] placeholder:text-gray-400 focus:outline-none transition-all"
                   />
                 </div>
               </div>
@@ -549,7 +541,7 @@ export const AuthView: React.FC<AuthModalProps> = ({
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
-                    className="w-full bg-[#F8F9FB] focus:bg-white border border-[#ECEFF3] focus:border-[#FE6349] rounded-2xl py-3 pl-10 pr-10 text-xs sm:text-sm font-semibold text-[#1A1B25] placeholder:text-gray-400 focus:outline-none focus:ring-4 focus:ring-rose-500/10 transition-all"
+                    className="w-full bg-[#F8F9FB] focus:bg-[#ECEFF3]/50 border-none rounded-2xl py-3 pl-10 pr-10 text-xs sm:text-sm font-semibold text-[#1A1B25] placeholder:text-gray-400 focus:outline-none transition-all"
                   />
                   <button
                     type="button"
@@ -563,22 +555,11 @@ export const AuthView: React.FC<AuthModalProps> = ({
 
               <button
                 type="submit"
-                className="w-full py-3.5 px-4 rounded-2xl bg-[#1A1B25] hover:bg-black text-white font-extrabold text-xs sm:text-sm transition-all cursor-pointer shadow-sm mt-2"
+                className="w-full py-3.5 px-4 rounded-2xl bg-[#FE6349] hover:bg-[#FE6349]/90 text-white font-extrabold text-xs sm:text-sm transition-all cursor-pointer shadow-sm mt-2"
               >
                 Sign In
               </button>
             </form>
-
-            {/* Quick Demo Sign-in Helper */}
-            <div className="mt-5 pt-4 border-t border-[#ECEFF3]">
-              <button
-                type="button"
-                onClick={handleQuickDemoLogin}
-                className="w-full py-2.5 px-3 rounded-2xl bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer border border-amber-200/60"
-              >
-                <span>⚡ Quick Sign In as Demo Curator (@mickymouse)</span>
-              </button>
-            </div>
 
             {/* Footer Switch to Sign Up */}
             <p className="text-xs text-[#808897] font-semibold text-center mt-6">
@@ -599,7 +580,7 @@ export const AuthView: React.FC<AuthModalProps> = ({
 
         {/* ================= STEP 2: FULL-PAGE SIGN UP ================= */}
         {currentStep === 'signup' && (
-          <div className="bg-white rounded-3xl p-6 sm:p-10 shadow-xs border border-[#ECEFF3]">
+          <div className="bg-white rounded-3xl p-6 sm:p-10 shadow-xs">
             <div className="text-left mb-6">
               <h1 className="text-2xl sm:text-3xl font-extrabold text-[#1A1B25] tracking-tight">
                 Join Heartboard
@@ -613,7 +594,7 @@ export const AuthView: React.FC<AuthModalProps> = ({
             <button
               type="button"
               onClick={handleGoogleAuth}
-              className="w-full py-3 px-4 rounded-2xl bg-[#F8F9FB] hover:bg-[#ECEFF3] text-[#1A1B25] font-bold text-xs sm:text-sm flex items-center justify-center gap-3 transition-all cursor-pointer border border-[#ECEFF3] mb-5"
+              className="w-full py-3 px-4 rounded-2xl bg-[#F8F9FB] hover:bg-[#ECEFF3] text-[#1A1B25] font-bold text-xs sm:text-sm flex items-center justify-center gap-3 transition-all cursor-pointer mb-5"
             >
               <svg className="w-4 h-4" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -632,7 +613,7 @@ export const AuthView: React.FC<AuthModalProps> = ({
             </div>
 
             {/* Method Tabs */}
-            <div className="flex bg-[#F8F9FB] p-1 rounded-2xl mb-4 border border-[#ECEFF3]">
+            <div className="flex bg-[#F8F9FB] p-1 rounded-2xl mb-4">
               <button
                 type="button"
                 onClick={() => {
@@ -676,7 +657,7 @@ export const AuthView: React.FC<AuthModalProps> = ({
                     value={emailOrPhone}
                     onChange={(e) => setEmailOrPhone(e.target.value)}
                     placeholder={authMethod === 'email' ? 'sarah@example.com' : '+1 (555) 234-5678'}
-                    className="w-full bg-[#F8F9FB] focus:bg-white border border-[#ECEFF3] focus:border-[#FE6349] rounded-2xl py-3 pl-10 pr-4 text-xs sm:text-sm font-semibold text-[#1A1B25] placeholder:text-gray-400 focus:outline-none focus:ring-4 focus:ring-rose-500/10 transition-all"
+                    className="w-full bg-[#F8F9FB] focus:bg-[#ECEFF3]/50 border-none rounded-2xl py-3 pl-10 pr-4 text-xs sm:text-sm font-semibold text-[#1A1B25] placeholder:text-gray-400 focus:outline-none transition-all"
                   />
                 </div>
               </div>
@@ -692,7 +673,7 @@ export const AuthView: React.FC<AuthModalProps> = ({
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Create a password (min 6 chars)"
-                    className="w-full bg-[#F8F9FB] focus:bg-white border border-[#ECEFF3] focus:border-[#FE6349] rounded-2xl py-3 pl-10 pr-10 text-xs sm:text-sm font-semibold text-[#1A1B25] placeholder:text-gray-400 focus:outline-none focus:ring-4 focus:ring-rose-500/10 transition-all"
+                    className="w-full bg-[#F8F9FB] focus:bg-[#ECEFF3]/50 border-none rounded-2xl py-3 pl-10 pr-10 text-xs sm:text-sm font-semibold text-[#1A1B25] placeholder:text-gray-400 focus:outline-none transition-all"
                   />
                   <button
                     type="button"
@@ -706,7 +687,7 @@ export const AuthView: React.FC<AuthModalProps> = ({
 
               <button
                 type="submit"
-                className="w-full py-3.5 px-4 rounded-2xl bg-[#FE6349] hover:bg-rose-600 text-white font-extrabold text-xs sm:text-sm transition-all cursor-pointer shadow-md mt-2 flex items-center justify-center gap-2"
+                className="w-full py-3.5 px-4 rounded-2xl bg-[#FE6349] hover:bg-[#FE6349]/90 text-white font-extrabold text-xs sm:text-sm transition-all cursor-pointer shadow-md mt-2 flex items-center justify-center gap-2"
               >
                 <span>Continue & Send Code</span>
                 <ChevronRight size={16} />
@@ -732,9 +713,9 @@ export const AuthView: React.FC<AuthModalProps> = ({
 
         {/* ================= STEP 3: FULL-PAGE VERIFICATION ================= */}
         {currentStep === 'verify' && (
-          <div className="bg-white rounded-3xl p-6 sm:p-10 shadow-xs border border-[#ECEFF3]">
+          <div className="bg-white rounded-3xl p-6 sm:p-10 shadow-xs">
             <div className="text-left mb-6">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 text-[#FE6349] text-[10px] font-extrabold uppercase tracking-wider mb-3 border border-rose-100">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 text-[#FE6349] text-[10px] font-extrabold uppercase tracking-wider mb-3">
                 <ShieldCheck size={12} />
                 <span>Security Step</span>
               </div>
@@ -759,13 +740,13 @@ export const AuthView: React.FC<AuthModalProps> = ({
                     value={digit}
                     onChange={(e) => handleOtpChange(idx, e.target.value)}
                     onKeyDown={(e) => handleOtpKeyDown(idx, e)}
-                    className="w-11 h-14 sm:w-13 sm:h-16 bg-[#F8F9FB] border-2 border-transparent focus:border-[#FE6349] rounded-2xl text-center text-xl sm:text-2xl font-extrabold text-[#1A1B25] focus:bg-white focus:outline-none focus:ring-4 focus:ring-rose-500/10 transition-all shadow-2xs"
+                    className="w-11 h-14 sm:w-13 sm:h-16 bg-[#F8F9FB] border-none rounded-2xl text-center text-xl sm:text-2xl font-extrabold text-[#1A1B25] focus:bg-[#ECEFF3]/60 focus:outline-none transition-all shadow-2xs"
                   />
                 ))}
               </div>
 
               {/* Simulated Auto-Fill Hint */}
-              <div className="p-3.5 bg-[#F8F9FB] rounded-2xl flex items-center justify-between text-xs text-[#808897] border border-[#ECEFF3]">
+              <div className="p-3.5 bg-[#F8F9FB] rounded-2xl flex items-center justify-between text-xs text-[#808897]">
                 <span>Demo Test Code: <strong className="text-[#1A1B25]">123456</strong></span>
                 <button
                   type="button"
@@ -780,7 +761,7 @@ export const AuthView: React.FC<AuthModalProps> = ({
 
               <button
                 type="submit"
-                className="w-full py-3.5 px-4 rounded-2xl bg-[#1A1B25] hover:bg-black text-white font-extrabold text-xs sm:text-sm transition-all cursor-pointer shadow-md"
+                className="w-full py-3.5 px-4 rounded-2xl bg-[#FE6349] hover:bg-[#FE6349]/90 text-white font-extrabold text-xs sm:text-sm transition-all cursor-pointer shadow-md"
               >
                 Verify & Continue
               </button>
@@ -805,9 +786,9 @@ export const AuthView: React.FC<AuthModalProps> = ({
 
         {/* ================= STEP 4: FULL-PAGE ONBOARDING 1 (USERNAME & AVATAR) ================= */}
         {currentStep === 'onboarding_step1' && (
-          <div className="bg-white rounded-3xl p-6 sm:p-10 shadow-xs border border-[#ECEFF3]">
+          <div className="bg-white rounded-3xl p-6 sm:p-10 shadow-xs">
             <div className="text-left mb-6">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 text-[#FE6349] text-[10px] font-extrabold uppercase tracking-wider mb-2 border border-rose-100">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 text-[#FE6349] text-[10px] font-extrabold uppercase tracking-wider mb-2">
                 <span>Step 1 of 2</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-[#1A1B25] tracking-tight">
@@ -820,9 +801,9 @@ export const AuthView: React.FC<AuthModalProps> = ({
 
             <form onSubmit={handleStep1Continue} className="space-y-6">
               {/* Profile Avatar Upload / Selection */}
-              <div className="flex flex-col items-center gap-3.5 p-4 bg-[#F8F9FB] rounded-3xl border border-[#ECEFF3]">
+              <div className="flex flex-col items-center gap-3.5 p-4 bg-[#F8F9FB] rounded-3xl">
                 <div className="relative group">
-                  <div className="w-22 h-22 rounded-full bg-[#FAF0EC] p-1 border-2 border-dashed border-[#FE6349]/50 flex items-center justify-center overflow-hidden shadow-xs">
+                  <div className="w-22 h-22 rounded-full bg-[#FAF0EC] p-1 flex items-center justify-center overflow-hidden shadow-xs">
                     <img
                       src={selectedAvatar}
                       alt="Avatar Preview"
@@ -866,8 +847,8 @@ export const AuthView: React.FC<AuthModalProps> = ({
                       key={idx}
                       type="button"
                       onClick={() => setSelectedAvatar(url)}
-                      className={`w-9 h-9 rounded-full overflow-hidden border-2 transition-all cursor-pointer ${
-                        selectedAvatar === url ? 'border-[#FE6349] scale-110 shadow-xs ring-2 ring-[#FE6349]/20' : 'border-transparent opacity-75 hover:opacity-100'
+                      className={`w-9 h-9 rounded-full overflow-hidden transition-all cursor-pointer ${
+                        selectedAvatar === url ? 'scale-110 shadow-xs ring-2 ring-[#FE6349]' : 'opacity-75 hover:opacity-100'
                       }`}
                     >
                       <img src={url} alt={`Preset ${idx + 1}`} className="w-full h-full object-cover" />
@@ -894,7 +875,7 @@ export const AuthView: React.FC<AuthModalProps> = ({
                       setErrorMessage(null);
                     }}
                     placeholder="yourname"
-                    className="w-full bg-[#F8F9FB] focus:bg-white border-2 border-transparent focus:border-[#FE6349] rounded-2xl py-3.5 pl-10 pr-32 text-sm font-bold text-[#1A1B25] placeholder:text-gray-400 focus:outline-none focus:ring-4 focus:ring-rose-500/10 transition-all shadow-2xs"
+                    className="w-full bg-[#F8F9FB] focus:bg-[#ECEFF3]/50 border-none rounded-2xl py-3.5 pl-10 pr-32 text-sm font-bold text-[#1A1B25] placeholder:text-gray-400 focus:outline-none transition-all shadow-2xs"
                   />
 
                   {/* Real-time Indicator Pill */}
@@ -905,12 +886,12 @@ export const AuthView: React.FC<AuthModalProps> = ({
                       </span>
                     )}
                     {handleAvailability === 'available' && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-extrabold border border-emerald-200">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-extrabold">
                         <Check size={13} strokeWidth={3} /> Available
                       </span>
                     )}
                     {handleAvailability === 'taken' && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-50 text-red-600 text-xs font-extrabold border border-red-200">
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-50 text-red-600 text-xs font-extrabold">
                         <X size={13} strokeWidth={3} /> Already taken
                       </span>
                     )}
@@ -927,7 +908,7 @@ export const AuthView: React.FC<AuthModalProps> = ({
                 className={`w-full py-3.5 px-4 rounded-2xl font-extrabold text-xs sm:text-sm transition-all shadow-md flex items-center justify-center gap-2 ${
                   handleAvailability === 'taken' || !customHandle.trim()
                     ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                    : 'bg-[#1A1B25] hover:bg-black text-white cursor-pointer'
+                    : 'bg-[#FE6349] hover:bg-[#FE6349]/90 text-white cursor-pointer'
                 }`}
               >
                 <span>Continue to Ground Rules</span>
@@ -939,9 +920,9 @@ export const AuthView: React.FC<AuthModalProps> = ({
 
         {/* ================= STEP 5: FULL-PAGE ONBOARDING 2 (COMMUNITY RULES) ================= */}
         {currentStep === 'onboarding_step2' && (
-          <div className="bg-white rounded-3xl p-6 sm:p-10 shadow-xs border border-[#ECEFF3]">
+          <div className="bg-white rounded-3xl p-6 sm:p-10 shadow-xs">
             <div className="text-left mb-5">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 text-[#FE6349] text-[10px] font-extrabold uppercase tracking-wider mb-2 border border-rose-100">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 text-[#FE6349] text-[10px] font-extrabold uppercase tracking-wider mb-2">
                 <span>Step 2 of 2</span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-extrabold text-[#1A1B25] tracking-tight">
@@ -953,7 +934,7 @@ export const AuthView: React.FC<AuthModalProps> = ({
             </div>
 
             {/* Scrollable Rules Container */}
-            <div className="bg-[#F8F9FB] rounded-2xl p-4 sm:p-5 max-h-64 overflow-y-auto text-left space-y-4 text-xs text-[#353849] leading-relaxed border border-[#ECEFF3]">
+            <div className="bg-[#F8F9FB] rounded-2xl p-4 sm:p-5 max-h-64 overflow-y-auto text-left space-y-4 text-xs text-[#353849] leading-relaxed">
               <div className="flex items-start gap-3">
                 <div className="w-6 h-6 rounded-full bg-rose-100 text-[#FE6349] flex items-center justify-center shrink-0 mt-0.5">
                   <Heart size={13} fill="currentColor" />
@@ -1001,6 +982,13 @@ export const AuthView: React.FC<AuthModalProps> = ({
                   </p>
                 </div>
               </div>
+
+              <div className="pt-3 border-t border-[#ECEFF3]/80 flex items-start gap-2.5">
+                <AlertCircle size={15} className="text-[#FE6349] shrink-0 mt-0.5" />
+                <p className="text-[11px] font-semibold text-[#666D80] leading-normal">
+                  Users who violate Heartboard’s platform rules or community guidelines may have their account suspended.
+                </p>
+              </div>
             </div>
 
             {/* Mandatory Agreement Checkbox */}
@@ -1026,7 +1014,7 @@ export const AuthView: React.FC<AuthModalProps> = ({
                 className={`w-full py-3.5 px-4 rounded-2xl font-extrabold text-xs sm:text-sm transition-all shadow-md flex items-center justify-center gap-2 ${
                   !agreedToRules
                     ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                    : 'bg-[#FE6349] hover:bg-rose-600 text-white cursor-pointer'
+                    : 'bg-[#FE6349] hover:bg-[#FE6349]/90 text-white cursor-pointer'
                 }`}
               >
                 <span>Complete Registration & Enter</span>

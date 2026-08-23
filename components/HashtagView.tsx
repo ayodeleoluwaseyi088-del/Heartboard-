@@ -113,38 +113,38 @@ export const HashtagView: React.FC<HashtagViewProps> = ({
       </div>
 
       {/* 2. Grid Container for Hashtag Card + Message Boards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 sm:gap-8 items-stretch">
+      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-6 lg:gap-8 items-stretch">
         
         {/* SLOT 1: Specialized Hashtag Hero Card (Matching reference image) */}
-        <div className="bg-white rounded-[2.5rem] p-6 sm:p-8 border border-gray-100 shadow-2xs hover:shadow-md transition-all flex flex-col items-center justify-center text-center aspect-[380/474] relative overflow-hidden group">
+        <div className="bg-white rounded-2xl sm:rounded-[2.5rem] p-3 sm:p-8 border border-gray-100 shadow-2xs hover:shadow-md transition-all flex flex-col items-center justify-center text-center aspect-[380/474] relative overflow-hidden group">
           
           {/* Subtle background glow */}
           <div className="absolute inset-0 bg-gradient-to-b from-rose-50/30 to-transparent pointer-events-none" />
 
           {/* Hashtag Avatar Circle */}
-          <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-[#FAF0EC] border-2 border-rose-100/60 flex items-center justify-center shrink-0 mb-4 shadow-2xs relative overflow-hidden group-hover:scale-105 transition-transform">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-[#FFB5A9]/20 flex items-center justify-center text-[#FE6349]">
-              <Hash className="w-10 h-10 sm:w-12 sm:h-12 stroke-[2.5]" />
+          <div className="w-14 h-14 sm:w-32 sm:h-32 rounded-full bg-[#FAF0EC] border-2 border-rose-100/60 flex items-center justify-center shrink-0 mb-2 sm:mb-4 shadow-2xs relative overflow-hidden group-hover:scale-105 transition-transform">
+            <div className="w-8 h-8 sm:w-20 sm:h-20 rounded-full bg-[#FFB5A9]/20 flex items-center justify-center text-[#FE6349]">
+              <Hash className="w-4 h-4 sm:w-12 sm:h-12 stroke-[2.5]" />
             </div>
           </div>
 
           {/* Hashtag Title */}
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#1A1B25] tracking-tight mb-3">
+          <h1 className="text-sm sm:text-3xl font-extrabold text-[#1A1B25] tracking-tight mb-2 sm:mb-3 truncate max-w-full px-1">
             {cleanHashtag}
           </h1>
 
           {/* Create Board CTA Button */}
           <button
             onClick={() => onCreateBoard(cleanHashtag)}
-            className="bg-[#FE6349] hover:bg-[#e05238] active:scale-95 text-white text-sm sm:text-base font-extrabold px-6 py-2.5 sm:px-7 sm:py-3 rounded-full shadow-md hover:shadow-lg transition-all cursor-pointer mb-5 flex items-center gap-2"
+            className="bg-[#FE6349] hover:bg-[#e05238] active:scale-95 text-white text-xs sm:text-base font-extrabold px-3 py-1.5 sm:px-7 sm:py-3 rounded-full shadow-md hover:shadow-lg transition-all cursor-pointer mb-2 sm:mb-5 flex items-center gap-1.5"
           >
-            <Plus className="w-4 h-4 stroke-[3]" />
+            <Plus className="w-3 h-3 sm:w-4 sm:h-4 stroke-[3]" />
             <span>Create Board</span>
           </button>
 
           {/* Sub-stats label */}
-          <p className="text-xs sm:text-sm font-semibold text-[#808897] tracking-tight">
-            {boardsDisplay} &nbsp;|&nbsp; {messagesDisplay} &nbsp;|&nbsp; {curatorsDisplay}
+          <p className="text-[10px] sm:text-sm font-semibold text-[#808897] tracking-tight truncate max-w-full">
+            {boardsDisplay} &nbsp;|&nbsp; {messagesDisplay}
           </p>
         </div>
 

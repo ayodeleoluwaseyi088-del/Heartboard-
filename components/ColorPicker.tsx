@@ -123,7 +123,6 @@ export const ChooseColor: React.FC<ChooseColorProps> = ({
           <div className="grid grid-cols-5 sm:grid-cols-6 gap-2.5">
             {colorOptions.map((col) => {
               const isSelected = selectedColor?.toLowerCase() === col.hex.toLowerCase();
-              const dark = isDarkColor(col.hex);
 
               return (
                 <button
@@ -133,15 +132,13 @@ export const ChooseColor: React.FC<ChooseColorProps> = ({
                     e.stopPropagation();
                     onChangeColor(col.hex);
                   }}
-                  className={`aspect-square h-9 rounded-full flex items-center justify-center transition-all cursor-pointer relative shadow-2xs border border-black/10 ${
-                    isSelected
-                      ? 'scale-105 shadow-sm'
-                      : 'hover:scale-110 active:scale-95'
-                  }`}
+                  className="aspect-square h-9 rounded-full flex items-center justify-center transition-all cursor-pointer relative shadow-2xs border border-black/10 hover:scale-105 active:scale-95"
                   style={{ backgroundColor: col.hex }}
                 >
                   {isSelected && (
-                    <Check className={`w-4 h-4 stroke-[3] ${dark ? 'text-white' : 'text-black'}`} />
+                    <div className="w-5 h-5 rounded-full bg-[#3BB88C] flex items-center justify-center text-white shadow-xs animate-in zoom-in-75 duration-150">
+                      <Check className="w-3 h-3 stroke-[3]" />
+                    </div>
                   )}
                 </button>
               );

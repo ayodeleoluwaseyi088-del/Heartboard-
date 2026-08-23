@@ -10,6 +10,8 @@ import { HeartboardView } from './components/HeartboardView';
 import { HashtagView } from './components/HashtagView';
 import { AuthView } from './components/AuthModal';
 import { WelcomeModal } from './components/WelcomeModal';
+import { EngagementPromptModal } from './components/EngagementPromptModal';
+import { useEngagementPrompt } from './hooks/useEngagementPrompt';
 import { 
   SlidersHorizontal, 
   Search, 
@@ -25,6 +27,7 @@ import {
   User,
   X,
   ArrowLeft,
+  ChevronLeft,
   TrendingUp,
   Hash
 } from 'lucide-react';
@@ -454,8 +457,8 @@ const TopNavigation: React.FC<TopNavigationProps> = ({
 
         {/* Search - center (Target selector: header > div:nth-of-type(2) > input:nth-of-type(1)) */}
         <div className="flex-grow w-full mx-4 relative group">
-          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#A4ABB8] pointer-events-none z-10">
-            <Search size={18} strokeWidth={2.5} />
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 pointer-events-none z-10">
+            <Search size={18} strokeWidth={2.2} />
           </div>
           
           <input 
@@ -468,7 +471,7 @@ const TopNavigation: React.FC<TopNavigationProps> = ({
               setIsFullPageOpen(true);
             }}
             placeholder="Search user accounts (@mercy, @ronaldo), created boards..."
-            className="w-full bg-gray-25 border border-transparent hover:border-rose-200 focus:border-rose-300 rounded-full py-2.5 pl-12 pr-10 text-sm text-gray-800 placeholder:text-gray-400 focus:bg-white active:bg-white focus:outline-none focus:ring-2 focus:ring-rose-500/20 outline-none transition-all duration-200 shadow-2xs cursor-pointer"
+            className="w-full bg-gray-25 border-none rounded-full py-2.5 pl-12 pr-10 text-sm text-gray-800 placeholder:text-gray-400 focus:bg-gray-50 active:bg-gray-50 focus:outline-none transition-all duration-200 cursor-pointer"
           />
 
           {hasSearchInput && (
@@ -491,36 +494,33 @@ const TopNavigation: React.FC<TopNavigationProps> = ({
           <button 
             onClick={onFilterClick}
             aria-label="Open filters"
-            className="w-10 h-10 shrink-0 aspect-square rounded-full bg-gray-25 flex items-center justify-center text-gray-500 hover:text-gray-800 transition-all cursor-pointer hover:bg-gray-100"
+            className="w-10 h-10 shrink-0 aspect-square rounded-full bg-gray-25 flex items-center justify-center text-[#808897] hover:text-gray-800 transition-all cursor-pointer hover:bg-gray-100"
           >
-            <SlidersHorizontal size={18} strokeWidth={2.5} />
+            <SlidersHorizontal size={18} strokeWidth={2.5} className="text-[#808897]" />
           </button>
 
           {/* User Profile or Sign In button */}
           {currentUser ? (
             <button
               onClick={onGoToProfile}
-              className="flex items-center gap-2 p-1 pl-1.5 pr-2 rounded-full bg-gray-25 hover:bg-gray-100 border border-gray-100 transition-all cursor-pointer"
+              className="w-10 h-10 shrink-0 aspect-square rounded-full bg-gray-25 hover:bg-gray-100 flex items-center justify-center transition-all cursor-pointer overflow-hidden"
               title={`${currentUser.name} (${currentUser.handle})`}
+              aria-label="User Profile"
             >
-              <div className="w-7 h-7 rounded-full bg-rose-100 overflow-hidden flex items-center justify-center border border-rose-200">
-                {currentUser.avatar ? (
-                  <img src={currentUser.avatar} alt={currentUser.name} className="w-full h-full object-cover" />
-                ) : (
-                  <span className="text-xs font-bold text-[#FE6349]">{currentUser.name.charAt(0)}</span>
-                )}
-              </div>
-              <span className="text-xs font-bold text-gray-800 hidden sm:inline max-w-[80px] truncate">
-                {currentUser.name.split(' ')[0]}
-              </span>
+              {currentUser.avatar ? (
+                <img src={currentUser.avatar} alt={currentUser.name} className="w-full h-full object-cover" />
+              ) : (
+                <User size={18} strokeWidth={2.2} className="text-gray-500 hover:text-gray-800" />
+              )}
             </button>
           ) : (
             <button
               onClick={() => onOpenAuth && onOpenAuth('login', 'Sign in to access your Heartboard, blow hearts, and post tributes.')}
-              className="px-3.5 py-2 rounded-full bg-[#1A1B25] hover:bg-black text-white font-extrabold text-xs shadow-2xs whitespace-nowrap cursor-pointer transition-all flex items-center gap-1.5"
+              className="w-10 h-10 shrink-0 aspect-square rounded-full bg-gray-25 hover:bg-gray-100 text-gray-500 hover:text-gray-800 transition-all cursor-pointer flex items-center justify-center"
+              title="Sign In"
+              aria-label="Sign In"
             >
-              <User size={13} strokeWidth={2.5} />
-              <span>Sign In</span>
+              <User size={18} strokeWidth={2.2} />
             </button>
           )}
         </div>
@@ -530,180 +530,115 @@ const TopNavigation: React.FC<TopNavigationProps> = ({
       <AnimatePresence>
         {isFullPageOpen && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.98 }}
-            transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="fixed inset-0 z-[200] bg-white text-gray-900 flex flex-col h-screen w-screen overflow-hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className="fixed inset-0 z-[200] bg-white text-gray-900 flex flex-col h-screen w-screen overflow-hidden font-sans select-none"
           >
             {/* Full-Page Search Header */}
-            <div className="bg-white border-b border-gray-100 px-4 sm:px-8 py-4 flex flex-col gap-4 shadow-2xs">
-              <div className="flex items-center justify-between gap-4">
-                {/* Back / Exit Button */}
-                <button
-                  onClick={() => setIsFullPageOpen(false)}
-                  className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-extrabold text-xs transition-all cursor-pointer shrink-0"
-                >
-                  <ArrowLeft size={16} strokeWidth={2.5} />
-                  <span className="hidden sm:inline">Back</span>
-                </button>
+            <div className="bg-white px-4 sm:px-8 md:px-12 pt-5 pb-3 shrink-0">
+              <div className="max-w-[1400px] mx-auto flex flex-col gap-4">
+                {/* Search Bar Input Container */}
+                <div className="flex items-center gap-3 w-full">
+                  <div className="relative flex-grow">
+                    <div className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-600 pointer-events-none z-10">
+                      <Search size={18} strokeWidth={2.2} />
+                    </div>
 
-                {/* Expanded Search Bar Container */}
-                <div className="flex-grow max-w-3xl relative">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#FE6349] pointer-events-none">
-                    <Search size={20} strokeWidth={2.5} />
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      autoFocus
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search anything here...."
+                      className="w-full bg-[#F8F9FB] hover:bg-[#F6F8FA] focus:bg-[#F8F9FB] border-none rounded-full py-3.5 pl-12 pr-12 text-sm font-medium text-gray-900 placeholder:text-gray-400 focus:outline-none transition-all"
+                    />
+
+                    {hasSearchInput && (
+                      <button
+                        onClick={() => setSearchQuery('')}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 bg-gray-200/80 hover:bg-gray-300 rounded-full p-1.5 transition-all cursor-pointer"
+                        aria-label="Clear text"
+                      >
+                        <X size={14} strokeWidth={2.5} />
+                      </button>
+                    )}
                   </div>
 
-                  <input
-                    ref={inputRef}
-                    type="text"
-                    autoFocus
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search registered accounts (@handle), created boards, or #hashtags..."
-                    className="w-full bg-gray-50 focus:bg-white border-2 border-rose-100 focus:border-[#FE6349] rounded-2xl py-3 pl-12 pr-12 text-base font-medium text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-4 focus:ring-rose-500/10 transition-all shadow-xs"
-                  />
-
-                  {hasSearchInput && (
-                    <button
-                      onClick={() => setSearchQuery('')}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-800 bg-gray-200 hover:bg-gray-300 rounded-full p-1.5 transition-all cursor-pointer"
-                      aria-label="Clear text"
-                    >
-                      <X size={16} strokeWidth={2.5} />
-                    </button>
-                  )}
+                  {/* Close / Dismiss Search Button */}
+                  <button
+                    onClick={() => setIsFullPageOpen(false)}
+                    className="w-10 h-10 shrink-0 aspect-square rounded-full bg-[#F8F9FB] hover:bg-gray-100 text-gray-500 hover:text-gray-800 transition-all cursor-pointer flex items-center justify-center"
+                    title="Close Search (ESC)"
+                    aria-label="Close Search"
+                  >
+                    <X size={18} strokeWidth={2.2} />
+                  </button>
                 </div>
 
-                {/* Close Esc Button */}
-                <button
-                  onClick={() => setIsFullPageOpen(false)}
-                  className="p-2.5 rounded-full bg-gray-100 hover:bg-rose-50 hover:text-[#FE6349] text-gray-500 transition-all cursor-pointer shrink-0"
-                  title="Press ESC to exit"
-                >
-                  <X size={20} strokeWidth={2.5} />
-                </button>
-              </div>
-
-              {/* Filter Tabs & Shortcuts */}
-              <div className="flex items-center justify-between gap-3 overflow-x-auto no-scrollbar pt-1">
-                <div className="flex items-center gap-2">
+                {/* Filter Pills (All result, User, Boards, Hashtag) */}
+                <div className="flex items-center gap-2.5 overflow-x-auto no-scrollbar py-1">
                   <button
                     onClick={() => setActiveSearchTab('all')}
-                    className={`px-4 py-2 rounded-full text-xs font-extrabold transition-all shrink-0 flex items-center gap-2 cursor-pointer ${
+                    className={`px-5 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all shrink-0 cursor-pointer ${
                       activeSearchTab === 'all'
-                        ? 'bg-[#1A1B25] text-white shadow-sm'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        ? 'bg-[#1A1B25] text-white shadow-xs'
+                        : 'bg-[#F8F9FB] text-[#A4ABB8] hover:text-[#666D80] hover:bg-[#ECEFF3]'
                     }`}
                   >
-                    <Sparkles size={14} className={activeSearchTab === 'all' ? 'text-amber-300' : ''} />
-                    <span>All Results</span>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] bg-white/20">
-                      {matchingUsers.length + matchingBoards.length}
-                    </span>
+                    All result
                   </button>
 
                   <button
                     onClick={() => setActiveSearchTab('users')}
-                    className={`px-4 py-2 rounded-full text-xs font-extrabold transition-all shrink-0 flex items-center gap-2 cursor-pointer ${
+                    className={`px-5 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all shrink-0 cursor-pointer ${
                       activeSearchTab === 'users'
-                        ? 'bg-[#FE6349] text-white shadow-sm'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        ? 'bg-[#1A1B25] text-white shadow-xs'
+                        : 'bg-[#F8F9FB] text-[#A4ABB8] hover:text-[#666D80] hover:bg-[#ECEFF3]'
                     }`}
                   >
-                    <User size={14} />
-                    <span>User Accounts</span>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] bg-black/10">
-                      {matchingUsers.length}
-                    </span>
+                    User
                   </button>
 
                   <button
                     onClick={() => setActiveSearchTab('boards')}
-                    className={`px-4 py-2 rounded-full text-xs font-extrabold transition-all shrink-0 flex items-center gap-2 cursor-pointer ${
+                    className={`px-5 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all shrink-0 cursor-pointer ${
                       activeSearchTab === 'boards'
-                        ? 'bg-indigo-600 text-white shadow-sm'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        ? 'bg-[#1A1B25] text-white shadow-xs'
+                        : 'bg-[#F8F9FB] text-[#A4ABB8] hover:text-[#666D80] hover:bg-[#ECEFF3]'
                     }`}
                   >
-                    <Award size={14} />
-                    <span>Created Boards</span>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] bg-white/20">
-                      {matchingBoards.length}
-                    </span>
+                    Boards
                   </button>
 
                   <button
                     onClick={() => setActiveSearchTab('hashtags')}
-                    className={`px-4 py-2 rounded-full text-xs font-extrabold transition-all shrink-0 flex items-center gap-2 cursor-pointer ${
+                    className={`px-5 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all shrink-0 cursor-pointer ${
                       activeSearchTab === 'hashtags'
-                        ? 'bg-emerald-600 text-white shadow-sm'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        ? 'bg-[#1A1B25] text-white shadow-xs'
+                        : 'bg-[#F8F9FB] text-[#A4ABB8] hover:text-[#666D80] hover:bg-[#ECEFF3]'
                     }`}
                   >
-                    <Hash size={14} />
-                    <span>Hashtags</span>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] bg-white/20">
-                      {popularHashtags.length}
-                    </span>
+                    Hashtag
                   </button>
-                </div>
-
-                <div className="hidden lg:flex items-center gap-2 text-xs text-gray-400 font-medium shrink-0">
-                  <span>Press <kbd className="px-2 py-1 bg-gray-100 border rounded font-mono text-[11px] font-bold text-gray-700">ESC</kbd> to exit</span>
                 </div>
               </div>
             </div>
 
-            {/* Scrollable Main Content Results Grid */}
-            <div className="flex-grow overflow-y-auto px-4 sm:px-8 py-6 bg-gray-25">
-              <div className="max-w-7xl mx-auto space-y-10">
+            {/* Scrollable Search Results Area */}
+            <div className="flex-grow overflow-y-auto px-4 sm:px-8 md:px-12 py-6 bg-white">
+              <div className="max-w-[1400px] mx-auto space-y-10 pb-16">
 
-                {/* Quick Search Suggestions when query is empty */}
-                {!hasSearchInput && (
-                  <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-2xs">
-                    <h3 className="text-xs font-extrabold uppercase tracking-wider text-gray-400 mb-3 flex items-center gap-2">
-                      <TrendingUp size={14} className="text-[#FE6349]" /> Popular Searches & Accounts
-                    </h3>
-                    <div className="flex flex-wrap gap-2">
-                      {['@mercy24', '@cristiano', '@davido_30bg', '@messi', '#ronaldo', '#loveRonaldo', 'Birthday', 'World Cup', 'Appreciation'].map((chip) => (
-                        <button
-                          key={chip}
-                          onClick={() => {
-                            if (chip.startsWith('#')) {
-                              setIsFullPageOpen(false);
-                              if (onSelectHashtag) {
-                                onSelectHashtag(chip);
-                              } else {
-                                setSearchQuery(chip);
-                              }
-                            } else {
-                              setSearchQuery(chip);
-                            }
-                          }}
-                          className="px-3.5 py-2 rounded-full bg-gray-100 hover:bg-rose-50 hover:text-[#FE6349] text-xs font-bold text-gray-700 transition-all cursor-pointer border border-transparent hover:border-rose-200"
-                        >
-                          {chip}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* 1. Registered User Accounts Section */}
+                {/* 1. User Accounts Section */}
                 {(activeSearchTab === 'all' || activeSearchTab === 'users') && matchingUsers.length > 0 && (
-                  <section className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h2 className="text-sm font-extrabold text-gray-900 tracking-wide uppercase flex items-center gap-2">
-                        <User size={16} className="text-[#FE6349]" />
-                        <span>Registered Users</span>
-                        <span className="px-2 py-0.5 rounded-full bg-rose-100 text-[#FE6349] text-xs font-extrabold">
-                          {matchingUsers.length}
-                        </span>
-                      </h2>
-                    </div>
+                  <section className="space-y-3">
+                    <h2 className="text-xs sm:text-sm font-semibold text-gray-400 tracking-normal">
+                      {activeSearchTab === 'all' ? 'Recent users' : 'Registered users'}
+                    </h2>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6">
                       {matchingUsers.map((user) => (
                         <div
                           key={user.id}
@@ -715,53 +650,30 @@ const TopNavigation: React.FC<TopNavigationProps> = ({
                               setSearchQuery(user.handle);
                             }
                           }}
-                          className="bg-white rounded-3xl p-5 border border-gray-100 shadow-2xs hover:shadow-md hover:border-rose-200 transition-all cursor-pointer flex flex-col justify-between group"
+                          className="bg-white rounded-[28px] p-6 border border-gray-100 shadow-2xs hover:shadow-md transition-all cursor-pointer flex flex-col items-center justify-center text-center group aspect-[4/5] sm:aspect-square"
                         >
-                          <div>
-                            <div className="flex items-start justify-between gap-3 mb-3">
-                              <div className="relative">
-                                <img
-                                  src={user.avatar}
-                                  alt={user.name}
-                                  className="w-14 h-14 rounded-full object-cover border-2 border-white shadow-xs group-hover:scale-105 transition-transform"
-                                />
-                                {user.isVerified && (
-                                  <div className="absolute -bottom-1 -right-1 bg-[#FE6349] text-white rounded-full p-1 shadow-xs">
-                                    <Check size={10} strokeWidth={3} />
-                                  </div>
-                                )}
+                          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden flex items-center justify-center shrink-0 mb-3 bg-[#FFEBE8]">
+                            {user.avatar ? (
+                              <img
+                                src={user.avatar}
+                                alt={user.name}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-[#FFEBE8] flex items-center justify-center text-[#FE6349]/70">
+                                <svg className="w-12 h-12 fill-current opacity-80" viewBox="0 0 24 24">
+                                  <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                                </svg>
                               </div>
-                              <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-extrabold border border-amber-200/60">
-                                ❤️ {user.heartsCount.toLocaleString()}
-                              </span>
-                            </div>
-
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2">
-                                <h3 className="font-extrabold text-sm text-gray-900 group-hover:text-[#FE6349] transition-colors">
-                                  {user.name}
-                                </h3>
-                                {user.role && (
-                                  <span className="px-2 py-0.5 rounded-md bg-gray-100 text-[10px] font-bold text-gray-600">
-                                    {user.role}
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-xs font-bold text-gray-400">
-                                {user.handle}
-                              </p>
-                              <p className="text-xs text-gray-600 line-clamp-2 mt-2 leading-relaxed">
-                                {user.bio}
-                              </p>
-                            </div>
+                            )}
                           </div>
 
-                          <div className="mt-4 pt-3 border-t border-gray-50 flex items-center justify-between text-xs font-bold text-gray-400">
-                            <span>{user.boardsCount} Boards Hosted</span>
-                            <span className="text-[#FE6349] group-hover:translate-x-1 transition-transform">
-                              View Profile →
-                            </span>
-                          </div>
+                          <span className="text-sm sm:text-base font-bold text-gray-900 group-hover:text-[#FE6349] transition-colors truncate max-w-full px-1">
+                            @{user.handle.replace(/^@/, '')}
+                          </span>
+                          <span className="text-[10px] sm:text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1">
+                            {user.boardsCount || 0} BOARD CREATED
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -770,66 +682,21 @@ const TopNavigation: React.FC<TopNavigationProps> = ({
 
                 {/* 2. Created Boards Section */}
                 {(activeSearchTab === 'all' || activeSearchTab === 'boards') && matchingBoards.length > 0 && (
-                  <section className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h2 className="text-sm font-extrabold text-gray-900 tracking-wide uppercase flex items-center gap-2">
-                        <Award size={16} className="text-indigo-600" />
-                        <span>Created Boards</span>
-                        <span className="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-xs font-extrabold">
-                          {matchingBoards.length}
-                        </span>
-                      </h2>
-                    </div>
+                  <section className="space-y-3">
+                    <h2 className="text-xs sm:text-sm font-semibold text-gray-400 tracking-normal">
+                      {activeSearchTab === 'all' ? 'Hot Boards' : 'Registered users'}
+                    </h2>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2.5 sm:gap-6">
                       {matchingBoards.map((post) => (
-                        <div
-                          key={post.id}
-                          onClick={() => {
-                            onSelectBoard(post);
-                            setIsFullPageOpen(false);
-                          }}
-                          className="bg-white rounded-3xl p-5 border border-gray-100 shadow-2xs hover:shadow-md hover:border-indigo-200 transition-all cursor-pointer flex flex-col justify-between group relative overflow-hidden"
-                        >
-                          <div
-                            className="absolute top-0 left-0 right-0 h-2"
-                            style={{ backgroundColor: post.theme || '#FE6349' }}
+                        <div key={post.id} className="w-full">
+                          <PostCard
+                            post={post}
+                            onClick={() => {
+                              onSelectBoard(post);
+                              setIsFullPageOpen(false);
+                            }}
                           />
-
-                          <div>
-                            <div className="flex items-center justify-between gap-2 mb-3">
-                              <span className="px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-600 text-[10px] font-extrabold border border-rose-100">
-                                🔥 {post.reactions?.toLocaleString() || 0} reactions
-                              </span>
-                              {post.statusBadge && (
-                                <span className="text-[10px] font-bold text-gray-500">
-                                  {post.statusBadge}
-                                </span>
-                              )}
-                            </div>
-
-                            <p className="text-sm font-bold text-gray-900 group-hover:text-indigo-600 transition-colors line-clamp-3 mb-4 leading-snug">
-                              "{post.content}"
-                            </p>
-                          </div>
-
-                          <div className="pt-3 border-t border-gray-50 flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <div
-                                className="w-6 h-6 rounded-full flex items-center justify-center text-white text-[10px] font-extrabold"
-                                style={{ backgroundColor: post.theme || '#FE6349' }}
-                              >
-                                {post.authorName?.[0] || 'H'}
-                              </div>
-                              <span className="text-xs font-bold text-gray-700 truncate max-w-[120px]">
-                                {post.authorName}
-                              </span>
-                            </div>
-
-                            <span className="text-xs font-bold text-indigo-600 group-hover:translate-x-1 transition-transform">
-                              Open →
-                            </span>
-                          </div>
                         </div>
                       ))}
                     </div>
@@ -838,13 +705,12 @@ const TopNavigation: React.FC<TopNavigationProps> = ({
 
                 {/* 3. Popular Hashtags Section */}
                 {(activeSearchTab === 'all' || activeSearchTab === 'hashtags') && popularHashtags.length > 0 && (
-                  <section className="space-y-4">
-                    <h2 className="text-sm font-extrabold text-gray-900 tracking-wide uppercase flex items-center gap-2">
-                      <Hash size={16} className="text-emerald-600" />
-                      <span>Popular Global Heart Tags</span>
+                  <section className="space-y-3">
+                    <h2 className="text-xs sm:text-sm font-semibold text-gray-400 tracking-normal">
+                      {activeSearchTab === 'all' ? 'Hashtag' : 'Popular Global Hashtag Tags'}
                     </h2>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 sm:gap-6">
                       {popularHashtags.map((h) => (
                         <div
                           key={h.tag}
@@ -857,22 +723,17 @@ const TopNavigation: React.FC<TopNavigationProps> = ({
                               setActiveSearchTab('all');
                             }
                           }}
-                          className="bg-white rounded-2xl p-4 border border-gray-100 hover:border-emerald-300 hover:bg-emerald-50/30 transition-all cursor-pointer flex items-center justify-between group"
+                          className="bg-white rounded-[28px] p-6 border border-gray-100 shadow-2xs hover:shadow-md hover:border-rose-200 transition-all cursor-pointer flex flex-col items-center justify-center text-center group aspect-[4/5] sm:aspect-square"
                         >
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-extrabold text-sm">
-                              #
-                            </div>
-                            <div>
-                              <h4 className="text-sm font-extrabold text-gray-900 group-hover:text-emerald-700 transition-colors">
-                                {h.tag}
-                              </h4>
-                              <p className="text-xs text-gray-400 font-medium">{h.category}</p>
-                            </div>
+                          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-[#FFEBE8] flex items-center justify-center shrink-0 mb-3 group-hover:scale-105 transition-transform">
+                            <span className="text-3xl sm:text-4xl font-extrabold text-[#FE6349]">#</span>
                           </div>
 
-                          <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200/60">
-                            {h.count}
+                          <span className="text-sm sm:text-base font-bold text-gray-900 group-hover:text-[#FE6349] transition-colors truncate max-w-full px-1">
+                            #{h.tag.replace(/^#/, '')}
+                          </span>
+                          <span className="text-[10px] sm:text-[11px] font-bold text-gray-400 uppercase tracking-wider mt-1">
+                            {h.count ? h.count.toUpperCase() : '10.6M'} MESSAGE
                           </span>
                         </div>
                       ))}
@@ -881,26 +742,28 @@ const TopNavigation: React.FC<TopNavigationProps> = ({
                 )}
 
                 {/* Empty State */}
-                {matchingUsers.length === 0 && matchingBoards.length === 0 && (
-                  <div className="py-16 text-center flex flex-col items-center justify-center bg-white rounded-3xl p-8 border border-gray-100 shadow-2xs">
+                {matchingUsers.length === 0 && matchingBoards.length === 0 && popularHashtags.length === 0 && (
+                  <div className="py-20 text-center flex flex-col items-center justify-center bg-[#F8F9FB] rounded-3xl p-8">
                     <div className="w-16 h-16 rounded-full bg-rose-50 text-[#FE6349] flex items-center justify-center mb-4">
-                      <Search size={32} strokeWidth={2} />
+                      <Search size={28} strokeWidth={2} />
                     </div>
                     <h3 className="text-base font-extrabold text-gray-900">
-                      No matching accounts or boards found
+                      No results found
                     </h3>
                     <p className="text-xs text-gray-400 mt-1 max-w-sm leading-relaxed">
                       {hasSearchInput 
-                        ? `We couldn't find any registered accounts or boards for "${searchQuery}". Try searching for @mercy24, @cristiano, or #30BG.`
-                        : "Start typing above to discover registered accounts, created boards, or global heart tags."
+                        ? `We couldn't find any results for "${searchQuery}".`
+                        : "Start typing to search users, boards, or hashtags."
                       }
                     </p>
-                    <button
-                      onClick={() => setSearchQuery('')}
-                      className="mt-5 px-5 py-2.5 rounded-full bg-[#FE6349] text-white text-xs font-extrabold hover:bg-rose-600 transition-all shadow-2xs cursor-pointer"
-                    >
-                      Reset Search Term
-                    </button>
+                    {hasSearchInput && (
+                      <button
+                        onClick={() => setSearchQuery('')}
+                        className="mt-5 px-5 py-2.5 rounded-full bg-[#1A1B25] text-white text-xs font-extrabold hover:bg-black transition-all cursor-pointer"
+                      >
+                        Clear Search
+                      </button>
+                    )}
                   </div>
                 )}
 
@@ -1275,7 +1138,7 @@ const MasonryFeed = ({
   ];
 
   return (
-    <div className="app-container pb-40 px-6 md:px-12 mt-8">
+    <div className="app-container pb-40 px-3 sm:px-6 md:px-12 mt-6 sm:mt-8">
       {/* Tab Navigation Section */}
       <div className="flex items-center gap-3 sm:gap-4 overflow-x-auto pb-3 scrollbar-none mb-8 -mx-2 px-2">
         {TABS.map((tab) => {
@@ -1286,8 +1149,8 @@ const MasonryFeed = ({
               onClick={() => setActiveFilter(tab.id)}
               className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs md:text-sm font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
                 isActive
-                  ? 'bg-white text-gray-900 border border-gray-200/90 shadow-2xs'
-                  : 'bg-[#F4F6F9] text-gray-800 border border-transparent hover:bg-gray-100'
+                  ? 'bg-[#1A1B25] text-white shadow-2xs'
+                  : 'bg-[#F8F9FB] text-[#A4ABB8] hover:text-[#666D80] hover:bg-[#ECEFF3]'
               }`}
             >
               <span className="text-base md:text-lg leading-none">{tab.emoji}</span>
@@ -1330,11 +1193,11 @@ const MasonryFeed = ({
           )}
         </div>
       ) : (
-        <div className="columns-1 md:columns-2 lg:columns-3 xl:columns-4 gap-8 space-y-8">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-6 lg:gap-8">
           {posts.map((post, index) => (
             <motion.div 
               key={post.id} 
-              className="break-inside-avoid relative"
+              className="w-full relative"
               layout
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -1403,98 +1266,133 @@ const EventCategoryView: React.FC<EventCategoryViewProps> = ({
   const query = searchQuery.trim().toLowerCase();
   const displayPosts = matchedPosts.filter(post => {
     if (!query) return true;
-    const author = (post.authorName || '').toLowerCase();
+    const author = (post.authorName || post.curatorName || post.creator || '').toLowerCase();
     const recipient = (post.recipientName || post.targetId || '').toLowerCase();
-    const content = (post.content || '').toLowerCase();
+    const recipientsList = Array.isArray(post.recipients) ? post.recipients.join(' ').toLowerCase() : '';
+    const hashtagsList = Array.isArray(post.hashtags) ? post.hashtags.join(' ').toLowerCase() : '';
+    const content = (post.content || post.caption || post.title || '').toLowerCase();
     const badge = (post.statusBadge || '').toLowerCase();
+    const eventType = (post.eventType || '').toLowerCase();
+
     return (
       author.includes(query) ||
       recipient.includes(query) ||
+      recipientsList.includes(query) ||
+      hashtagsList.includes(query) ||
       content.includes(query) ||
-      badge.includes(query)
+      badge.includes(query) ||
+      eventType.includes(query)
     );
   });
 
   return (
     <div className="w-full min-h-screen bg-white pb-36">
-      {/* Event Header Banner */}
-      <div className="bg-white border-b border-gray-100 py-6 px-6 md:px-12 sticky top-[73px] z-30 shadow-2xs">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
+      {/* Top Utility Section */}
+      <div className="bg-white px-6 md:px-12 pt-6 pb-6 border-b border-gray-100">
+        <div className="max-w-7xl mx-auto space-y-6">
+          {/* Top row: Left (Back button), Right (Filter button + + button) */}
+          <div className="flex items-center justify-between">
             <button
               onClick={onBack}
-              aria-label="Back to Moment"
-              className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-extrabold text-xs transition-all cursor-pointer shrink-0"
+              aria-label="Back"
+              className="w-12 h-12 rounded-full bg-[#F6F8FA] hover:bg-[#ECEFF3] active:bg-[#DFE1E6] text-[#1A1B25] flex items-center justify-center transition-all cursor-pointer shadow-2xs shrink-0"
             >
-              <ArrowLeft size={16} strokeWidth={2.5} />
-              <span>Back to Moment</span>
+              <ChevronLeft size={22} strokeWidth={2.5} />
             </button>
 
             <div className="flex items-center gap-3">
-              <span className="text-3xl leading-none">{currentOption.emoji}</span>
-              <div>
-                <h1 className="text-xl md:text-2xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
-                  <span>{currentOption.label}</span>
-                  <span className="text-xs font-extrabold px-2.5 py-0.5 rounded-full bg-rose-100 text-[#FE6349]">
-                    {matchedPosts.length} {matchedPosts.length === 1 ? 'board' : 'boards'}
-                  </span>
-                </h1>
-                <p className="text-xs font-bold text-gray-400 mt-0.5">
-                  Showing message boards for {currentOption.label}
-                </p>
-              </div>
+              <button
+                onClick={onFilterClick}
+                aria-label="Filter"
+                className="w-12 h-12 rounded-full bg-[#F6F8FA] hover:bg-[#ECEFF3] active:bg-[#DFE1E6] text-[#353849] flex items-center justify-center transition-all cursor-pointer shadow-2xs shrink-0"
+              >
+                <SlidersHorizontal size={20} strokeWidth={2.2} />
+              </button>
+
+              <button
+                onClick={() => onCreateBoard(currentOption.label)}
+                aria-label="Create Board"
+                className="w-12 h-12 rounded-full bg-[#FE6349] hover:bg-[#ff5833] active:bg-[#e05234] text-white flex items-center justify-center transition-all cursor-pointer shadow-xs shrink-0"
+              >
+                <Plus size={22} strokeWidth={2.5} />
+              </button>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 self-end sm:self-auto">
-            <button
-              onClick={onFilterClick}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-gray-50 hover:bg-gray-100 border border-gray-200/80 text-gray-700 font-bold text-xs transition-all cursor-pointer"
-            >
-              <SlidersHorizontal size={16} strokeWidth={2.5} />
-              <span>Filter ({currentOption.label})</span>
-            </button>
+          {/* Current Message Board / Event Category Name + Count */}
+          <div>
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-[#1A1B25] tracking-tight">
+              {currentOption.label} ({formatStatNumber(matchedPosts.length)})
+            </h1>
+          </div>
 
-            <button
-              onClick={() => onCreateBoard(currentOption.label)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#FE6349] hover:bg-rose-600 text-white font-extrabold text-xs transition-all shadow-xs cursor-pointer"
-            >
-              <Plus size={16} strokeWidth={2.5} />
-              <span>Create {currentOption.label} Board</span>
-            </button>
+          {/* Search Section */}
+          <div className="relative w-full">
+            <div className="w-full bg-[#F6F8FA] rounded-full px-5 py-3.5 sm:py-4 flex items-center gap-3 border border-transparent focus-within:border-[#DFE1E6] focus-within:bg-white transition-all shadow-2xs">
+              <Search className="w-5 h-5 text-[#808897] shrink-0" strokeWidth={2} />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by title, name...."
+                className="w-full bg-transparent border-none outline-hidden text-sm sm:text-base text-[#1A1B25] placeholder-[#808897] font-medium"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  aria-label="Clear search"
+                  className="text-[#808897] hover:text-[#1A1B25] p-1 rounded-full hover:bg-gray-200/60 transition-all cursor-pointer"
+                >
+                  <X size={16} strokeWidth={2.5} />
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
 
       {/* Grid of Boards */}
-      <div className="max-w-7xl mx-auto px-6 md:px-12 pt-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 md:px-12 pt-6 sm:pt-8">
         {displayPosts.length === 0 ? (
           <div className="bg-white rounded-3xl p-12 text-center border border-gray-100 shadow-2xs max-w-md mx-auto my-12 flex flex-col items-center justify-center space-y-4">
             <div className="w-16 h-16 rounded-full bg-rose-50 text-[#FE6349] flex items-center justify-center text-3xl">
               {currentOption.emoji}
             </div>
             <h3 className="text-lg font-extrabold text-gray-900">
-              No {currentOption.label} boards yet
+              {query ? `No boards found for "${searchQuery}"` : `No ${currentOption.label} boards yet`}
             </h3>
             <p className="text-xs text-gray-400 leading-relaxed max-w-xs">
-              No message boards have been created under the {currentOption.label} event category yet. Be the first to create one!
+              {query 
+                ? 'Try searching by a different caption, recipient, or creator name.' 
+                : `No message boards have been created under the ${currentOption.label} event category yet. Be the first to create one!`}
             </p>
-            <button
-              onClick={() => onCreateBoard(currentOption.label)}
-              className="mt-2 px-6 py-3 rounded-full bg-[#FE6349] text-white text-xs font-extrabold hover:bg-rose-600 transition-all shadow-sm cursor-pointer flex items-center gap-2"
-            >
-              <Plus size={16} />
-              <span>Create {currentOption.label} Board</span>
-            </button>
+            {query ? (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="mt-2 px-6 py-3 rounded-full bg-[#F6F8FA] hover:bg-[#ECEFF3] text-[#1A1B25] text-xs font-extrabold transition-all shadow-2xs cursor-pointer flex items-center gap-2"
+              >
+                <X size={14} />
+                <span>Clear Search</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => onCreateBoard(currentOption.label)}
+                className="mt-2 px-6 py-3 rounded-full bg-[#FE6349] text-white text-xs font-extrabold hover:bg-rose-600 transition-all shadow-sm cursor-pointer flex items-center gap-2"
+              >
+                <Plus size={16} />
+                <span>Create {currentOption.label} Board</span>
+              </button>
+            )}
           </div>
         ) : (
-          <div className="columns-1 md:columns-2 lg:columns-3 xl:columns-4 gap-8 space-y-8">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-6 lg:gap-8">
             {displayPosts.map((post) => {
               const globalIndex = posts.findIndex(p => p.id === post.id);
               return (
                 <motion.div
                   key={post.id}
-                  className="break-inside-avoid relative"
+                  className="w-full relative"
                   layout
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -1538,6 +1436,28 @@ const App: React.FC = () => {
   const [authModalMode, setAuthModalMode] = useState<'login' | 'signup'>('login');
   const [authModalPrompt, setAuthModalPrompt] = useState<string | undefined>(undefined);
   const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
+
+  const isAnyModalOpen = isAuthModalOpen || isCreateModalOpen || isFilterModalOpen || isWelcomeModalOpen || selectedPostIndex !== null;
+
+  const {
+    isPromptOpen: isEngagementPromptOpen,
+    activeTriggerReason: engagementTriggerReason,
+    dismissPrompt: handleDismissEngagementPrompt,
+    recordBoardViewed,
+    recordUserCreatedMessageOrHeart,
+  } = useEngagementPrompt(currentUser, posts, isAnyModalOpen);
+
+  const handleEngagementPromptSendLove = () => {
+    handleDismissEngagementPrompt();
+    setContributionParentPost(null);
+    setEditingPost(null);
+    setEditingContribution(null);
+    setEditMode(null);
+    setCreateModalRecipient(undefined);
+    setCreateModalHashtag(undefined);
+    setCreateModalMode('create_message');
+    setIsCreateModalOpen(true);
+  };
 
   const handleOpenAuth = (mode: 'login' | 'signup' = 'login', prompt?: string) => {
     setAuthModalMode(mode);
@@ -1604,6 +1524,7 @@ const App: React.FC = () => {
   const [createModalRecipient, setCreateModalRecipient] = useState<{ id?: string; name: string; handle: string; avatar?: string } | undefined>(undefined);
   const [createModalHashtag, setCreateModalHashtag] = useState<string | undefined>(undefined);
   const [createModalMode, setCreateModalMode] = useState<'create_message' | 'send_heart' | undefined>(undefined);
+  const [createModalEventType, setCreateModalEventType] = useState<string | undefined>(undefined);
   const [contributionParentPost, setContributionParentPost] = useState<Post | null>(null);
   const [editingPost, setEditingPost] = useState<Post | null>(null);
   const [editingContribution, setEditingContribution] = useState<Contribution | null>(null);
@@ -1724,6 +1645,7 @@ const App: React.FC = () => {
         type: 'heart_token'
       };
       setPosts([heartPost, ...posts]);
+      recordUserCreatedMessageOrHeart();
       return;
     }
 
@@ -1755,6 +1677,7 @@ const App: React.FC = () => {
       statusBadge: label
     };
     setPosts([postWithTheme, ...posts]);
+    recordUserCreatedMessageOrHeart();
   };
 
   const MOMENT_REACTION_THRESHOLD = 50;
@@ -1813,10 +1736,12 @@ const App: React.FC = () => {
     const idx = filteredPosts.findIndex(p => p.id === post.id);
     if (idx !== -1) {
       setSelectedPostIndex(idx);
+      recordBoardViewed();
     } else {
       const globalIdx = posts.findIndex(p => p.id === post.id);
       if (globalIdx !== -1) {
         setSelectedPostIndex(globalIdx);
+        recordBoardViewed();
       }
     }
   };
@@ -1852,6 +1777,7 @@ const App: React.FC = () => {
                 } else {
                   setSelectedPostIndex(0);
                 }
+                recordBoardViewed();
               }}
             />
           </main>
@@ -1879,6 +1805,7 @@ const App: React.FC = () => {
                 } else {
                   setSelectedPostIndex(0);
                 }
+                recordBoardViewed();
               }}
             />
           </main>
@@ -1931,6 +1858,7 @@ const App: React.FC = () => {
                           if (target) {
                             const globalIndex = posts.findIndex(p => p.id === target.id);
                             setSelectedPostIndex(globalIndex !== -1 ? globalIndex : 0);
+                            recordBoardViewed();
                           }
                         }} 
                         activeFilter={activeFilter}
@@ -1949,6 +1877,7 @@ const App: React.FC = () => {
                           if (target) {
                             const globalIndex = posts.findIndex(p => p.id === target.id);
                             setSelectedPostIndex(globalIndex !== -1 ? globalIndex : 0);
+                            recordBoardViewed();
                           }
                         }} 
                         activeFilter={activeFilter}
@@ -1972,8 +1901,11 @@ const App: React.FC = () => {
                     setFilterModalMode('events');
                     setIsFilterModalOpen(true);
                   }}
-                  onPostClick={(index) => setSelectedPostIndex(index)}
-                  onCreateBoard={() => {
+                  onPostClick={(index) => {
+                    setSelectedPostIndex(index);
+                    recordBoardViewed();
+                  }}
+                  onCreateBoard={(eventType) => {
                     if (!currentUser) {
                       handleOpenAuth('login', 'Please sign in or create an account to create a board.');
                       return;
@@ -1981,6 +1913,7 @@ const App: React.FC = () => {
                     setCreateModalRecipient(undefined);
                     setCreateModalHashtag(undefined);
                     setCreateModalMode('create_message');
+                    setCreateModalEventType(eventType);
                     setIsCreateModalOpen(true);
                   }}
                   searchQuery={searchQuery}
@@ -2010,6 +1943,7 @@ const App: React.FC = () => {
                 } else {
                   setSelectedPostIndex(0);
                 }
+                recordBoardViewed();
               }}
             />
           </main>
@@ -2035,6 +1969,7 @@ const App: React.FC = () => {
               setCreateModalRecipient(undefined);
               setCreateModalHashtag(undefined);
               setCreateModalMode(undefined);
+              setCreateModalEventType(undefined);
               setIsCreateModalOpen(true);
             }} 
           />
@@ -2047,6 +1982,7 @@ const App: React.FC = () => {
               setCreateModalRecipient(undefined);
               setCreateModalHashtag(undefined);
               setCreateModalMode(undefined);
+              setCreateModalEventType(undefined);
               setContributionParentPost(null);
               setEditingPost(null);
               setEditingContribution(null);
@@ -2056,6 +1992,7 @@ const App: React.FC = () => {
             initialRecipient={createModalRecipient}
             initialHashtag={createModalHashtag}
             initialMode={createModalMode}
+            initialEventType={createModalEventType}
             parentBoard={contributionParentPost}
             isContribution={Boolean(contributionParentPost)}
             editingPost={editingPost}
@@ -2219,6 +2156,7 @@ const App: React.FC = () => {
                   return { ...p, reactions: (p.reactions || 0) + 1 };
                 })
               );
+              recordUserCreatedMessageOrHeart();
             }}
             onUpdateReactions={(postId, counts, userReactions) => {
               const total = (counts.clap || 0) + (counts.heart || 0) + (counts.smiley || 0) + (counts.fire || 0);
@@ -2244,6 +2182,14 @@ const App: React.FC = () => {
           onClose={() => setIsWelcomeModalOpen(false)}
           onSendMessageNow={handleWelcomeSendMessageNow}
           onCheckOutMoments={handleWelcomeCheckOutMoments}
+        />
+
+        {/* Heartboard Engagement Prompt Modal */}
+        <EngagementPromptModal
+          isOpen={isEngagementPromptOpen}
+          triggerReason={engagementTriggerReason}
+          onClose={handleDismissEngagementPrompt}
+          onSendLoveOrHeart={handleEngagementPromptSendLove}
         />
       </div>
     </Router>

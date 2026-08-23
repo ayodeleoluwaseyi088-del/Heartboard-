@@ -24,7 +24,9 @@ import {
   Heart,
   CheckCircle2,
   PenLine,
-  ArrowLeft
+  ArrowLeft,
+  Copy,
+  Check
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -99,18 +101,18 @@ export const HeartCategoryCard: React.FC<{
   return (
     <div
       onClick={() => onClick && onClick(data)}
-      className="bg-white rounded-[2rem] sm:rounded-[2.25rem] transition-all duration-300 p-6 sm:p-7 flex flex-col justify-between items-center h-[340px] sm:h-[350px] relative overflow-hidden group cursor-pointer shadow-[3px_0px_45px_0px_rgba(0,0,0,0.08)] w-full"
+      className="bg-white rounded-2xl sm:rounded-[2.25rem] transition-all duration-300 p-3 sm:p-7 flex flex-col justify-between items-center h-[270px] sm:h-[350px] relative overflow-hidden group cursor-pointer shadow-[3px_0px_45px_0px_rgba(0,0,0,0.08)] w-full"
       style={{ boxShadow: '3px 0px 45px 0px rgba(0, 0, 0, 0.08)' }}
     >
       {/* 1. Header Category Title */}
       <div className="w-full flex items-center justify-between z-10">
-        <span className="text-[#808897] font-semibold text-sm sm:text-base tracking-wide pl-1">
+        <span className="text-[#808897] font-semibold text-xs sm:text-base tracking-wide pl-1 truncate">
           {categoryName}
         </span>
       </div>
 
       {/* 2. Center Graphic Area */}
-      <div className="relative flex items-center justify-center my-auto">
+      <div className="relative flex items-center justify-center my-auto scale-[0.75] sm:scale-100 origin-center">
         {/* Soft Circular Background Halo */}
         <div 
           className="w-40 h-40 sm:w-44 sm:h-44 rounded-full flex items-center justify-center relative transition-transform duration-300 group-hover:scale-105"
@@ -699,6 +701,22 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
   const [newTagInput, setNewTagInput] = useState('');
   const [showTagManager, setShowTagManager] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [copiedProfileLink, setCopiedProfileLink] = useState(false);
+
+  const handleCopyProfileLink = () => {
+    const profileUrl = window.location.origin ? `${window.location.origin}?profile=${encodeURIComponent(userHandle)}` : `https://heartboard.app/${userHandle}`;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(profileUrl).then(() => {
+        setCopiedProfileLink(true);
+        showToast('Profile link copied to clipboard!');
+        setTimeout(() => setCopiedProfileLink(false), 2000);
+      }).catch(() => {
+        showToast('Profile link copied!');
+      });
+    } else {
+      showToast('Profile link copied!');
+    }
+  };
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -1122,7 +1140,7 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
           </button>
         </div>
       ) : (
-        <div className="flex items-center justify-between mb-12">
+        <div className="flex items-center justify-between mb-8">
           <h1 className="text-2xl md:text-3xl font-bold text-[#1A1B25] tracking-tight">
             My Heartboard
           </h1>
@@ -1138,7 +1156,7 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
 
       {/* 2. User Profile Banner */}
       {profileUser ? (
-        <div className="flex flex-row items-center gap-6 mb-10">
+        <div className="flex flex-row items-center gap-6 mb-8">
           {/* Avatar */}
           <div className="w-24 h-24 sm:w-32 sm:h-32 md:w-[140px] md:h-[140px] rounded-full bg-[#FDF4F2] flex items-center justify-center shrink-0 overflow-hidden shadow-2xs border border-rose-100/60">
             {profileUser.avatar ? (
@@ -1161,28 +1179,28 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
               </p>
             </div>
 
-            {/* Action buttons: Gift Heart & Send Message */}
+            {/* Action buttons: Heart & Message */}
             <div className="flex items-center gap-3 mt-2">
               <button 
                 onClick={() => onGiftHeart && onGiftHeart(profileUser)}
-                className="bg-gray-50 hover:bg-gray-100 text-[#1A1B25] border border-gray-100 px-4 py-2 sm:px-5 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer shadow-2xs active:scale-95"
+                className="bg-[#ffffff] hover:bg-[#F8F9FB] text-[#1A1B25] border-2 border-[#ECEFF3] px-4 py-2 sm:px-5 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer shadow-2xs active:scale-95"
               >
                 <Heart className="w-4 h-4 text-[#1A1B25] fill-none stroke-[2.5]" />
-                <span>Gift Heart</span>
+                <span>Heart</span>
               </button>
 
               <button 
                 onClick={() => onSendMessage && onSendMessage(profileUser)}
-                className="bg-gray-50 hover:bg-gray-100 text-[#1A1B25] border border-gray-100 px-4 py-2 sm:px-5 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer shadow-2xs active:scale-95"
+                className="bg-[#ffffff] hover:bg-[#F8F9FB] text-[#1A1B25] border-2 border-[#ECEFF3] px-4 py-2 sm:px-5 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold flex items-center gap-2 transition-all cursor-pointer shadow-2xs active:scale-95"
               >
                 <PenLine className="w-4 h-4 text-[#1A1B25] stroke-[2.5]" />
-                <span>Send Message</span>
+                <span>Message</span>
               </button>
             </div>
           </div>
         </div>
       ) : (
-        <div className="flex flex-row items-center gap-6 mb-12">
+        <div className="flex flex-row items-center gap-6 mb-8">
           {/* Hidden File Input for Profile Picture Upload */}
           <input 
             ref={fileInputRef} 
@@ -1226,17 +1244,22 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
             <div className="flex items-center gap-3 mt-1">
               <button 
                 onClick={() => setIsShareModalOpen(true)}
-                className="bg-gray-50 hover:bg-gray-100 text-[#353849] px-4 py-2 rounded-full text-xs font-medium flex items-center gap-2 transition-all cursor-pointer"
+                className="bg-[#ffffff] hover:bg-[#F8F9FB] text-[#353849] border-2 border-[#ECEFF3] px-4 py-2 rounded-full text-xs font-medium flex items-center gap-2 transition-all cursor-pointer shadow-2xs active:scale-95"
               >
                 <Share2 className="w-3.5 h-3.5 stroke-[2.5]" />
                 <span>Share</span>
               </button>
               <button 
-                onClick={() => setIsShareModalOpen(true)}
-                className="bg-gray-50 hover:bg-gray-100 text-[#353849] px-4 py-2 rounded-full text-xs font-medium flex items-center gap-2 transition-all cursor-pointer"
+                onClick={handleCopyProfileLink}
+                className="bg-[#ffffff] hover:bg-[#F8F9FB] text-[#353849] border-2 border-[#ECEFF3] px-4 py-2 rounded-full text-xs font-medium flex items-center gap-2 transition-all cursor-pointer shadow-2xs active:scale-95"
+                title="Copy profile link"
               >
-                <Camera className="w-3.5 h-3.5 stroke-[2.5]" />
-                <span>Snapshot</span>
+                {copiedProfileLink ? (
+                  <Check className="w-3.5 h-3.5 stroke-[2.5] text-emerald-600" />
+                ) : (
+                  <Copy className="w-3.5 h-3.5 stroke-[2.5]" />
+                )}
+                <span>{copiedProfileLink ? 'Copied' : 'Link'}</span>
               </button>
             </div>
           </div>
@@ -1251,8 +1274,8 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
             onClick={() => setActiveSubTab('board')}
             className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
               activeSubTab === 'board'
-                ? 'bg-white text-[#1A1B25] border-2 border-gray-50 shadow-2xs'
-                : 'bg-gray-25 text-[#A4ABB8] hover:bg-gray-50 border-2 border-transparent'
+                ? 'bg-[#1A1B25] text-white shadow-2xs'
+                : 'bg-[#F8F9FB] text-[#A4ABB8] hover:text-[#666D80] hover:bg-[#ECEFF3]'
             }`}
           >
             Board
@@ -1261,8 +1284,8 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
             onClick={() => setActiveSubTab('tagged')}
             className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
               activeSubTab === 'tagged'
-                ? 'bg-white text-[#1A1B25] border-2 border-gray-50 shadow-2xs'
-                : 'bg-gray-25 text-[#A4ABB8] hover:bg-gray-50 border-2 border-transparent'
+                ? 'bg-[#1A1B25] text-white shadow-2xs'
+                : 'bg-[#F8F9FB] text-[#A4ABB8] hover:text-[#666D80] hover:bg-[#ECEFF3]'
             }`}
           >
             Tagged
@@ -1274,39 +1297,13 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
             }}
             className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
               activeSubTab === 'hearts'
-                ? 'bg-white text-[#1A1B25] border-2 border-gray-50 shadow-2xs'
-                : 'bg-gray-25 text-[#A4ABB8] hover:bg-gray-50 border-2 border-transparent'
+                ? 'bg-[#1A1B25] text-white shadow-2xs'
+                : 'bg-[#F8F9FB] text-[#A4ABB8] hover:text-[#666D80] hover:bg-[#ECEFF3]'
             }`}
           >
             Hearts
           </button>
         </div>
-
-        {/* Quick switcher for Received vs Sent when viewing Hearts */}
-        {activeSubTab === 'hearts' && (
-          <div className="flex items-center bg-gray-25 p-1 rounded-full border border-gray-100/80 shrink-0">
-            <button
-              onClick={() => setHeartFilter('received')}
-              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                heartFilter === 'received'
-                  ? 'bg-white text-[#1A1B25] shadow-2xs'
-                  : 'text-[#808897] hover:text-[#1A1B25]'
-              }`}
-            >
-              Received ({totalReceivedHeartsCount})
-            </button>
-            <button
-              onClick={() => setHeartFilter('sent')}
-              className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                heartFilter === 'sent'
-                  ? 'bg-white text-[#1A1B25] shadow-2xs'
-                  : 'text-[#808897] hover:text-[#1A1B25]'
-              }`}
-            >
-              Sent ({totalSentHeartsCount})
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Active Filter Banner when user selects an event filter on Heartboard */}
@@ -1359,9 +1356,9 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
             }
           }}
           aria-label="Filter"
-          className="w-10 h-10 rounded-full bg-gray-25 flex items-center justify-center text-[#353849] hover:text-[#1A1B25] transition-all cursor-pointer shrink-0"
+          className="w-10 h-10 rounded-full bg-gray-25 flex items-center justify-center text-[#808897] hover:text-[#1A1B25] transition-all cursor-pointer shrink-0"
         >
-          <SlidersHorizontal className="w-4 h-4 stroke-[2] text-[#353849]" />
+          <SlidersHorizontal className="w-4 h-4 stroke-[2] text-[#808897]" />
         </button>
       </div>
 
@@ -1384,7 +1381,7 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6 w-full">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2.5 sm:gap-6 w-full">
             {displayHeartCategories.map((cat) => (
               <HeartCategoryCard
                 key={cat.id}
@@ -1419,7 +1416,7 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6 w-full">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2.5 sm:gap-6 w-full">
           {filteredItems.map((item) => (
             <HeartboardCard 
               key={item.id} 

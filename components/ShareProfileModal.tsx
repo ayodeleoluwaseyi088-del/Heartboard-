@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Download, Link, Check } from 'lucide-react';
+import { Download, Link, Check, X } from 'lucide-react';
 
 interface ShareProfileModalProps {
   isOpen: boolean;
@@ -155,99 +155,109 @@ export const ShareProfileModal: React.FC<ShareProfileModalProps> = ({
     >
       {/* White Pop-up Card Overlay Container */}
       <div 
-        className="relative w-full max-w-[943px] max-h-[90vh] sm:max-h-[715px] bg-white rounded-[32px] sm:rounded-[40px] p-6 sm:p-8 flex flex-col items-center justify-center gap-6 animate-in zoom-in-95 duration-200 overflow-y-auto"
+        className="relative w-full max-w-md max-h-[90dvh] sm:max-h-[85vh] bg-white rounded-[1.8rem] sm:rounded-[2.5rem] shadow-2xl flex flex-col font-sans animate-in zoom-in-95 duration-200 overflow-hidden my-auto select-none"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Inner centered share container wrapper */}
-        <div className="w-full max-w-[350px] sm:max-w-[380px] flex flex-col items-center gap-4 sm:gap-5">
-          {/* 
-            Main Share Card Asset matching attached reference image strictly:
-            Coral Red background with Concentric Peach & Soft Pink Ring layers
-          */}
-          <div className="relative w-full aspect-[340/420] rounded-[32px] bg-[#FF5C43] overflow-hidden flex flex-col items-center justify-center p-6 select-none">
-            {/* Concentric Ring Backgrounds */}
-            <div className="absolute inset-0 pointer-events-none">
-              <svg 
-                className="w-full h-full" 
-                viewBox="0 0 340 420" 
-                preserveAspectRatio="none" 
-                fill="none" 
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                {/* Outer Coral Base */}
-                <rect width="340" height="420" fill="#FF5C43" />
-                
-                {/* Outer Concentric Peach Ring */}
-                <ellipse cx="170" cy="210" rx="195" ry="195" fill="#FFA585" />
-                
-                {/* Inner Concentric Soft Pink Fill */}
-                <ellipse cx="170" cy="210" rx="150" ry="150" fill="#FCDAD1" />
-              </svg>
-            </div>
+        {/* Sticky Top Header */}
+        <div className="px-5 sm:px-6 pt-5 pb-3 bg-white border-b border-[#ECEFF3] flex items-center justify-between shrink-0 sticky top-0 z-10">
+          <h2 className="text-xl font-extrabold text-[#1A1B25] tracking-tight">Share Profile</h2>
+          <button 
+            onClick={onClose}
+            aria-label="Close share modal"
+            className="w-9 h-9 rounded-full bg-gray-50 hover:bg-gray-100 flex items-center justify-center text-gray-500 hover:text-[#1A1B25] transition-colors cursor-pointer"
+          >
+            <X size={18} />
+          </button>
+        </div>
 
-            {/* Card Content Layer */}
-            <div className="relative z-10 flex flex-col items-center text-center w-full px-4">
-              {/* Center Profile Image */}
-              <div className="w-32 h-32 sm:w-36 sm:h-36 rounded-full overflow-hidden bg-[#FDF4F2] flex items-center justify-center shrink-0 mb-3.5">
-                {profileImage ? (
-                  <img 
-                    src={profileImage} 
-                    alt={userHandle} 
-                    className="w-full h-full object-cover" 
-                  />
-                ) : (
-                  <svg className="w-24 h-24 text-[#FFB5A9] fill-current transform translate-y-2" viewBox="0 0 24 24">
-                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                  </svg>
-                )}
+        {/* Scrollable Content Body */}
+        <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-4 flex flex-col items-center min-h-0 scrollbar-thin">
+          <div className="w-full max-w-[340px] flex flex-col items-center">
+            {/* 
+              Main Share Card Asset matching attached reference image strictly:
+              Coral Red background with Concentric Peach & Soft Pink Ring layers
+            */}
+            <div className="relative w-full aspect-[340/420] rounded-[32px] bg-[#FF5C43] overflow-hidden flex flex-col items-center justify-center p-6 select-none shadow-sm">
+              {/* Concentric Ring Backgrounds */}
+              <div className="absolute inset-0 pointer-events-none">
+                <svg 
+                  className="w-full h-full" 
+                  viewBox="0 0 340 420" 
+                  preserveAspectRatio="none" 
+                  fill="none" 
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  {/* Outer Coral Base */}
+                  <rect width="340" height="420" fill="#FF5C43" />
+                  
+                  {/* Outer Concentric Peach Ring */}
+                  <ellipse cx="170" cy="210" rx="195" ry="195" fill="#FFA585" />
+                  
+                  {/* Inner Concentric Soft Pink Fill */}
+                  <ellipse cx="170" cy="210" rx="150" ry="150" fill="#FCDAD1" />
+                </svg>
               </div>
 
-              {/* User Handle */}
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-[#1A1B25] tracking-tight leading-tight mb-1.5 font-sans">
-                {userHandle}
-              </h2>
+              {/* Card Content Layer */}
+              <div className="relative z-10 flex flex-col items-center text-center w-full px-4">
+                {/* Center Profile Image */}
+                <div className="w-32 h-32 sm:w-36 sm:h-36 rounded-full overflow-hidden bg-[#FDF4F2] flex items-center justify-center shrink-0 mb-3.5 shadow-xs">
+                  {profileImage ? (
+                    <img 
+                      src={profileImage} 
+                      alt={userHandle} 
+                      className="w-full h-full object-cover" 
+                    />
+                  ) : (
+                    <svg className="w-24 h-24 text-[#FFB5A9] fill-current transform translate-y-2" viewBox="0 0 24 24">
+                      <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                    </svg>
+                  )}
+                </div>
 
-              {/* Subtitle */}
-              <p className="text-xs sm:text-sm font-semibold text-[#353849] leading-snug max-w-[200px]">
-                Write messages on my Heartboard wall
-              </p>
+                {/* User Handle */}
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-[#1A1B25] tracking-tight leading-tight mb-1.5 font-sans">
+                  {userHandle}
+                </h2>
+
+                {/* Subtitle */}
+                <p className="text-xs sm:text-sm font-semibold text-[#353849] leading-snug max-w-[200px]">
+                  Write messages on my Heartboard wall
+                </p>
+              </div>
             </div>
           </div>
+        </div>
 
-          {/* 
-            CTA Buttons Stack floating inside the white overlay below the card:
-            1. Filled Coral Primary Button: "Download & Copy Link"
-            2. Secondary Button: "Copy Link"
-          */}
-          <div className="w-full flex flex-col gap-2.5 sm:gap-3">
-            {/* Button 1: Download & Copy Link */}
-            <button
-              onClick={handleDownloadAndCopyLink}
-              disabled={downloading}
-              className="w-full py-3.5 sm:py-4 rounded-full bg-[#FF5C43] hover:bg-[#E84B33] active:scale-[0.98] text-white font-extrabold text-sm sm:text-base transition-all cursor-pointer flex items-center justify-center gap-2"
-            >
-              {downloading ? (
-                <span className="inline-block animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
-              ) : (
-                <span>Download & Copy Link</span>
-              )}
-            </button>
+        {/* Sticky CTA Section */}
+        <div className="shrink-0 p-4 sm:p-5 bg-[#F6F8FA] border-t border-[#ECEFF3] sticky bottom-0 z-10 rounded-b-[1.8rem] sm:rounded-b-[2.5rem] flex flex-col gap-2.5">
+          {/* Button 1: Download & Copy Link */}
+          <button
+            onClick={handleDownloadAndCopyLink}
+            disabled={downloading}
+            className="w-full py-3.5 sm:py-4 rounded-full bg-[#FE6349] hover:bg-[#e05234] active:scale-[0.98] text-white font-extrabold text-sm sm:text-base transition-all cursor-pointer flex items-center justify-center gap-2 shadow-xs"
+          >
+            {downloading ? (
+              <span className="inline-block animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
+            ) : (
+              <span>Download & Copy Link</span>
+            )}
+          </button>
 
-            {/* Button 2: Copy Link */}
-            <button
-              onClick={handleCopyOnlyLink}
-              className="w-full py-3.5 sm:py-4 rounded-full bg-gray-50 hover:bg-gray-100 active:scale-[0.98] text-[#1A1B25] font-extrabold text-sm sm:text-base transition-all cursor-pointer flex items-center justify-center gap-2"
-            >
-              {copiedLink ? (
-                <>
-                  <Check className="w-5 h-5 text-emerald-600 stroke-[2.5]" />
-                  <span className="text-emerald-700">Link Copied!</span>
-                </>
-              ) : (
-                <span>Copy Link</span>
-              )}
-            </button>
-          </div>
+          {/* Button 2: Copy Link */}
+          <button
+            onClick={handleCopyOnlyLink}
+            className="w-full py-3 rounded-full bg-white hover:bg-gray-50 border border-gray-200/80 active:scale-[0.98] text-[#1A1B25] font-extrabold text-sm transition-all cursor-pointer flex items-center justify-center gap-2"
+          >
+            {copiedLink ? (
+              <>
+                <Check className="w-4 h-4 text-emerald-600 stroke-[2.5]" />
+                <span className="text-emerald-700">Link Copied!</span>
+              </>
+            ) : (
+              <span>Copy Link</span>
+            )}
+          </button>
         </div>
       </div>
     </div>

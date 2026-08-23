@@ -473,8 +473,8 @@ export const CanvasReadOnlyCard: React.FC<CanvasReadOnlyCardProps> = ({
       ref={containerRef}
       className="w-full h-full relative flex items-center justify-center overflow-hidden shrink-0 select-none"
     >
-      {/* Slanted background layers for collaborative boards - only visible in expanded metadata view */}
-      {showMetadata && isCollaborative && (
+      {/* Slanted background layers for collaborative boards strictly matching reference design */}
+      {isCollaborative && (
         <div 
           style={{
             width: `${BASE_WIDTH}px`,
@@ -484,8 +484,8 @@ export const CanvasReadOnlyCard: React.FC<CanvasReadOnlyCardProps> = ({
           }}
           className="absolute pointer-events-none origin-center"
         >
-          <div className="absolute inset-0 w-full h-full bg-white/20 rounded-[1.8rem] -rotate-[5deg] transform origin-center" />
-          <div className="absolute inset-0 w-full h-full bg-white/20 rounded-[1.8rem] rotate-[5deg] transform origin-center" />
+          <div className="absolute inset-0 w-full h-full bg-white/20 rounded-[1.8rem] -rotate-[3.5deg] transform origin-center" />
+          <div className="absolute inset-0 w-full h-full bg-white/20 rounded-[1.8rem] rotate-[3.5deg] transform origin-center" />
         </div>
       )}
 
@@ -583,6 +583,7 @@ export interface CreateAppreciationModalProps {
   initialRecipient?: { id?: string; name: string; handle: string; avatar?: string };
   initialHashtag?: string;
   initialMode?: 'create_message' | 'send_heart';
+  initialEventType?: string;
   parentBoard?: any;
   isContribution?: boolean;
   onAddContribution?: (parentBoardId: string, contribution: any) => void;
@@ -847,6 +848,7 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
   initialRecipient,
   initialHashtag,
   initialMode,
+  initialEventType,
   parentBoard,
   isContribution,
   onAddContribution,
@@ -1075,7 +1077,7 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
     return editingContribution?.caption || editingPost?.caption || '';
   });
   const [selectedEventType, setSelectedEventType] = useState<string>(() => {
-    return editingPost?.eventType || '';
+    return editingPost?.eventType || initialEventType || '';
   });
   const [isEventDropdownOpen, setIsEventDropdownOpen] = useState(false);
   const [recipients, setRecipients] = useState<string[]>(() => {
@@ -1422,10 +1424,10 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
   return (
     <div className="fixed inset-0 z-[2000] bg-[#FCF9F8] flex flex-col font-sans select-none overflow-y-auto antialiased">
       
-      {/* Sticky Top Banner Header & Tabs */}
+      {/* Sticky Top Banner Header */}
       <div className="sticky top-0 z-50 bg-[#ffffff] border-b border-gray-100 shrink-0">
-        {/* 1. Header (Drop a message & Close button) */}
-        <div className="w-full px-6 py-5 flex items-center justify-between">
+        {/* Header (Drop a message & Close button) */}
+        <div className="w-full px-6 py-4 flex items-center justify-between">
           <button 
             onClick={onClose}
             className="text-[#1A1B25] hover:bg-black/5 p-2 rounded-full transition-all active:scale-95"
@@ -1440,20 +1442,6 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
           
           {/* Mirror spacer */}
           <div className="w-8" />
-        </div>
-
-        {/* 2. Media Tabs (Only Text content active per platform specifications) */}
-        <div className="w-full flex justify-center pb-2">
-          <div className="flex gap-16 relative">
-            <button 
-              onClick={() => setActiveType('text')}
-              className="flex items-center gap-2 pb-3 px-1 transition-all text-[16px] font-semibold relative cursor-pointer text-[#1A1B25]"
-            >
-              <PenLine className="w-[20px] h-[20px]" />
-              <span>Text</span>
-              <div className="absolute bottom-[-9px] left-0 right-0 h-[2.5px] bg-[#1A1B25] rounded-full" />
-            </button>
-          </div>
         </div>
       </div>
 
@@ -1470,11 +1458,18 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
           className="relative w-full max-w-[461px] rounded-[2rem] sm:rounded-[2.5rem] transition-all duration-300 flex items-center justify-center p-4 sm:p-6 select-none border border-transparent cursor-pointer group hover:scale-[1.01] active:scale-[0.99]"
           title="Click to expand into full workspace editor"
         >
+          {/* Slanted background layers for collaborative boards strictly matching reference design */}
+          {boardCapacity !== 'solo' && (
+            <div className="absolute pointer-events-none origin-center w-[254px] h-[350px]">
+              <div className="absolute inset-0 w-full h-full bg-white/20 rounded-[1.8rem] -rotate-[3.5deg] transform origin-center" />
+              <div className="absolute inset-0 w-full h-full bg-white/20 rounded-[1.8rem] rotate-[3.5deg] transform origin-center" />
+            </div>
+          )}
 
           {/* B. Center vertical or horizontal white card */}
           <div 
             onClick={() => setSelectedElementId(null)}
-            className="rounded-[1.8rem] sm:rounded-[2.2rem] bg-white flex flex-col justify-between relative p-4 sm:p-6 transition-all duration-300 max-w-full max-h-full w-[254px] h-[350px] overflow-hidden shadow-xs cursor-default"
+            className="rounded-[1.8rem] sm:rounded-[2.2rem] bg-white flex flex-col justify-between relative p-4 sm:p-6 transition-all duration-300 max-w-full max-h-full w-[254px] h-[350px] overflow-hidden shadow-xs cursor-default z-10"
           >
             {/* Full Canvas Layer: Treats entire component as canvas area with zero internal clipping bounds */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none flex items-center justify-center z-10">
@@ -1720,7 +1715,9 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
 
                               {/* Right Green Checkmark when selected */}
                               {isSelected && (
-                                <Check className="w-5 h-5 text-[#22C55E] stroke-[2.5]" />
+                                <div className="w-5 h-5 rounded-full bg-[#3BB88C] text-white flex items-center justify-center shrink-0 shadow-xs">
+                                  <Check className="w-3 h-3 stroke-[3]" />
+                                </div>
                               )}
                             </div>
                           );
@@ -1817,73 +1814,14 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
           )}
         </div>
 
-        {/* Full Page Confirmation Modal for Send Heart */}
+        {/* Full Page Confirmation Screen for Send Heart */}
         {sendHeartConfirmation && (
-          <div className="fixed inset-0 z-[3000] bg-[#F7F0ED] sm:bg-[#1A1B25]/60 sm:backdrop-blur-md flex items-center justify-center p-0 sm:p-4 animate-in fade-in duration-300">
+          <div className="fixed inset-0 z-[6000] bg-[#FCF9F8] flex flex-col items-center justify-between p-4 sm:p-8 overflow-y-auto animate-in fade-in duration-300 min-h-screen">
             <ConfettiOverlay active={true} type="heart" />
-            <div className="w-full h-full sm:h-auto sm:max-w-md bg-white sm:rounded-[32px] p-8 sm:p-10 flex flex-col items-center justify-between sm:justify-center text-center shadow-2xl relative overflow-hidden">
-              
-              {/* Background ambient gradient glow */}
-              <div 
-                className="absolute top-0 left-1/2 -translate-x-1/2 w-80 h-80 rounded-full blur-3xl opacity-25 pointer-events-none"
-                style={{ backgroundColor: sendHeartConfirmation.heart.bubbleColor }}
-              />
-
-              {/* Close Button */}
-              <button
-                type="button"
-                onClick={() => {
-                  setSendHeartConfirmation(null);
-                  setSelectedSendHeartRecipients([]);
-                  setSendHeartSearchQuery('');
-                  setSelectedSendHeart(null);
-                  setIsSendHeartOpen(false);
-                }}
-                className="absolute top-5 right-5 w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-colors cursor-pointer z-10"
-              >
-                <X className="w-5 h-5" />
-              </button>
-
-              <div className="flex-1 flex flex-col items-center justify-center py-8 z-10">
-                {/* Animated Heart Badge */}
-                <div 
-                  className="w-28 h-28 rounded-full flex items-center justify-center mb-6 relative shadow-md animate-bounce"
-                  style={{ backgroundColor: `${sendHeartConfirmation.heart.bubbleColor}25` }}
-                >
-                  <span className="text-6xl">{sendHeartConfirmation.heart.emoji}</span>
-                  <div className="absolute -bottom-1 -right-1 bg-white p-1.5 rounded-full shadow-sm">
-                    <Sparkles className="w-5 h-5 fill-[#FE6349] text-[#FE6349]" />
-                  </div>
-                </div>
-
-                {/* Status Heading */}
-                <h2 className="text-2xl sm:text-3xl font-extrabold text-[#1A1B25] tracking-tight mb-2">
-                  Heart Token Blown! 💖
-                </h2>
-                <p className="text-sm font-medium text-gray-500 max-w-xs mb-6">
-                  Your heartfelt <strong className="text-[#1A1B25] font-bold">{sendHeartConfirmation.heart.label}</strong> token has been successfully blown to <strong className="text-[#1A1B25] font-bold">{sendHeartConfirmation.recipient}</strong>'s Trophy Case!
-                </p>
-
-                {/* Details Badge */}
-                <div className="w-full bg-[#F8F9FB] rounded-2xl p-4 border border-gray-100 flex items-center justify-between">
-                  <div className="flex items-center gap-3 text-left">
-                    <span className="text-3xl">{sendHeartConfirmation.heart.emoji}</span>
-                    <div>
-                      <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider">Semantic Heart</p>
-                      <p className="text-sm font-extrabold text-[#1A1B25]">{sendHeartConfirmation.heart.label} Heart</p>
-                    </div>
-                  </div>
-                  <span 
-                    className="px-3 py-1 rounded-full text-xs font-bold text-white shadow-2xs"
-                    style={{ backgroundColor: sendHeartConfirmation.heart.bubbleColor }}
-                  >
-                    Delivered
-                  </span>
-                </div>
-              </div>
-
-              {/* Action buttons */}
-              <div className="w-full space-y-3 pt-4 z-10">
+            
+            <div className="w-full max-w-[440px] flex flex-col items-center justify-between min-h-[92vh] sm:min-h-[85vh] my-auto relative z-10 py-2 sm:py-0">
+              {/* Close Button Top Right */}
+              <div className="w-full flex justify-end mb-3 sm:mb-4">
                 <button
                   type="button"
                   onClick={() => {
@@ -1892,10 +1830,88 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                     setSendHeartSearchQuery('');
                     setSelectedSendHeart(null);
                     setIsSendHeartOpen(false);
+                    onClose();
                   }}
-                  className="w-full py-4 rounded-2xl bg-[#FE6349] hover:bg-[#e05234] text-white font-bold text-base shadow-md active:scale-[0.98] transition-all cursor-pointer"
+                  className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-[#F0F2F5] hover:bg-[#E4E7EB] text-[#666D80] flex items-center justify-center transition-colors cursor-pointer shadow-2xs"
                 >
-                  Done
+                  <X className="w-5 h-5" strokeWidth={2.5} />
+                </button>
+              </div>
+
+              {/* Main Card */}
+              <div className="w-full bg-white rounded-[2.5rem] p-6 sm:p-8 flex flex-col items-center text-center shadow-xs border border-gray-100/60">
+                {/* Circular Icon Top */}
+                <div 
+                  className="w-28 h-28 sm:w-32 sm:h-32 rounded-full flex items-center justify-center mb-6 relative shadow-xs"
+                  style={{ backgroundColor: sendHeartConfirmation.heart.bubbleColor ? `${sendHeartConfirmation.heart.bubbleColor}25` : '#FAF0EC' }}
+                >
+                  <span className="text-5xl sm:text-6xl select-none transform hover:scale-110 transition-transform">
+                    {sendHeartConfirmation.heart.emoji}
+                  </span>
+                  <div className="absolute -bottom-1 -right-1 bg-white p-1.5 rounded-full shadow-xs border border-gray-100">
+                    <Sparkles className="w-4 h-4 fill-[#FE6349] text-[#FE6349]" />
+                  </div>
+                </div>
+
+                {/* Heading */}
+                <h2 className="text-2xl sm:text-[28px] font-extrabold text-[#1A1B25] tracking-tight mb-2">
+                  Appreciation Sent
+                </h2>
+
+                {/* Subtitle */}
+                <p className="text-sm sm:text-base font-normal text-[#666D80] max-w-xs mb-6 leading-relaxed">
+                  Your heartfelt has been published and delivered to{' '}
+                  <strong className="text-[#1A1B25] font-bold">
+                    {sendHeartConfirmation.recipient.startsWith('@') ? sendHeartConfirmation.recipient : `@${sendHeartConfirmation.recipient}`}
+                  </strong>
+                </p>
+
+                {/* Details Summary Container */}
+                <div className="w-full bg-[#FAF9F8] rounded-3xl p-5 sm:p-6 space-y-3.5 text-left">
+                  <div className="flex items-center justify-between text-sm sm:text-base">
+                    <span className="text-[#808897] font-medium">Recipient</span>
+                    <span className="text-[#1A1B25] font-bold truncate max-w-[200px] text-right">
+                      {sendHeartConfirmation.recipient.startsWith('@') ? sendHeartConfirmation.recipient : `@${sendHeartConfirmation.recipient}`}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-sm sm:text-base">
+                    <span className="text-[#808897] font-medium">Visibility</span>
+                    <span className="text-[#1A1B25] font-bold">Trophy Case (Public)</span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-sm sm:text-base">
+                    <span className="text-[#808897] font-medium">Heart Type</span>
+                    <span className="text-[#1A1B25] font-bold flex items-center gap-1.5">
+                      <span>{sendHeartConfirmation.heart.emoji}</span>
+                      <span>{sendHeartConfirmation.heart.label}</span>
+                    </span>
+                  </div>
+
+                  {/* Inner Pill Quote */}
+                  <div className="w-full bg-white rounded-2xl sm:rounded-3xl py-3.5 px-5 text-left mt-2 shadow-2xs border border-gray-100/40">
+                    <p className="text-sm sm:text-base font-extrabold text-[#1A1B25] tracking-tight">
+                      “{sendHeartConfirmation.heart.label} Heart Token”
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons Below Card */}
+              <div className="w-full space-y-3 pt-6 sm:pt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSendHeartConfirmation(null);
+                    setSelectedSendHeartRecipients([]);
+                    setSendHeartSearchQuery('');
+                    setSelectedSendHeart(null);
+                    setIsSendHeartOpen(false);
+                    onClose();
+                  }}
+                  className="w-full py-4 rounded-full bg-[#FE6349] hover:bg-[#e05234] text-white font-extrabold text-base shadow-xs active:scale-[0.98] transition-all cursor-pointer text-center"
+                >
+                  View on Heartboard
                 </button>
                 <button
                   type="button"
@@ -1905,12 +1921,11 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                     setSendHeartSearchQuery('');
                     setSelectedSendHeart(null);
                   }}
-                  className="w-full py-3 rounded-2xl bg-gray-100 hover:bg-gray-200 text-[#1A1B25] font-bold text-sm transition-all cursor-pointer"
+                  className="w-full py-4 rounded-full bg-[#F0F4F8] hover:bg-[#E4E9F0] text-[#1A1B25] font-extrabold text-base transition-all active:scale-[0.98] cursor-pointer text-center"
                 >
-                  Send Another Heart
+                  Send another heart
                 </button>
               </div>
-
             </div>
           </div>
         )}
@@ -2018,9 +2033,15 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                       key={tmpl.id}
                       onClick={() => setSelectedFrame(tmpl)}
                       style={{ backgroundColor: tmpl.bgHex }}
-                      className={`w-7 h-7 rounded-full border ${selectedFrame.id === tmpl.id ? 'scale-110 ring-2 ring-[#FE6349] border-transparent' : 'border-gray-200 hover:scale-105'}`}
+                      className="w-7 h-7 rounded-full border border-gray-200 relative cursor-pointer flex items-center justify-center transition-all hover:scale-105 active:scale-95"
                       title={tmpl.name}
-                    />
+                    >
+                      {selectedFrame.id === tmpl.id && (
+                        <div className="w-4 h-4 rounded-full bg-[#3BB88C] text-white flex items-center justify-center shadow-xs">
+                          <Check className="w-2.5 h-2.5 stroke-[3]" />
+                        </div>
+                      )}
+                    </button>
                   ))}
                 </div>
               </div>
@@ -2098,10 +2119,15 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                     <button
                       key={heart.id}
                       onClick={() => handleHeartToggle(heart.id)}
-                      className={`py-2 px-3.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 border ${isSelected ? 'bg-orange-50 border-[#FE6349] text-[#FE6349] scale-105' : 'bg-gray-50 border-transparent hover:bg-gray-100 text-gray-600'}`}
+                      className="py-2 px-3.5 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 bg-[#F6F8FA] hover:bg-[#ECEFF3] text-[#1A1B25] cursor-pointer relative"
                     >
                       <span>{heart.emoji}</span>
                       <span>{heart.label}</span>
+                      {isSelected && (
+                        <div className="w-4 h-4 rounded-full bg-[#3BB88C] text-white flex items-center justify-center shrink-0 ml-0.5 shadow-xs">
+                          <Check className="w-2.5 h-2.5 stroke-[3]" />
+                        </div>
+                      )}
                     </button>
                   );
                 })}
@@ -2117,27 +2143,42 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                 <button
                   onClick={() => { if (!isHashtagRecipient) setPrivacyLayer(PostVisibility.PUBLIC); }}
                   disabled={isHashtagRecipient}
-                  className={`py-3 px-2 rounded-xl text-xs font-bold flex flex-col items-center gap-1 border ${privacyLayer === PostVisibility.PUBLIC ? 'bg-orange-50/50 border-[#FE6349] text-[#FE6349]' : 'bg-gray-50 border-transparent text-gray-400'} disabled:opacity-50`}
+                  className="py-3 px-2 rounded-xl text-xs font-bold flex flex-col items-center gap-1 bg-[#F6F8FA] hover:bg-[#ECEFF3] text-[#1A1B25] relative cursor-pointer disabled:opacity-50"
                 >
-                  <Globe className="w-4 h-4" />
+                  {privacyLayer === PostVisibility.PUBLIC && (
+                    <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#3BB88C] text-white flex items-center justify-center shadow-xs">
+                      <Check className="w-2.5 h-2.5 stroke-[3]" />
+                    </div>
+                  )}
+                  <Globe className="w-4 h-4 text-[#353849]" />
                   <span>Public</span>
                 </button>
 
                 <button
                   onClick={() => { if (!isHashtagRecipient) setPrivacyLayer(PostVisibility.PRIVATE); }}
                   disabled={isHashtagRecipient}
-                  className={`py-3 px-2 rounded-xl text-xs font-bold flex flex-col items-center gap-1 border ${privacyLayer === PostVisibility.PRIVATE ? 'bg-orange-50/50 border-[#FE6349] text-[#FE6349]' : 'bg-gray-50 border-transparent text-gray-400'} disabled:opacity-50`}
+                  className="py-3 px-2 rounded-xl text-xs font-bold flex flex-col items-center gap-1 bg-[#F6F8FA] hover:bg-[#ECEFF3] text-[#1A1B25] relative cursor-pointer disabled:opacity-50"
                 >
-                  <Lock className="w-4 h-4" />
+                  {privacyLayer === PostVisibility.PRIVATE && (
+                    <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#3BB88C] text-white flex items-center justify-center shadow-xs">
+                      <Check className="w-2.5 h-2.5 stroke-[3]" />
+                    </div>
+                  )}
+                  <Lock className="w-4 h-4 text-[#353849]" />
                   <span>Private</span>
                 </button>
 
                 <button
                   onClick={() => { if (!isHashtagRecipient) setPrivacyLayer(PostVisibility.ANONYMOUS); }}
                   disabled={isHashtagRecipient}
-                  className={`py-3 px-2 rounded-xl text-xs font-bold flex flex-col items-center gap-1 border ${privacyLayer === PostVisibility.ANONYMOUS ? 'bg-orange-50/50 border-[#FE6349] text-[#FE6349]' : 'bg-gray-50 border-transparent text-gray-400'} disabled:opacity-40`}
+                  className="py-3 px-2 rounded-xl text-xs font-bold flex flex-col items-center gap-1 bg-[#F6F8FA] hover:bg-[#ECEFF3] text-[#1A1B25] relative cursor-pointer disabled:opacity-40"
                 >
-                  <Smile className="w-4 h-4" />
+                  {privacyLayer === PostVisibility.ANONYMOUS && (
+                    <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#3BB88C] text-white flex items-center justify-center shadow-xs">
+                      <Check className="w-2.5 h-2.5 stroke-[3]" />
+                    </div>
+                  )}
+                  <Smile className="w-4 h-4 text-[#353849]" />
                   <span>Anonymous</span>
                 </button>
               </div>
@@ -2218,7 +2259,7 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
           
           {/* A. TOP HEADER */}
           <div className="bg-white px-6 py-4 border-b border-gray-100 flex items-center justify-between relative shrink-0">
-            {/* Top row: Close X button on left, Title in center */}
+            {/* Left close button */}
             <button 
               onClick={() => {
                 if (isContributorFlow) {
@@ -2237,27 +2278,8 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
               {isEditingContributor ? 'Edit message' : isContributorFlow ? 'Add a message' : editMode === 'message' ? 'Edit message' : 'Drop a message'}
             </h2>
 
-            <div className="w-10" />
-          </div>
-
-          {/* B. SUB-HEADER / ACTION CONTROL BAR */}
-          <div className="px-6 py-3 flex items-center justify-between shrink-0">
-            <button 
-              onClick={() => {
-                if (isContributorFlow) {
-                  onClose();
-                } else {
-                  setIsExpanded(false);
-                }
-              }}
-              className="w-9 h-9 flex items-center justify-center hover:bg-black/5 rounded-full text-gray-800 transition-all cursor-pointer"
-              aria-label="Back"
-            >
-              <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
-            </button>
-
-            <div className="flex items-center gap-2.5">
-              {/* Save or Publish button */}
+            {/* Right Save / Publish Action */}
+            <div className="flex items-center">
               {isContributorFlow ? (
                 <button 
                   type="button"
@@ -2280,7 +2302,7 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
               ) : (
                 <button 
                   onClick={() => setIsExpanded(false)}
-                  className="h-9 inline-flex items-center justify-center bg-white hover:bg-gray-50 text-[#1A1B25] text-xs font-bold px-4 rounded-full transition-all cursor-pointer active:scale-95"
+                  className="h-9 inline-flex items-center justify-center bg-[#1A1B25] hover:bg-[#272835] text-white text-xs font-bold px-5 rounded-full shadow-xs transition-all cursor-pointer active:scale-95"
                 >
                   Save
                 </button>
@@ -2291,14 +2313,22 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
           {/* C. DISTRACTION-FREE CANVAS WORKSPACE */}
           <div className="flex-grow w-full flex flex-col items-center justify-center p-4 relative overflow-hidden">
             
-            {/* Outer frame matching design specs */}
+            {/* Outer frame matching default frame dimensions exactly */}
             <div 
               style={{ 
                 backgroundColor: (activeType === 'audio' || activeType === 'video') ? '#ffffff' : selectedFrame.bgHex,
-                height: 'min(500px, 60vh)'
+                height: 'min(480px, 65vh)'
               }}
-              className="relative w-full rounded-[2rem] sm:rounded-[2.5rem] transition-all duration-300 flex items-center justify-center p-4 sm:p-6 select-none shadow-sm max-w-[380px]"
+              className="relative w-full max-w-[461px] rounded-[2rem] sm:rounded-[2.5rem] transition-all duration-300 flex items-center justify-center p-4 sm:p-6 select-none shadow-sm"
             >
+              {/* Slanted background layers for collaborative boards strictly matching reference design */}
+              {boardCapacity !== 'solo' && (
+                <div className="absolute pointer-events-none origin-center w-[254px] h-[350px]">
+                  <div className="absolute inset-0 w-full h-full bg-white/20 rounded-[1.8rem] -rotate-[3.5deg] transform origin-center" />
+                  <div className="absolute inset-0 w-full h-full bg-white/20 rounded-[1.8rem] rotate-[3.5deg] transform origin-center" />
+                </div>
+              )}
+
               {/* Inner white card canvas */}
               <div 
                 onClick={() => {
@@ -2307,7 +2337,7 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                     handleAddTextElement();
                   }
                 }}
-                className="rounded-[1.8rem] sm:rounded-[2.2rem] bg-white flex flex-col justify-between relative p-4 sm:p-6 transition-all duration-300 shadow-xs max-w-full max-h-full w-[254px] h-[360px] overflow-hidden cursor-pointer"
+                className="rounded-[1.8rem] sm:rounded-[2.2rem] bg-white flex flex-col justify-between relative p-4 sm:p-6 transition-all duration-300 shadow-xs max-w-full max-h-full w-[254px] h-[350px] overflow-hidden cursor-pointer z-10"
               >
                 {/* Confetti Animation Overlay */}
                 <ConfettiOverlay type={selectedConfetti} />
@@ -2400,13 +2430,13 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
           {activeType === 'text' && (
             <div className="w-full pb-8 pt-2 px-6 flex flex-col items-center gap-3 shrink-0">
               
-              {/* Row of 4 tool buttons: Image | Text | Vector | BG */}
-              <div className="flex items-center justify-center gap-3 md:gap-4 max-w-full overflow-x-auto py-1 px-2">
+              {/* Row of tool buttons with equal width, height, and space distribution matching message board width */}
+              <div className="grid grid-flow-col auto-cols-fr items-center justify-center gap-2 sm:gap-2.5 w-full max-w-[380px] py-1 px-0">
                 {/* 1. Image */}
                 <button
                   type="button"
                   onClick={handleAddImageElement}
-                  className="bg-white border border-dashed border-gray-200/80 hover:bg-gray-50 rounded-2xl w-[64px] h-[58px] flex flex-col items-center justify-center gap-1 cursor-pointer transition-all active:scale-95"
+                  className="w-full h-[58px] bg-white border border-dashed border-gray-200/80 hover:bg-gray-50 rounded-2xl flex flex-col items-center justify-center gap-1 cursor-pointer transition-all active:scale-95 text-[#1A1B25]"
                   title="Add new Image element"
                 >
                   <ImageIcon className="w-4 h-4 text-[#1A1B25]" />
@@ -2417,7 +2447,7 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                 <button
                   type="button"
                   onClick={handleAddTextElement}
-                  className="bg-white border border-dashed border-gray-200/80 hover:bg-gray-50 rounded-2xl w-[64px] h-[58px] flex flex-col items-center justify-center gap-1 cursor-pointer transition-all active:scale-95"
+                  className="w-full h-[58px] bg-white border border-dashed border-gray-200/80 hover:bg-gray-50 rounded-2xl flex flex-col items-center justify-center gap-1 cursor-pointer transition-all active:scale-95 text-[#1A1B25]"
                   title="Add new Text element"
                 >
                   <Type className="w-4 h-4 text-[#1A1B25]" />
@@ -2428,7 +2458,7 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                 <button
                   type="button"
                   onClick={handleAddVectorElement}
-                  className="bg-white border border-dashed border-gray-200/80 hover:bg-gray-50 rounded-2xl w-[64px] h-[58px] flex flex-col items-center justify-center gap-1 cursor-pointer transition-all active:scale-95"
+                  className="w-full h-[58px] bg-white border border-dashed border-gray-200/80 hover:bg-gray-50 rounded-2xl flex flex-col items-center justify-center gap-1 cursor-pointer transition-all active:scale-95 text-[#1A1B25]"
                   title="Add new Vector element"
                 >
                   <Sparkles className="w-4 h-4 text-[#1A1B25]" />
@@ -2440,7 +2470,7 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                   <button
                     type="button"
                     onClick={handleAddBgElement}
-                    className="bg-white border border-dashed border-gray-200/80 hover:bg-gray-50 rounded-2xl w-[64px] h-[58px] flex flex-col items-center justify-center gap-1 cursor-pointer transition-all active:scale-95"
+                    className="w-full h-[58px] bg-white border border-dashed border-gray-200/80 hover:bg-gray-50 rounded-2xl flex flex-col items-center justify-center gap-1 cursor-pointer transition-all active:scale-95 text-[#1A1B25]"
                     title="Add new BG element"
                   >
                     <Palette className="w-4 h-4 text-[#1A1B25]" />
@@ -2448,16 +2478,16 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                   </button>
                 )}
 
-                {/* 5. Confetti */}
+                {/* 5. Confetti / Pop */}
                 <button
                   type="button"
                   onClick={() => setIsConfettiPickerOpen(true)}
-                  className="bg-white border border-dashed border-gray-200/80 hover:bg-gray-50 rounded-2xl w-[64px] h-[58px] flex flex-col items-center justify-center gap-1 cursor-pointer transition-all active:scale-95 shrink-0 text-[#1A1B25]"
+                  className="w-full h-[58px] bg-white border border-dashed border-gray-200/80 hover:bg-gray-50 rounded-2xl flex flex-col items-center justify-center gap-1 cursor-pointer transition-all active:scale-95 text-[#1A1B25]"
                   title="Choose Confetti Animation"
                 >
                   <PartyPopper className="w-4 h-4 text-[#1A1B25]" />
                   <span className="text-[11px] font-medium text-gray-700">
-                    Confetti
+                    pop
                   </span>
                 </button>
               </div>
@@ -2522,10 +2552,10 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                   onContinue={() => setEditingElementId(null)}
                 />
               ) : (
-                <div className="bg-white rounded-[1.8rem] sm:rounded-[2.5rem] max-w-md w-full max-h-[90dvh] sm:max-h-[85vh] p-4 sm:p-6 shadow-2xl flex flex-col relative animate-in zoom-in-95 duration-200 font-sans overflow-hidden my-auto">
+                <div className="bg-white rounded-[1.8rem] sm:rounded-[2.5rem] max-w-md w-full max-h-[90dvh] sm:max-h-[85vh] shadow-2xl flex flex-col relative animate-in zoom-in-95 duration-200 font-sans overflow-hidden my-auto select-none">
                 
-                {/* Header */}
-                <div className="flex items-center justify-between pb-3 flex-shrink-0">
+                {/* Sticky Top Header */}
+                <div className="px-5 sm:px-6 pt-5 pb-3 bg-white border-b border-[#ECEFF3] flex items-center justify-between shrink-0 sticky top-0 z-10">
                   <h3 className="text-xl font-bold text-[#1A1B25]">
                     {editingElement.type === 'text' ? 'Text' : editingElement.type === 'bg' ? 'Background' : editingElement.type.charAt(0).toUpperCase() + editingElement.type.slice(1)}
                   </h3>
@@ -2549,10 +2579,8 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                   </div>
                 </div>
 
-                <div className="w-full h-px bg-gray-100/80 -mt-1 mb-3 flex-shrink-0" />
-
                 {/* Content based on element type - scrollable body */}
-                <div className="flex-1 overflow-y-auto pr-1 space-y-3.5 scrollbar-thin">
+                <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-4 space-y-3.5 min-h-0 scrollbar-thin">
                   {editingElement.type === 'text' && (
                     <div className="flex flex-col gap-3.5">
                       {/* Main Text Input Box with internal Template & Refine toolbar */}
@@ -2661,25 +2689,29 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
 
                         {activeAccordion === 'font' && (
                           <div className="grid grid-cols-2 gap-2 pt-2.5 border-t border-gray-200/60 animate-in fade-in duration-150">
-                            {FONT_OPTIONS.map((f) => (
-                              <button
-                                key={f.id}
-                                type="button"
-                                onClick={() => {
-                                  const isCurs = f.id === 'playfair' || f.id === 'caveat';
-                                  updateEditingElement({ fontFamily: f.font, isCursive: isCurs });
-                                  setIsCursive(isCurs);
-                                }}
-                                style={{ fontFamily: f.font }}
-                                className={`p-2.5 rounded-xl text-xs font-bold text-center transition-all border cursor-pointer ${
-                                  editingElement.fontFamily === f.font || (!editingElement.fontFamily && f.id === 'nunito')
-                                    ? 'bg-white border-[#FF6B4A] text-[#FF6B4A] shadow-2xs'
-                                    : 'bg-white/60 border-transparent text-gray-700 hover:bg-white'
-                                }`}
-                              >
-                                {f.name}
-                              </button>
-                            ))}
+                            {FONT_OPTIONS.map((f) => {
+                              const isSelected = editingElement.fontFamily === f.font || (!editingElement.fontFamily && f.id === 'nunito');
+                              return (
+                                <button
+                                  key={f.id}
+                                  type="button"
+                                  onClick={() => {
+                                    const isCurs = f.id === 'playfair' || f.id === 'caveat';
+                                    updateEditingElement({ fontFamily: f.font, isCursive: isCurs });
+                                    setIsCursive(isCurs);
+                                  }}
+                                  style={{ fontFamily: f.font }}
+                                  className="p-2.5 rounded-xl text-xs font-bold text-center transition-all bg-white text-gray-800 hover:bg-gray-50 relative flex items-center justify-center cursor-pointer shadow-2xs"
+                                >
+                                  <span>{f.name}</span>
+                                  {isSelected && (
+                                    <div className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#3BB88C] text-white flex items-center justify-center shadow-xs">
+                                      <Check className="w-2.5 h-2.5 stroke-[3]" />
+                                    </div>
+                                  )}
+                                </button>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
@@ -2862,80 +2894,51 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                       />
                     </label>
 
-                    {/* Action Buttons */}
-                    <div className="flex gap-2 pt-1">
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteElement(editingElement.id)}
-                        className="w-1/3 py-3 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-sm rounded-2xl transition-all cursor-pointer text-center"
-                      >
-                        Delete
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditingElementId(null)}
-                        className="flex-grow py-3 bg-[#FF6B4A] hover:bg-[#ff5833] active:bg-[#e05234] text-white font-bold text-sm rounded-2xl transition-all cursor-pointer shadow-sm active:scale-[0.99] text-center"
-                      >
-                        Done
-                      </button>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {editingElement.type === 'bg' && (
-                  <div className="flex flex-col gap-3">
-                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Select Canvas Theme</span>
-                    <div className="grid grid-cols-2 gap-3 p-1">
-                      {FRAME_TEMPLATES.map((frame) => (
-                        <button
-                          key={frame.id}
-                          type="button"
-                          onClick={() => {
-                            updateEditingElement({ bgHex: frame.bgHex, frameName: frame.name });
-                            setSelectedFrame(frame);
-                          }}
-                          className={`h-16 rounded-2xl transition-all border-2 flex flex-col items-center justify-center p-2 cursor-pointer ${
-                            (editingElement.bgHex || selectedFrame.bgHex) === frame.bgHex ? 'border-[#FF6B4A] scale-105 shadow-md' : 'border-transparent hover:scale-102'
-                          }`}
-                          style={{ backgroundColor: frame.bgHex }}
-                        >
-                          <span className={`text-xs font-bold ${frame.id === 'slate' ? 'text-white' : 'text-gray-800'}`}>{frame.name}</span>
-                        </button>
-                      ))}
+                  {editingElement.type === 'bg' && (
+                    <div className="flex flex-col gap-3">
+                      <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Select Canvas Theme</span>
+                      <div className="grid grid-cols-2 gap-3 p-1">
+                        {FRAME_TEMPLATES.map((frame) => {
+                          const isSelected = (editingElement.bgHex || selectedFrame.bgHex) === frame.bgHex;
+                          return (
+                            <button
+                              key={frame.id}
+                              type="button"
+                              onClick={() => {
+                                updateEditingElement({ bgHex: frame.bgHex, frameName: frame.name });
+                                setSelectedFrame(frame);
+                              }}
+                              className="h-16 rounded-2xl transition-all flex flex-col items-center justify-center p-2 cursor-pointer relative hover:scale-102"
+                              style={{ backgroundColor: frame.bgHex }}
+                            >
+                              <span className={`text-xs font-bold ${frame.id === 'slate' ? 'text-white' : 'text-gray-800'}`}>{frame.name}</span>
+                              {isSelected && (
+                                <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-[#3BB88C] text-white flex items-center justify-center shadow-xs">
+                                  <Check className="w-3 h-3 stroke-[3]" />
+                                </div>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                    <div className="flex gap-2 pt-2">
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteElement(editingElement.id)}
-                        className="w-1/3 py-3 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-sm rounded-2xl transition-all cursor-pointer text-center"
-                      >
-                        Delete
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditingElementId(null)}
-                        className="flex-grow py-3 bg-[#FF6B4A] hover:bg-[#ff5833] active:bg-[#e05234] text-white font-bold text-sm rounded-2xl transition-all cursor-pointer shadow-sm active:scale-[0.99] text-center"
-                      >
-                        Done
-                      </button>
-                    </div>
-                  </div>
-                )}
+                  )}
 
                 </div>
 
-                {/* Fixed Footer for Text */}
-                {editingElement.type === 'text' && (
-                  <div className="bg-[#F9F5F3] -mx-6 -mb-6 p-6 rounded-b-[2rem] sm:rounded-b-[2.5rem] mt-auto flex-shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setEditingElementId(null)}
-                      className="w-full py-3.5 bg-[#FF6B4A] hover:bg-[#ff5833] active:scale-[0.99] text-white font-bold text-base rounded-full shadow-md transition-all cursor-pointer text-center"
-                    >
-                      Continue
-                    </button>
-                  </div>
-                )}
+                {/* Sticky CTA Section */}
+                <div className="shrink-0 p-4 sm:p-5 bg-[#F6F8FA] border-t border-[#ECEFF3] sticky bottom-0 z-10 rounded-b-[1.8rem] sm:rounded-b-[2.5rem]">
+                  <button
+                    type="button"
+                    onClick={() => setEditingElementId(null)}
+                    className="w-full py-3.5 sm:py-4 bg-[#FF6B4A] hover:bg-[#ff5833] active:bg-[#e05234] text-white font-bold text-base rounded-full shadow-xs transition-all cursor-pointer active:scale-[0.99] text-center"
+                  >
+                    Continue
+                  </button>
+                </div>
               </div>
             )}
             </div>
@@ -3057,13 +3060,13 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                             className="bg-white rounded-2xl p-3 flex items-center gap-2.5 transition-all cursor-pointer border-0 text-left shadow-2xs hover:bg-gray-50/80 active:scale-[0.98]"
                           >
                             {isSelected ? (
-                              <div className="w-5 h-5 rounded-full bg-[#38A169] text-white flex items-center justify-center shrink-0">
+                              <div className="w-5 h-5 rounded-full bg-[#3BB88C] text-white flex items-center justify-center shrink-0">
                                 <Check className="w-3.5 h-3.5 stroke-[3]" />
                               </div>
                             ) : (
                               <div className="w-5 h-5 rounded-full border-2 border-gray-300 shrink-0" />
                             )}
-                            <span className={`text-xs font-medium ${isSelected ? 'text-[#1A1B25] font-semibold' : 'text-gray-700'}`}>
+                            <span className="text-xs font-medium text-gray-700">
                               {evt}
                             </span>
                           </button>
@@ -3214,7 +3217,7 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                       >
                         <div className="flex items-center gap-3">
                           {boardCapacity === 'solo' ? (
-                            <div className="w-5 h-5 rounded-full bg-[#38A169] text-white flex items-center justify-center shrink-0">
+                            <div className="w-5 h-5 rounded-full bg-[#3BB88C] text-white flex items-center justify-center shrink-0">
                               <Check className="w-3.5 h-3.5 stroke-[3]" />
                             </div>
                           ) : (
@@ -3238,7 +3241,7 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                       >
                         <div className="flex items-center gap-3">
                           {boardCapacity === 'collaborative' ? (
-                            <div className="w-5 h-5 rounded-full bg-[#38A169] text-white flex items-center justify-center shrink-0">
+                            <div className="w-5 h-5 rounded-full bg-[#3BB88C] text-white flex items-center justify-center shrink-0">
                               <Check className="w-3.5 h-3.5 stroke-[3]" />
                             </div>
                           ) : (
@@ -3319,7 +3322,7 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                       >
                         <div className="flex items-center gap-3">
                           {privacyLayer === PostVisibility.PUBLIC ? (
-                            <div className="w-5 h-5 rounded-full bg-[#38A169] text-white flex items-center justify-center shrink-0">
+                            <div className="w-5 h-5 rounded-full bg-[#3BB88C] text-white flex items-center justify-center shrink-0">
                               <Check className="w-3.5 h-3.5 stroke-[3]" />
                             </div>
                           ) : (
@@ -3343,7 +3346,7 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                       >
                         <div className="flex items-center gap-3">
                           {privacyLayer === PostVisibility.PRIVATE ? (
-                            <div className="w-5 h-5 rounded-full bg-[#38A169] text-white flex items-center justify-center shrink-0">
+                            <div className="w-5 h-5 rounded-full bg-[#3BB88C] text-white flex items-center justify-center shrink-0">
                               <Check className="w-3.5 h-3.5 stroke-[3]" />
                             </div>
                           ) : (
@@ -3367,7 +3370,7 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                       >
                         <div className="flex items-center gap-3">
                           {privacyLayer === PostVisibility.ANONYMOUS ? (
-                            <div className="w-5 h-5 rounded-full bg-[#38A169] text-white flex items-center justify-center shrink-0">
+                            <div className="w-5 h-5 rounded-full bg-[#3BB88C] text-white flex items-center justify-center shrink-0">
                               <Check className="w-3.5 h-3.5 stroke-[3]" />
                             </div>
                           ) : (
@@ -3392,12 +3395,12 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
               </div>
 
               {/* Fixed CTA Footer Section */}
-              <div className="p-4 sm:p-5 bg-white border-t border-gray-100/80 shrink-0 sticky bottom-0 z-20">
+              <div className="p-4 sm:p-5 bg-[#F6F8FA] border-t border-[#ECEFF3] shrink-0 sticky bottom-0 z-20">
                 <button
                   type="button"
                   onClick={handleFinalSubmitMessage}
                   disabled={isModerating || !selectedEventType}
-                  className={`w-full font-medium text-base py-3.5 rounded-full transition-all shadow-2xs flex items-center justify-center gap-2 ${
+                  className={`w-full font-medium text-base py-3.5 sm:py-4 rounded-full transition-all shadow-xs flex items-center justify-center gap-2 ${
                     !selectedEventType || isModerating
                       ? 'bg-[#F8CBBF] text-white opacity-60 cursor-not-allowed'
                       : 'bg-[#FE6349] hover:bg-[#e05234] text-white cursor-pointer active:scale-[0.98]'
@@ -3419,97 +3422,155 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
         </div>
       )}
 
-      {/* Full Page Confirmation Modal for Published Appreciation Card */}
+      {/* Full Page Confirmation Screen for Published Appreciation Card */}
       {createdPostConfirmation && (
-        <div className="fixed inset-0 z-[6000] bg-[#FCF9F8] flex flex-col items-center justify-between p-6 sm:p-10 font-sans select-none animate-in fade-in duration-300 overflow-y-auto">
+        <div className="fixed inset-0 z-[6000] bg-[#FCF9F8] flex flex-col items-center justify-between p-4 sm:p-8 overflow-y-auto animate-in fade-in duration-300 min-h-screen">
           <ConfettiOverlay active={true} type={createdPostConfirmation.confetti || "heart"} />
           
-          {/* Top Header with Close */}
-          <div className="w-full max-w-md flex justify-between items-center shrink-0 z-10">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-[#FE6349] fill-[#FE6349]" />
-              <span className="text-sm font-extrabold text-[#1A1B25] tracking-tight">Heartboard</span>
+          <div className="w-full max-w-[440px] flex flex-col items-center justify-between min-h-[92vh] sm:min-h-[85vh] my-auto relative z-10 py-2 sm:py-0">
+            {/* Close Button Top Right */}
+            <div className="w-full flex justify-end mb-3 sm:mb-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setCreatedPostConfirmation(null);
+                  setIsPreviewOpen(false);
+                  onClose();
+                }}
+                className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-[#F0F2F5] hover:bg-[#E4E7EB] text-[#666D80] flex items-center justify-center transition-colors cursor-pointer shadow-2xs"
+              >
+                <X className="w-5 h-5" strokeWidth={2.5} />
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                setCreatedPostConfirmation(null);
-                setIsPreviewOpen(false);
-                onClose();
-              }}
-              className="w-10 h-10 rounded-full bg-white shadow-xs border border-gray-100 hover:bg-gray-50 text-gray-500 flex items-center justify-center transition-colors cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
 
-          {/* Center Body Content */}
-          <div className="w-full max-w-md flex-1 flex flex-col items-center justify-center text-center py-6 my-auto z-10">
-            <div className="w-24 h-24 rounded-full bg-rose-50 border border-rose-100 flex items-center justify-center mb-5 relative shadow-xs animate-bounce">
-              <span className="text-5xl">💌</span>
-              <div className="absolute -bottom-1 -right-1 bg-white p-1.5 rounded-full shadow-xs border border-gray-100">
-                <Sparkles className="w-4 h-4 fill-[#FE6349] text-[#FE6349]" />
+            {/* Main Card */}
+            <div className="w-full bg-white rounded-[2.5rem] p-6 sm:p-8 flex flex-col items-center text-center shadow-xs border border-gray-100/60">
+              {/* Circular Envelope Icon Top */}
+              <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-[#FAF0EC] flex items-center justify-center mb-6 relative shadow-xs">
+                <svg width="68" height="68" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg" className="drop-shadow-xs">
+                  {/* Back paper sheet poking out */}
+                  <rect x="18" y="14" width="36" height="30" rx="4" fill="#FFFFFF" />
+                  {/* Heart on top of paper sheet */}
+                  <path d="M36 29C36 29 29 23.5 29 19.8C29 17.7 30.7 16 32.8 16C34.2 16 35.3 16.7 36 17.5C36.7 16.7 37.8 16 39.2 16C41.3 16 43 17.7 43 19.8C43 23.5 36 29 36 29Z" fill="#E52E40" />
+
+                  {/* Envelope back interior */}
+                  <path d="M12 28L36 14L60 28" fill="#FCA5A5" opacity="0.4" />
+
+                  {/* Envelope Main Body */}
+                  <path d="M10 26C10 23.7909 11.7909 22 14 22H58C60.2091 22 62 23.7909 62 26V49C62 51.7614 59.7614 54 57 54H15C12.2386 54 10 51.7614 10 49V26Z" fill="#E52E40" />
+
+                  {/* Envelope Side Flaps / Folds */}
+                  <path d="M10 26L36 43L62 26" stroke="#C51E30" strokeWidth="2.5" strokeLinejoin="round" />
+                  <path d="M10 54L28 37" stroke="#C51E30" strokeWidth="2.5" strokeLinecap="round" />
+                  <path d="M62 54L44 37" stroke="#C51E30" strokeWidth="2.5" strokeLinecap="round" />
+
+                  {/* Bottom fold fill / shaded flap */}
+                  <path d="M10 26L36 43L62 26V49C62 51.7614 59.7614 54 57 54H15C12.2386 54 10 51.7614 10 49V26Z" fill="#DC2626" opacity="0.35" />
+
+                  {/* Central Heart Seal Badge */}
+                  <circle cx="36" cy="36" r="9.5" fill="#FFFFFF" />
+                  <path d="M36 41C36 41 31 37.2 31 34.2C31 32.5 32.3 31.2 34 31.2C35.1 31.2 35.9 31.8 36 32.4C36.1 31.8 36.9 31.2 38 31.2C39.7 31.2 41 32.5 41 34.2C41 37.2 36 41 36 41Z" fill="#E52E40" />
+                </svg>
               </div>
-            </div>
 
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-[#1A1B25] tracking-tight mb-2">
-              Appreciation Sent! 💖
-            </h2>
-            <p className="text-sm font-medium text-gray-500 max-w-xs mb-6">
-              Your heartfelt tribute has been published and delivered to <strong className="text-[#1A1B25] font-bold">{createdPostConfirmation.targetId || createdPostConfirmation.recipients?.[0] || 'the recipient'}</strong>!
-            </p>
+              {/* Heading */}
+              <h2 className="text-2xl sm:text-[28px] font-extrabold text-[#1A1B25] tracking-tight mb-2">
+                Appreciation Sent
+              </h2>
 
-            {/* Tribute Card Summary Badge */}
-            <div className="w-full bg-white rounded-3xl p-5 border border-gray-100/80 shadow-xs text-left space-y-3">
-              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                <div>
-                  <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider block">Recipient</span>
-                  <p className="text-sm font-extrabold text-[#1A1B25]">{createdPostConfirmation.targetId || '@recipient'}</p>
-                </div>
-                {createdPostConfirmation.eventType && (
-                  <span className="bg-rose-50 text-[#FE6349] text-xs font-bold px-3 py-1 rounded-full border border-rose-100">
-                    {createdPostConfirmation.eventType}
+              {/* Subtitle */}
+              <p className="text-sm sm:text-base font-normal text-[#666D80] max-w-sm mb-6 leading-relaxed">
+                Your heartfelt has been published and delivered to{' '}
+                <strong className="text-[#1A1B25] font-bold">
+                  {(() => {
+                    if (Array.isArray(createdPostConfirmation.recipients) && createdPostConfirmation.recipients.length > 0) {
+                      return createdPostConfirmation.recipients.map((r: string) => r.startsWith('@') || r.startsWith('#') ? r : `@${r}`).join(' ');
+                    }
+                    if (createdPostConfirmation.targetId) {
+                      return createdPostConfirmation.targetId.startsWith('@') || createdPostConfirmation.targetId.startsWith('#')
+                        ? createdPostConfirmation.targetId
+                        : `@${createdPostConfirmation.targetId}`;
+                    }
+                    if (createdPostConfirmation.recipientName) {
+                      return `@${createdPostConfirmation.recipientName.replace(/\s+/g, '').toLowerCase()}`;
+                    }
+                    return '@you @james';
+                  })()}
+                </strong>
+              </p>
+
+              {/* Details Summary Container */}
+              <div className="w-full bg-[#FAF9F8] rounded-3xl p-5 sm:p-6 space-y-3.5 text-left">
+                <div className="flex items-center justify-between text-sm sm:text-base">
+                  <span className="text-[#808897] font-medium">Recipient</span>
+                  <span className="text-[#1A1B25] font-bold truncate max-w-[200px] text-right">
+                    {(() => {
+                      if (Array.isArray(createdPostConfirmation.recipients) && createdPostConfirmation.recipients.length > 0) {
+                        return createdPostConfirmation.recipients.map((r: string) => r.startsWith('@') || r.startsWith('#') ? r : `@${r}`).join(' ');
+                      }
+                      if (createdPostConfirmation.targetId) {
+                        return createdPostConfirmation.targetId.startsWith('@') || createdPostConfirmation.targetId.startsWith('#')
+                          ? createdPostConfirmation.targetId
+                          : `@${createdPostConfirmation.targetId}`;
+                      }
+                      if (createdPostConfirmation.recipientName) {
+                        return `@${createdPostConfirmation.recipientName.replace(/\s+/g, '').toLowerCase()}`;
+                      }
+                      return '@you @james';
+                    })()}
                   </span>
-                )}
-              </div>
+                </div>
 
-              <div className="text-xs text-gray-600 font-medium line-clamp-3 italic bg-[#F8F9FB] p-3 rounded-2xl">
-                "{createdPostConfirmation.content}"
-              </div>
+                <div className="flex items-center justify-between text-sm sm:text-base">
+                  <span className="text-[#808897] font-medium">Visibility</span>
+                  <span className="text-[#1A1B25] font-bold">
+                    {privacyLayer === PostVisibility.PRIVATE ? 'Recipient Only (Private)' : privacyLayer === PostVisibility.ANONYMOUS ? 'Board (Anonymous)' : 'Board (Public)'}
+                  </span>
+                </div>
 
-              <div className="flex items-center justify-between pt-1 text-xs">
-                <span className="text-gray-400 font-semibold">Visibility</span>
-                <span className="font-bold text-[#1A1B25] capitalize">{createdPostConfirmation.targetType || 'Board'} ({privacyLayer})</span>
+                <div className="flex items-center justify-between text-sm sm:text-base">
+                  <span className="text-[#808897] font-medium">Event Type</span>
+                  <span className="text-[#1A1B25] font-bold capitalize">
+                    {createdPostConfirmation.eventType || selectedEventType || 'Wedding'}
+                  </span>
+                </div>
+
+                {/* Inner Pill Quote */}
+                <div className="w-full bg-white rounded-2xl sm:rounded-3xl py-3.5 px-5 text-left mt-2 shadow-2xs border border-gray-100/40">
+                  <p className="text-sm sm:text-base font-extrabold text-[#1A1B25] tracking-tight">
+                    “{createdPostConfirmation.caption || createdPostConfirmation.content || 'Jesus is King'}”
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Bottom Fixed Action Buttons */}
-          <div className="w-full max-w-md space-y-3 pt-4 shrink-0 z-10">
-            <button
-              type="button"
-              onClick={() => {
-                setCreatedPostConfirmation(null);
-                setIsPreviewOpen(false);
-                onClose();
-              }}
-              className="w-full py-4 rounded-full bg-[#FE6349] hover:bg-[#e05234] text-white font-bold text-base shadow-md active:scale-[0.98] transition-all cursor-pointer"
-            >
-              View on Heartboard
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setCreatedPostConfirmation(null);
-                setIsPreviewOpen(false);
-                setContent('');
-                setRecipient('');
-                setCaption('');
-              }}
-              className="w-full py-3.5 rounded-full bg-white hover:bg-gray-50 border border-gray-200 text-[#1A1B25] font-bold text-sm transition-all cursor-pointer"
-            >
-              Create Another Card
-            </button>
+            {/* Action Buttons Below Card */}
+            <div className="w-full space-y-3 pt-6 sm:pt-6">
+              <button
+                type="button"
+                onClick={() => {
+                  setCreatedPostConfirmation(null);
+                  setIsPreviewOpen(false);
+                  onClose();
+                }}
+                className="w-full py-4 rounded-full bg-[#FE6349] hover:bg-[#e05234] text-white font-extrabold text-base shadow-xs active:scale-[0.98] transition-all cursor-pointer text-center"
+              >
+                View on Heartboard
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setCreatedPostConfirmation(null);
+                  setIsPreviewOpen(false);
+                  setContent('');
+                  setRecipient('');
+                  setCaption('');
+                }}
+                className="w-full py-4 rounded-full bg-[#F0F4F8] hover:bg-[#E4E9F0] text-[#1A1B25] font-extrabold text-base transition-all active:scale-[0.98] cursor-pointer text-center"
+              >
+                Send another message
+              </button>
+            </div>
           </div>
         </div>
       )}

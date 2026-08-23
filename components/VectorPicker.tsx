@@ -155,10 +155,10 @@ export const VectorPicker: React.FC<VectorPickerProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-[1.8rem] sm:rounded-[2.2rem] max-w-[420px] w-full max-h-[90dvh] sm:max-h-[85vh] my-auto p-4 sm:p-6 shadow-2xl flex flex-col relative font-sans animate-in zoom-in-95 duration-200 select-none overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between pb-1 shrink-0">
-        <h2 className="text-[22px] font-bold text-[#1A1B25] tracking-tight">Vector</h2>
+    <div className="bg-white rounded-[1.8rem] sm:rounded-[2.2rem] max-w-[420px] w-full max-h-[90dvh] sm:max-h-[85vh] my-auto shadow-2xl flex flex-col relative font-sans animate-in zoom-in-95 duration-200 select-none overflow-hidden">
+      {/* Sticky Top Header */}
+      <div className="px-5 sm:px-6 pt-5 pb-3 bg-white border-b border-[#ECEFF3] flex items-center justify-between shrink-0 sticky top-0 z-10">
+        <h2 className="text-[20px] sm:text-[22px] font-bold text-[#1A1B25] tracking-tight">Vector</h2>
         <div className="flex items-center gap-1">
           {onDelete && (
             <button
@@ -182,11 +182,8 @@ export const VectorPicker: React.FC<VectorPickerProps> = ({
         </div>
       </div>
 
-      {/* Divider */}
-      <div className="w-full h-px bg-gray-100/90 my-2.5 shrink-0" />
-
       {/* Scrollable Content Area */}
-      <div className="flex-1 overflow-y-auto pr-1 flex flex-col gap-3 min-h-0 scrollbar-thin">
+      <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-4 flex flex-col gap-3.5 min-h-0 scrollbar-thin">
         {/* Search Input */}
         <div className="bg-[#F6F8FA] rounded-[1.2rem] px-4 py-2.5 flex items-center gap-2.5 shrink-0 focus-within:ring-2 focus-within:ring-gray-200 transition-all">
           <MagnifyingGlass size={18} className="text-[#A4ABB8] shrink-0" weight="bold" />
@@ -219,14 +216,12 @@ export const VectorPicker: React.FC<VectorPickerProps> = ({
                 key={item.id}
                 type="button"
                 onClick={() => handleSelect(item)}
-                className={`aspect-square rounded-[1.1rem] bg-[#F6F8FA] hover:bg-[#ECEFF3] transition-all flex items-center justify-center relative cursor-pointer group border border-transparent ${
-                  isSelected ? 'ring-2 ring-emerald-500/20' : ''
-                }`}
+                className="aspect-square rounded-[1.1rem] bg-[#F6F8FA] hover:bg-[#ECEFF3] transition-all flex items-center justify-center relative cursor-pointer group"
                 title={item.name}
               >
                 {/* Selected Checkmark Badge */}
                 {isSelected && (
-                  <div className="absolute top-1.5 right-1.5 w-4.5 h-4.5 rounded-full bg-[#34C759] flex items-center justify-center text-white shadow-xs z-10 animate-in zoom-in-75 duration-150">
+                  <div className="absolute top-1.5 right-1.5 w-4.5 h-4.5 rounded-full bg-[#3BB88C] flex items-center justify-center text-white shadow-xs z-10 animate-in zoom-in-75 duration-150">
                     <Check size={11} weight="bold" />
                   </div>
                 )}
@@ -250,14 +245,16 @@ export const VectorPicker: React.FC<VectorPickerProps> = ({
         </div>
       </div>
 
-      {/* Continue Action Button */}
-      <button
-        type="button"
-        onClick={handleContinueClick}
-        className="w-full py-3.5 bg-[#FF5A36] hover:bg-[#ff4821] active:scale-[0.99] text-white font-bold text-base rounded-full shadow-md transition-all cursor-pointer text-center mt-3 shrink-0"
-      >
-        Continue
-      </button>
+      {/* Sticky CTA Section */}
+      <div className="shrink-0 p-4 sm:p-5 bg-[#F6F8FA] border-t border-[#ECEFF3] sticky bottom-0 z-10 rounded-b-[1.8rem] sm:rounded-b-[2.2rem]">
+        <button
+          type="button"
+          onClick={handleContinueClick}
+          className="w-full py-3.5 sm:py-4 bg-[#FF5A36] hover:bg-[#ff4821] active:scale-[0.99] text-white font-bold text-base rounded-full shadow-xs transition-all cursor-pointer text-center"
+        >
+          Continue
+        </button>
+      </div>
     </div>
   );
 };
