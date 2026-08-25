@@ -2178,9 +2178,16 @@ const App: React.FC = () => {
               setPosts((prevPosts) =>
                 prevPosts.map((p) => {
                   if (p.id !== parentBoardId) return p;
+                  const remaining = (p.contributions || []).filter((c) => c.id !== contribId);
+                  const userHandle = currentUser?.handle || '@mickymouse';
+                  const userStillHasContrib = remaining.some((c) => 
+                    c.isCreatedByUser === true || 
+                    (c.authorHandle && c.authorHandle.toLowerCase().replace(/^@/, '') === userHandle.toLowerCase().replace(/^@/, ''))
+                  );
                   return {
                     ...p,
-                    contributions: (p.contributions || []).filter((c) => c.id !== contribId),
+                    contributions: remaining,
+                    hasUserContributed: userStillHasContrib,
                   };
                 })
               );
@@ -2194,9 +2201,18 @@ const App: React.FC = () => {
                 prevPosts.map((p) => {
                   if (p.id !== parentBoardId) return p;
                   const currentContribs = p.contributions || [];
+                  const userHandle = currentUser?.handle || '@mickymouse';
+                  const userId = currentUser?.id || 'u9';
+                  const userCollabs = p.collaboratorHandles || [];
+                  const updatedCollabs = userCollabs.includes(userHandle) ? userCollabs : [...userCollabs, userHandle];
+                  const userCollabIds = p.collaboratorIds || [];
+                  const updatedCollabIds = userCollabIds.includes(userId) ? userCollabIds : [...userCollabIds, userId];
                   return {
                     ...p,
-                    contributions: [...currentContribs, newContrib],
+                    hasUserContributed: true,
+                    collaboratorHandles: updatedCollabs,
+                    collaboratorIds: updatedCollabIds,
+                    contributions: [...currentContribs, { ...newContrib, isCreatedByUser: true }],
                   };
                 })
               );

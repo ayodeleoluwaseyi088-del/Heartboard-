@@ -1,12 +1,12 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { Post, Contribution, PostVisibility, ReactionCounts, RegisteredUser, MOCK_REGISTERED_USERS } from '../types';
-import { 
-  X, 
-  ChevronLeft, 
-  ChevronRight, 
-  User, 
-  UserCheck, 
-  LayoutGrid, 
+import {
+  X,
+  ChevronLeft,
+  ChevronRight,
+  User,
+  UserCheck,
+  LayoutGrid,
   Sparkles,
   Check
 } from 'lucide-react';
@@ -25,8 +25,8 @@ import { ShareProfileModal } from './ShareProfileModal';
 import { ActionMenuModal } from './ActionMenuModal';
 
 interface MediaModalProps {
-  post: Post & { 
-    theme?: string; 
+  post: Post & {
+    theme?: string;
     mediaType?: 'audio' | 'video' | 'image' | 'text' | 'note';
     sponsor?: string;
     sticker?: string;
@@ -52,13 +52,13 @@ interface MediaModalProps {
   onSelectHashtag?: (tag: string) => void;
 }
 
-export const MediaModal: React.FC<MediaModalProps> = ({ 
-  post, 
+export const MediaModal: React.FC<MediaModalProps> = ({
+  post,
   currentUser,
   onRequireAuth,
-  onClose, 
-  onPrev, 
-  onNext, 
+  onClose,
+  onPrev,
+  onNext,
   onAddContributionClick,
   onReactionBlown,
   onUpdateReactions,
@@ -73,7 +73,7 @@ export const MediaModal: React.FC<MediaModalProps> = ({
   const [activeTab, setActiveTab] = useState<'main' | 'contributions'>('main');
   // Index for navigating through multiple contribution messages
   const [activeContributionIndex, setActiveContributionIndex] = useState(0);
-  
+
   // Helper to get real initial reaction breakdown
   const getInitialReactionCounts = (p: Post): { clap: number; heart: number; smiley: number; fire: number } => {
     if (p.reactionCounts) {
@@ -135,17 +135,48 @@ export const MediaModal: React.FC<MediaModalProps> = ({
   const contributions: Contribution[] = post.contributions || [];
   const hasContributions = contributions.length > 0;
 
+  // Determine if the current active viewer is the creator/owner of this board
+  const isViewerCreator = useMemo(() => {
+    if (post.isCreatedByUser === true) return true;
+    if (!currentUser) return Boolean(post.isCreatedByUser);
+
+    const curHandle = (currentUser.handle || '').toLowerCase().replace(/^@/, '');
+    const curName = (currentUser.name || '').toLowerCase();
+    const curId = (currentUser.id || '').toLowerCase();
+
+    const authorHandle = (post.authorHandle || '').toLowerCase().replace(/^@/, '');
+    const authorName = (post.authorName || '').toLowerCase();
+    const authorId = (post.authorId || '').toLowerCase();
+
+    if (curHandle && authorHandle && curHandle === authorHandle) return true;
+    if (curName && authorName && (curName === authorName || curName.replace(/\s+/g, '') === authorName.replace(/\s+/g, ''))) return true;
+    if (curId && authorId && (curId === authorId || curId === `u-${authorId}`)) return true;
+
+    return Boolean(post.isCreatedByUser);
+  }, [post.isCreatedByUser, post.authorHandle, post.authorName, post.authorId, currentUser]);
+
+  const isCreator = isViewerCreator;
+
   // Identify all contributions made by the current user on this board (independent of the currently viewed contribution)
-  const isCreator = Boolean(post.isCreatedByUser ?? true);
   const userContributions = useMemo(() => {
-    return contributions.filter((c) => 
-      c.isCreatedByUser === true || 
-      c.authorName === 'Nancy98' || 
-      c.authorName === 'Mercy24' || 
-      c.authorHandle === '@nancy98' || 
-      c.authorHandle === '@mercy24'
-    );
-  }, [contributions]);
+    if (!currentUser) {
+      return contributions.filter((c) => c.isCreatedByUser === true);
+    }
+    const curHandle = (currentUser.handle || '').toLowerCase().replace(/^@/, '');
+    const curName = (currentUser.name || '').toLowerCase();
+    const curId = (currentUser.id || '').toLowerCase();
+
+    return contributions.filter((c) => {
+      if (c.isCreatedByUser === true) return true;
+      const cHandle = (c.authorHandle || '').toLowerCase().replace(/^@/, '');
+      const cName = (c.authorName || '').toLowerCase();
+      const cId = (c.authorId || '').toLowerCase();
+      if (curHandle && cHandle && curHandle === cHandle) return true;
+      if (curName && cName && (curName === cName || curName.replace(/\s+/g, '') === cName.replace(/\s+/g, ''))) return true;
+      if (curId && cId && (curId === cId || curId === `u-${cId}`)) return true;
+      return false;
+    });
+  }, [contributions, currentUser]);
   const maxCapacity = post.maxCapacity || (post.boardCapacity === 'solo' ? 1 : 20);
   const isSoloMode = post.boardCapacity === 'solo' || maxCapacity === 1;
   const isCapacityReached = contributions.length >= maxCapacity;
@@ -410,14 +441,14 @@ export const MediaModal: React.FC<MediaModalProps> = ({
   }, [activeTab, activeContributionIndex, contributions.length, onPrev, onNext]);
 
   // Current active message depending on tab
-  const activeMessage = effectiveActiveTab === 'main' 
-    ? post 
+  const activeMessage = effectiveActiveTab === 'main'
+    ? post
     : (contributions[activeContributionIndex] || post);
 
   // Navigation handlers
   const handlePrevMessage = () => {
     if (effectiveActiveTab === 'contributions' && contributions.length > 1) {
-      setActiveContributionIndex((prev) => 
+      setActiveContributionIndex((prev) =>
         (prev - 1 + contributions.length) % contributions.length
       );
     } else {
@@ -427,7 +458,7 @@ export const MediaModal: React.FC<MediaModalProps> = ({
 
   const handleNextMessage = () => {
     if (effectiveActiveTab === 'contributions' && contributions.length > 1) {
-      setActiveContributionIndex((prev) => 
+      setActiveContributionIndex((prev) =>
         (prev + 1) % contributions.length
       );
     } else {
@@ -471,11 +502,61 @@ export const MediaModal: React.FC<MediaModalProps> = ({
     ? post.authorAvatar
     : activeMessage.authorAvatar;
 
+  // Resolve creator's profile object
+  const creatorUser = useMemo((): RegisteredUser => {
+    const authorHandle = (post.authorHandle || '').trim().replace(/^@/, '').toLowerCase();
+    const authorName = (post.authorName || '').trim().toLowerCase();
+    const authorId = (post.authorId || '').trim().toLowerCase();
+
+    // 1. Check in MOCK_REGISTERED_USERS
+    const matched = MOCK_REGISTERED_USERS.find(u => {
+      const uHandle = u.handle.replace(/^@/, '').toLowerCase();
+      const uName = u.name.toLowerCase();
+      const uId = u.id.toLowerCase();
+      if (authorHandle && uHandle === authorHandle) return true;
+      if (authorName && (uName === authorName || uName.replace(/\s+/g, '') === authorName.replace(/\s+/g, ''))) return true;
+      if (authorId && (uId === authorId || uId === `u-${authorId}`)) return true;
+      return false;
+    });
+
+    if (matched) return matched;
+
+    if (isViewerCreator && currentUser) return currentUser;
+
+    const displayName = post.authorName || 'Curator';
+    const displayHandle = post.authorHandle 
+      ? (post.authorHandle.startsWith('@') ? post.authorHandle : `@${post.authorHandle}`)
+      : `@${displayName.toLowerCase().replace(/[^a-z0-9]/g, '_') || 'curator'}`;
+
+    return {
+      id: post.authorId || `u-${displayName.toLowerCase().replace(/[^a-z0-9]/g, '-') || 'curator'}`,
+      name: displayName,
+      handle: displayHandle,
+      avatar: post.authorAvatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(displayName)}`,
+      isVerified: false,
+      heartsCount: 1,
+      boardsCount: 1,
+      bio: 'Heartboard curator',
+      role: 'Board Curator'
+    };
+  }, [post.authorHandle, post.authorName, post.authorId, post.authorAvatar, isViewerCreator, currentUser]);
+
   // Helper to find or build registered user object
   const findRegisteredUser = (input: string): RegisteredUser => {
     const clean = input.trim().replace(/^@/, '').toLowerCase();
+
+    // Handle @you: opens the viewing user's Heartboard/profile
+    if (clean === 'you') {
+      return (isViewerCreator && currentUser) ? currentUser : creatorUser;
+    }
+
+    // Handle @creator: opens the board creator's Heartboard/profile
+    if (clean === 'creator') {
+      return creatorUser;
+    }
+
     // 1. Direct match on handle, id, or name
-    const directMatch = MOCK_REGISTERED_USERS.find(u => 
+    const directMatch = MOCK_REGISTERED_USERS.find(u =>
       u.name.toLowerCase() === clean ||
       u.handle.toLowerCase() === `@${clean}` ||
       u.handle.toLowerCase() === clean ||
@@ -486,10 +567,10 @@ export const MediaModal: React.FC<MediaModalProps> = ({
     if (directMatch) return directMatch;
 
     // 2. Partial match on name/handle
-    const partialMatch = MOCK_REGISTERED_USERS.find(u => 
-      u.name.toLowerCase().includes(clean) ||
+    const partialMatch = MOCK_REGISTERED_USERS.find(u =>
+      u.name.toLowerCase() === clean ||
       clean.includes(u.name.toLowerCase()) ||
-      u.handle.toLowerCase().includes(clean)
+      u.handle.toLowerCase() === clean
     );
     if (partialMatch) return partialMatch;
 
@@ -509,6 +590,16 @@ export const MediaModal: React.FC<MediaModalProps> = ({
   };
 
   const handleUserClick = (userNameOrHandle: string) => {
+    const clean = userNameOrHandle.trim().replace(/^@/, '').toLowerCase();
+    if (clean === 'you') {
+      const target = (isViewerCreator && currentUser) ? currentUser : creatorUser;
+      if (onSelectUser) onSelectUser(target);
+      return;
+    }
+    if (clean === 'creator') {
+      if (onSelectUser) onSelectUser(creatorUser);
+      return;
+    }
     const user = findRegisteredUser(userNameOrHandle);
     if (onSelectUser) {
       onSelectUser(user);
@@ -529,30 +620,71 @@ export const MediaModal: React.FC<MediaModalProps> = ({
       isHashtag: boolean;
       cleanTag?: string;
       userQuery?: string;
+      userObj?: RegisteredUser;
     }
     const tokens: RecipientToken[] = [];
-    const added = new Set<string>();
+    const addedTokens = new Set<string>();
+
+    const authorHandle = (post.authorHandle || '').toLowerCase().replace(/^@/, '');
+    const authorName = (post.authorName || '').toLowerCase();
+    const authorId = (post.authorId || '').toLowerCase();
+
+    const isCreatorToken = (raw: string) => {
+      const clean = raw.trim().toLowerCase().replace(/^@/, '');
+      if (!clean) return true;
+      if (clean === 'you' || clean === 'creator' || clean === 'community') return true;
+      if (authorHandle && clean === authorHandle) return true;
+      if (authorName && (clean === authorName || clean.replace(/\s+/g, '') === authorName.replace(/\s+/g, ''))) return true;
+      if (authorId && (clean === authorId || clean === `u-${authorId}`)) return true;
+      if (isViewerCreator && currentUser) {
+        const curHandle = (currentUser.handle || '').toLowerCase().replace(/^@/, '');
+        const curName = (currentUser.name || '').toLowerCase();
+        if (curHandle && clean === curHandle) return true;
+        if (curName && (clean === curName || clean.replace(/\s+/g, '') === curName.replace(/\s+/g, ''))) return true;
+      }
+      return false;
+    };
 
     const addToken = (raw: string) => {
       const trimmed = raw.trim();
-      if (!trimmed || trimmed === '@you') return;
-      if (added.has(trimmed.toLowerCase())) return;
-      added.add(trimmed.toLowerCase());
+      if (!trimmed) return;
+      const lower = trimmed.toLowerCase();
+      if (addedTokens.has(lower)) return;
 
       if (trimmed.startsWith('#')) {
+        addedTokens.add(lower);
         tokens.push({
           text: trimmed,
           isHashtag: true,
           cleanTag: trimmed,
         });
-      } else {
-        const formatted = trimmed.startsWith('@') ? trimmed : `@${trimmed}`;
-        tokens.push({
-          text: formatted,
-          isHashtag: false,
-          userQuery: trimmed,
-        });
+        return;
       }
+
+      if (isCreatorToken(trimmed)) {
+        return;
+      }
+
+      // Filter out internal non-user entity keywords (e.g. 'bey', 'family', 'workspace', 'wall', 'board')
+      const nonUserKeywords = ['bey', 'family', 'workspace', 'wall', 'board', 'all'];
+      const cleanNoAt = trimmed.replace(/^@/, '').toLowerCase();
+      const isKnownUser = MOCK_REGISTERED_USERS.some(u => 
+        u.name.toLowerCase() === cleanNoAt || 
+        u.handle.toLowerCase() === `@${cleanNoAt}` ||
+        u.handle.toLowerCase() === cleanNoAt ||
+        u.id.toLowerCase() === cleanNoAt
+      );
+      if (!isKnownUser && nonUserKeywords.includes(cleanNoAt) && !trimmed.startsWith('@')) {
+        return;
+      }
+
+      addedTokens.add(lower);
+      const formatted = trimmed.startsWith('@') ? trimmed : `@${trimmed}`;
+      tokens.push({
+        text: formatted,
+        isHashtag: false,
+        userQuery: trimmed,
+      });
     };
 
     if (Array.isArray(post.recipients) && post.recipients.length > 0) {
@@ -567,16 +699,31 @@ export const MediaModal: React.FC<MediaModalProps> = ({
       post.hashtags.forEach(h => addToken(h));
     }
 
+    // When a message board has only the creator as the recipient:
+    // If the creator is viewing their own board, display @you.
+    // If another user is viewing the board, display @creator.
+    // Remove the incorrect @community display in this scenario.
     if (tokens.length === 0) {
-      tokens.push({
-        text: '@community',
-        isHashtag: false,
-        userQuery: 'community',
-      });
+      if (isViewerCreator) {
+        tokens.push({
+          text: '@you',
+          isHashtag: false,
+          userQuery: '@you',
+          userObj: (isViewerCreator && currentUser) ? currentUser : creatorUser,
+        });
+      } else {
+        tokens.push({
+          text: '@creator',
+          isHashtag: false,
+          userQuery: '@creator',
+          userObj: creatorUser,
+        });
+      }
     }
 
     return tokens;
-  }, [post.recipients, post.recipientName, post.targetId, post.hashtags]);
+  }, [post.recipients, post.recipientName, post.targetId, post.hashtags, post.authorHandle, post.authorName, post.authorId, isViewerCreator, currentUser, creatorUser]);
+
 
   // Reaction formatting helper
   const formatReactionCount = (count?: number) => {
@@ -633,13 +780,13 @@ export const MediaModal: React.FC<MediaModalProps> = ({
   };
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-[1000] flex flex-col items-center justify-between bg-[#1A1B25] text-white font-sans select-none overflow-y-auto antialiased"
       style={{ backgroundColor: '#1A1B25' }}
     >
       {/* 1. TOP BAR */}
       <header className="w-full px-4 sm:px-8 md:px-16 lg:px-24 xl:px-[192px] pt-5 pb-3 flex items-center justify-between z-30 shrink-0">
-        
+
         {/* Top-Left: Toggle / Switch Component (Main Board vs. Contributions) */}
         <div className="flex items-center bg-[#272835] p-1 rounded-full">
           {/* Main Board Button */}
@@ -708,16 +855,16 @@ export const MediaModal: React.FC<MediaModalProps> = ({
       </header>
 
       {/* Screen Left & Right Chevrons Navigation for Desktop */}
-      <button 
-        onClick={handlePrevMessage} 
+      <button
+        onClick={handlePrevMessage}
         className="hidden md:flex fixed left-4 sm:left-8 md:left-16 lg:left-24 xl:left-[192px] top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full hover:scale-105 active:scale-95 items-center justify-center text-white/60 hover:text-white transition-all cursor-pointer"
         aria-label="Previous message"
       >
         <ChevronLeft className="w-6 h-6 text-white/60 hover:text-white transition-colors" />
       </button>
 
-      <button 
-        onClick={handleNextMessage} 
+      <button
+        onClick={handleNextMessage}
         className="hidden md:flex fixed right-4 sm:right-8 md:right-16 lg:right-24 xl:right-[192px] top-1/2 -translate-y-1/2 z-20 w-11 h-11 rounded-full hover:scale-105 active:scale-95 items-center justify-center text-white/60 hover:text-white transition-all cursor-pointer"
         aria-label="Next message"
       >
@@ -725,18 +872,18 @@ export const MediaModal: React.FC<MediaModalProps> = ({
       </button>
 
       {/* 2. MIDDLE: ACTUAL MESSAGE BOARD / CONTENT */}
-      <main 
+      <main
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onTouchCancel={handleTouchEnd}
         className="w-full flex-1 flex flex-col items-center justify-center px-4 py-2 my-auto z-10 touch-pan-y"
       >
-        
+
         {effectiveActiveTab === 'contributions' && !hasContributions ? (
           /* Empty state when there are no contributions yet */
-          <div 
-            style={{ 
+          <div
+            style={{
               backgroundColor: frameBgColor,
               transform: `translateX(${dragOffset}px) rotate(${dragOffset * 0.015}deg)`,
               transition: isDragging ? 'none' : 'transform 0.24s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.24s ease',
@@ -752,11 +899,11 @@ export const MediaModal: React.FC<MediaModalProps> = ({
                 No Contributions Yet
               </h3>
               <p className="text-xs text-gray-500 font-medium max-w-[220px] mb-5 leading-relaxed">
-                {isSoloMode 
+                {isSoloMode
                   ? "This board is set to Solo Mode (Only Me)."
                   : "Be the first to add a heartfelt message to this board!"}
               </p>
-              
+
               {!isSoloMode && !isCapacityReached && onAddContributionClick && (
                 <button
                   type="button"
@@ -771,9 +918,9 @@ export const MediaModal: React.FC<MediaModalProps> = ({
           </div>
         ) : (
           /* The Actual Message Board Frame (Fixed & Pristine) */
-          <div 
+          <div
             onClick={handleBoardCardClick}
-            style={{ 
+            style={{
               backgroundColor: frameBgColor,
               transform: `translateX(${dragOffset}px) rotate(${dragOffset * 0.015}deg)`,
               transition: isDragging ? 'none' : 'transform 0.24s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.24s ease',
@@ -808,10 +955,10 @@ export const MediaModal: React.FC<MediaModalProps> = ({
                 <div className="absolute inset-x-0 bottom-0 pt-16 pb-3.5 px-4 sm:px-5 bg-gradient-to-t from-black/85 via-black/45 to-transparent rounded-b-[1.8rem] sm:rounded-b-[2rem] md:rounded-b-3xl flex items-center gap-2.5 z-30 transition-all duration-300 animate-in fade-in slide-in-from-bottom-2 pointer-events-none">
                   <div className="w-8 h-8 rounded-full bg-[#FAF0EC] border border-white/30 flex items-center justify-center text-xs font-extrabold text-[#FE6349] shrink-0 overflow-hidden shadow-xs">
                     {activeContributorAvatar ? (
-                      <img 
-                        src={activeContributorAvatar} 
-                        alt={activeContributorName} 
-                        className="w-full h-full object-cover" 
+                      <img
+                        src={activeContributorAvatar}
+                        alt={activeContributorName}
+                        className="w-full h-full object-cover"
                       />
                     ) : (
                       <User className="w-4 h-4 text-[#FE6349]" />
@@ -854,7 +1001,7 @@ export const MediaModal: React.FC<MediaModalProps> = ({
 
       {/* 4. BELOW THE BOARD (Strictly permanent main board metadata) */}
       <footer className="w-full max-w-[320px] sm:max-w-[360px] md:max-w-[380px] mx-auto px-0 pb-6 pt-1 flex flex-col items-start text-left gap-3 z-20 shrink-0">
-        
+
         {/* A. Caption (Permanent Main Board Creator's Caption) */}
         <h2 className="w-full text-base sm:text-lg font-bold text-white tracking-tight leading-snug truncate" title={mainBoardCaption}>
           {mainBoardCaption}
@@ -875,8 +1022,8 @@ export const MediaModal: React.FC<MediaModalProps> = ({
                 }
               }}
               className={`transition-colors cursor-pointer hover:underline text-left inline-block text-white/60 ${
-                token.isHashtag 
-                  ? 'hover:text-[#FE6349]' 
+                token.isHashtag
+                  ? 'hover:text-[#FE6349]'
                   : 'hover:text-white'
               }`}
               title={token.isHashtag ? `View all boards for ${token.text}` : `View ${token.text}'s Heartboard`}
@@ -907,18 +1054,18 @@ export const MediaModal: React.FC<MediaModalProps> = ({
 
         {/* D. Reaction Picker & Action Bar */}
         <div className="w-fit relative flex flex-col items-start">
-          
+
           {/* Dismiss backdrop when picker is open */}
           {isReactionPickerOpen && (
-            <div 
-              className="fixed inset-0 z-20 cursor-default" 
-              onClick={() => setIsReactionPickerOpen(false)} 
+            <div
+              className="fixed inset-0 z-20 cursor-default"
+              onClick={() => setIsReactionPickerOpen(false)}
             />
           )}
 
           {/* Top Floating Pill: Reaction Picker (Absolute overlay - zero layout shift) */}
           {isReactionPickerOpen && (
-            <div 
+            <div
               className="absolute bottom-[calc(100%+10px)] left-0 w-fit whitespace-nowrap flex items-center justify-start gap-4 bg-[#272835] rounded-full px-5 py-2.5 animate-in fade-in slide-in-from-bottom-2 duration-150 z-30"
               onClick={(e) => e.stopPropagation()}
             >
@@ -929,10 +1076,10 @@ export const MediaModal: React.FC<MediaModalProps> = ({
                 className="flex items-center gap-1.5 transition-transform active:scale-90 cursor-pointer py-1 px-1 rounded-full hover:bg-white/5"
                 title="Clap"
               >
-                <HandsClapping 
-                  size={24} 
-                  weight={userReactions.includes('clap') ? "fill" : "bold"} 
-                  color={userReactions.includes('clap') ? "#00D09C" : "#FFFFFF"} 
+                <HandsClapping
+                  size={24}
+                  weight={userReactions.includes('clap') ? "fill" : "bold"}
+                  color={userReactions.includes('clap') ? "#00D09C" : "#FFFFFF"}
                 />
                 {formatReactionCount(reactionCounts.clap) && (
                   <span className="text-xs font-bold text-white tracking-tight ml-0.5">
@@ -948,10 +1095,10 @@ export const MediaModal: React.FC<MediaModalProps> = ({
                 className="flex items-center gap-1.5 transition-transform active:scale-90 cursor-pointer py-1 px-1 rounded-full hover:bg-white/5"
                 title="Heart / Love"
               >
-                <PhosphorHeart 
-                  size={24} 
-                  weight="fill" 
-                  color={userReactions.includes('heart') ? "#FF3838" : "#FFFFFF"} 
+                <PhosphorHeart
+                  size={24}
+                  weight="fill"
+                  color={userReactions.includes('heart') ? "#FF3838" : "#FFFFFF"}
                 />
                 {formatReactionCount(reactionCounts.heart) && (
                   <span className="text-xs font-bold text-white tracking-tight ml-0.5">
@@ -967,10 +1114,10 @@ export const MediaModal: React.FC<MediaModalProps> = ({
                 className="flex items-center gap-1.5 transition-transform active:scale-90 cursor-pointer py-1 px-1 rounded-full hover:bg-white/5"
                 title="Smiley"
               >
-                <PhosphorSmiley 
-                  size={24} 
-                  weight={userReactions.includes('smiley') ? "fill" : "bold"} 
-                  color={userReactions.includes('smiley') ? "#FFC72C" : "#FFFFFF"} 
+                <PhosphorSmiley
+                  size={24}
+                  weight={userReactions.includes('smiley') ? "fill" : "bold"}
+                  color={userReactions.includes('smiley') ? "#FFC72C" : "#FFFFFF"}
                 />
                 {formatReactionCount(reactionCounts.smiley) && (
                   <span className="text-xs font-bold text-white tracking-tight ml-0.5">
@@ -986,10 +1133,10 @@ export const MediaModal: React.FC<MediaModalProps> = ({
                 className="flex items-center gap-1.5 transition-transform active:scale-90 cursor-pointer py-1 px-1 rounded-full hover:bg-white/5"
                 title="Fire"
               >
-                <PhosphorFire 
-                  size={24} 
-                  weight="fill" 
-                  color={userReactions.includes('fire') ? "#FF7629" : "#FFFFFF"} 
+                <PhosphorFire
+                  size={24}
+                  weight="fill"
+                  color={userReactions.includes('fire') ? "#FF7629" : "#FFFFFF"}
                 />
                 {formatReactionCount(reactionCounts.fire) && (
                   <span className="text-xs font-bold text-white tracking-tight ml-0.5">
@@ -1002,7 +1149,7 @@ export const MediaModal: React.FC<MediaModalProps> = ({
 
           {/* Bottom Pill: Action Bar */}
           <div className="w-fit flex items-center justify-center gap-4 bg-[#272835] rounded-full px-5 py-2.5 relative z-30">
-            
+
             {/* 1. Reaction Button (Smiley) - Default State has no count, only icon */}
             <button
               type="button"
