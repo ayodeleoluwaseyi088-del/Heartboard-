@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShareProfileModal } from './ShareProfileModal';
+import { ShareProfileModal, ShareData } from './ShareProfileModal';
 import { SEMANTIC_HEARTS, HeartBubbleSvg } from './CreateAppreciationModal';
 import { LiveHeartAnimation } from './LiveHeartAnimation';
 import { PostCard } from './PostCard';
@@ -46,7 +46,7 @@ export interface UserProfileData {
 export interface HeartboardViewProps {
   posts?: any[];
   onPostClick?: (post: any) => void;
-  onFilterClick?: (subTab?: 'board' | 'tagged' | 'hearts') => void;
+  onFilterClick?: (subTab?: 'board' | 'tagged' | 'collaboration' | 'hearts') => void;
   profileUser?: UserProfileData | null;
   currentUser?: RegisteredUser | null;
   onBack?: () => void;
@@ -55,7 +55,7 @@ export interface HeartboardViewProps {
   onSelectUser?: (user: UserProfileData) => void;
   selectedFilterId?: string;
   onClearFilter?: () => void;
-  defaultTab?: 'board' | 'tagged' | 'hearts';
+  defaultTab?: 'board' | 'tagged' | 'collaboration' | 'hearts';
   heartFilter?: 'received' | 'sent';
   onHeartFilterChange?: (filter: 'received' | 'sent') => void;
   onSignOut?: () => void;
@@ -616,6 +616,8 @@ const PRESET_AVATARS = [
   'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&q=80&w=200'
 ];
 
+export type HeartboardSubTab = 'board' | 'tagged' | 'collaboration' | 'hearts';
+
 export const HeartboardView: React.FC<HeartboardViewProps> = ({ 
   posts = [], 
   onPostClick, 
@@ -633,7 +635,7 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
   onHeartFilterChange,
   onSignOut
 }) => {
-  const [activeSubTab, setActiveSubTab] = useState<'board' | 'tagged' | 'hearts'>(defaultTab);
+  const [activeSubTab, setActiveSubTab] = useState<HeartboardSubTab>(defaultTab);
   const [internalHeartFilter, setInternalHeartFilter] = useState<'received' | 'sent'>(heartFilterProp || 'received');
   
   React.useEffect(() => {
@@ -702,6 +704,7 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
   const [showTagManager, setShowTagManager] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [copiedProfileLink, setCopiedProfileLink] = useState(false);
+  const [shareModalData, setShareModalData] = useState<ShareData | null>(null);
 
   const handleCopyProfileLink = () => {
     const profileUrl = window.location.origin ? `${window.location.origin}?profile=${encodeURIComponent(userHandle)}` : `https://heartboard.app/${userHandle}`;
@@ -1049,25 +1052,103 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
   });
 
   const filteredItems = allAvailableItems.filter((item) => {
+    // 1. Target user resolution for current profile context
+    const targetName = (profileUser?.name || currentUser?.name || userName || 'Micky Mouse').trim();
+    const targetHandle = (profileUser?.handle || currentUser?.handle || userHandle || '@mickymouse').trim();
+    const targetHandleClean = targetHandle.replace(/^@/, '').toLowerCase();
+    const targetNameClean = targetName.toLowerCase();
+    const targetNameNoSpaces = targetNameClean.replace(/\s+/g, '');
+    const targetId = (profileUser?.id || currentUser?.id || 'u9').trim().toLowerCase();
+    const isOwnProfile = !profileUser;
+
+    // Helper: is the current target user the CREATOR of this board?
+    const isCreator = (it: any): boolean => {
+      if (isOwnProfile && it.isCreatedByUser === true) return true;
+      const aName = (it.authorName || '').trim().toLowerCase();
+      const aHandle = (it.authorHandle || '').trim().toLowerCase().replace(/^@/, '');
+      const aId = (it.authorId || '').trim().toLowerCase();
+      if (aHandle && aHandle === targetHandleClean) return true;
+      if (aName && (aName === targetNameClean || aName.replace(/\s+/g, '') === targetNameNoSpaces)) return true;
+      if (targetId && aId && aId === targetId) return true;
+      // Default fallback for mock items with explicit tab/section 'board' if own profile
+      if (isOwnProfile && (it.section === 'board' || it.tab === 'board') && !it.isTaggedForUser) return true;
+      return false;
+    };
+
+    // Helper: was the current target user TAGGED as a recipient on this board?
+    const isTagged = (it: any): boolean => {
+      // If target user created the board, it belongs under Board, NEVER Tagged!
+      if (isCreator(it)) return false;
+
+      const recipientsList = (Array.isArray(it.recipients) ? it.recipients : []).map((r: string) => r.trim().toLowerCase());
+      const recipientName = (it.recipientName || it.recipient || '').trim().toLowerCase();
+      const recipientHandle = (it.recipientHandle || '').trim().toLowerCase().replace(/^@/, '');
+      const targetField = (it.targetId || '').trim().toLowerCase();
+      const taggedList = (Array.isArray(it.taggedUsers) ? it.taggedUsers : []).map((u: string) => u.trim().toLowerCase());
+
+      const inRecipientsList = recipientsList.some((r: string) => {
+        const clean = r.replace(/^@/, '');
+        return clean === targetHandleClean || clean === targetNameNoSpaces || r === targetHandle.toLowerCase() || r === `@${targetNameNoSpaces}`;
+      });
+
+      const matchesRecipientName = 
+        (recipientName && (recipientName.includes(targetNameClean) || recipientName.includes(targetHandleClean))) ||
+        (recipientHandle && recipientHandle === targetHandleClean);
+
+      const matchesTargetId = targetField === targetHandleClean || targetField === targetNameNoSpaces || (targetId && targetField === targetId);
+      const inTaggedList = taggedList.some((u: string) => u.replace(/^@/, '') === targetHandleClean || u === targetNameClean);
+      const isTaggedExplicit = isOwnProfile && (it.isTaggedForUser === true || it.section === 'tagged' || it.tab === 'tagged') && !it.isCreatedByUser;
+
+      return inRecipientsList || matchesRecipientName || matchesTargetId || inTaggedList || isTaggedExplicit;
+    };
+
+    // Helper: did the current target user CONTRIBUTE/curate a message on this board?
+    const isContributor = (it: any): boolean => {
+      const contribs = Array.isArray(it.contributions) ? it.contributions : [];
+      const hasContribution = contribs.some((c: any) => {
+        if (isOwnProfile && c.isCreatedByUser === true) return true;
+        const cName = (c.authorName || '').trim().toLowerCase();
+        const cHandle = (c.authorHandle || '').trim().toLowerCase().replace(/^@/, '');
+        const cId = (c.authorId || '').trim().toLowerCase();
+        if (cHandle && cHandle === targetHandleClean) return true;
+        if (cName && (cName === targetNameClean || cName.replace(/\s+/g, '') === targetNameNoSpaces)) return true;
+        if (targetId && cId && cId === targetId) return true;
+        return false;
+      });
+
+      const hasCollabMeta = 
+        (it.collaboratorHandles || []).some((h: string) => h.replace(/^@/, '').toLowerCase() === targetHandleClean) ||
+        (it.collaboratorIds || []).some((id: string) => id.toLowerCase() === targetId) ||
+        (it.collaborators || []).some((collab: string) => collab.toLowerCase() === targetNameClean);
+
+      const isCollabExplicit = isOwnProfile && (it.hasUserContributed === true || it.section === 'collaboration' || it.tab === 'collaboration');
+
+      return hasContribution || hasCollabMeta || isCollabExplicit;
+    };
+
     let matchesTab = false;
 
     if (activeSubTab === 'board') {
-      // 1. Board section = Message boards only (NEVER heart tokens!)
+      // 1. Board section = Message boards created by this user only (NEVER heart tokens!)
       if (isHeartPost(item)) return false;
-      matchesTab = item.section === 'board' || item.tab === 'board' || (!item.section && !item.tab) || (item.isCreatedByUser === true && item.section !== 'tagged');
+      matchesTab = isCreator(item);
     } else if (activeSubTab === 'tagged') {
-      // 2. Tagged section = Tagged message boards only (NEVER heart tokens!)
+      // 2. Tagged section = Message boards where this user was tagged (NEVER heart tokens!)
       if (isHeartPost(item)) return false;
-      matchesTab = item.section === 'tagged' || item.isTaggedForUser === true || item.tab === 'tagged';
+      matchesTab = isTagged(item);
+    } else if (activeSubTab === 'collaboration') {
+      // 3. Collaboration section = Message boards where this user contributed a message (NEVER heart tokens!)
+      if (isHeartPost(item)) return false;
+      matchesTab = isContributor(item);
     } else if (activeSubTab === 'hearts') {
-      // 3. Hearts
+      // 4. Hearts section = Heart tokens
       matchesTab = isHeartPost(item);
     }
 
     if (!matchesTab) return false;
 
-    // Apply User-Controlled Event Category Filter on Boards tab if explicitly selected by user
-    if (activeSubTab === 'board' && selectedFilterId && selectedFilterId !== 'moment' && selectedFilterId !== 'all') {
+    // Apply User-Controlled Event Category Filter on Boards/Tagged/Collaboration tabs if explicitly selected by user
+    if (activeSubTab !== 'hearts' && selectedFilterId && selectedFilterId !== 'moment' && selectedFilterId !== 'all') {
       const targetFilter = selectedFilterId.toLowerCase();
       const pEv = (item.eventType || '').toLowerCase().replace(/_/g, ' ');
       const content = (item.content || '').toLowerCase();
@@ -1085,11 +1166,11 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
 
     const q = searchQuery.trim().toLowerCase();
 
-    // Section-specific search logic for Boards and Tagged:
-    // Search by Caption, Recipient Name, or Creator/Tagged User Name
+    // Section-specific search logic: Caption, Recipient Name, or Creator/Contributor Name
     const matchesCaption = 
       (item.title && item.title.toLowerCase().includes(q)) ||
       (item.content && item.content.toLowerCase().includes(q)) ||
+      (item.caption && item.caption.toLowerCase().includes(q)) ||
       (item.subtitle && item.subtitle.toLowerCase().includes(q)) ||
       (item.quote && item.quote.toLowerCase().includes(q));
 
@@ -1101,11 +1182,17 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
 
     const matchesCreatorOrTagged = 
       (item.authorName && item.authorName.toLowerCase().includes(q)) ||
+      (item.authorHandle && item.authorHandle.toLowerCase().includes(q)) ||
       (item.creatorName && item.creatorName.toLowerCase().includes(q)) ||
       (item.curatorName && item.curatorName.toLowerCase().includes(q)) ||
       (item.taggedUser && item.taggedUser.toLowerCase().includes(q)) ||
       (item.userHandle && item.userHandle.toLowerCase().includes(q)) ||
-      (Array.isArray(item.taggedUsers) && item.taggedUsers.some((u: string) => u.toLowerCase().includes(q)));
+      (Array.isArray(item.taggedUsers) && item.taggedUsers.some((u: string) => u.toLowerCase().includes(q))) ||
+      (Array.isArray(item.contributions) && item.contributions.some((c: any) => 
+        (c.authorName && c.authorName.toLowerCase().includes(q)) ||
+        (c.authorHandle && c.authorHandle.toLowerCase().includes(q)) ||
+        (c.content && c.content.toLowerCase().includes(q))
+      ));
 
     return matchesCaption || matchesRecipient || matchesCreatorOrTagged;
   }).sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
@@ -1243,7 +1330,16 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
             {/* Action buttons */}
             <div className="flex items-center gap-3 mt-1">
               <button 
-                onClick={() => setIsShareModalOpen(true)}
+                onClick={() => {
+                  setShareModalData({
+                    type: 'profile',
+                    userHandle: userHandle,
+                    userName: userName,
+                    profileImage: profileImage,
+                    url: `${window.location.origin}/#${userHandle.replace('@', '')}`
+                  });
+                  setIsShareModalOpen(true);
+                }}
                 className="bg-[#ffffff] hover:bg-[#F8F9FB] text-[#353849] border-2 border-[#ECEFF3] px-4 py-2 rounded-full text-xs font-medium flex items-center gap-2 transition-all cursor-pointer shadow-2xs active:scale-95"
               >
                 <Share2 className="w-3.5 h-3.5 stroke-[2.5]" />
@@ -1268,11 +1364,12 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
 
       {/* 3. Filter Sub-Tabs */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        {/* Filter Sub-Tabs */}
-        <div className="flex items-center gap-2">
+        {/* Filter Sub-Tabs: Exact requested order: Board -> Tagged -> Collaboration -> Hearts */}
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
           <button
+            id="heartboard-tab-board"
             onClick={() => setActiveSubTab('board')}
-            className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
+            className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
               activeSubTab === 'board'
                 ? 'bg-[#1A1B25] text-white shadow-2xs'
                 : 'bg-[#F8F9FB] text-[#A4ABB8] hover:text-[#666D80] hover:bg-[#ECEFF3]'
@@ -1281,8 +1378,9 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
             Board
           </button>
           <button
+            id="heartboard-tab-tagged"
             onClick={() => setActiveSubTab('tagged')}
-            className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
+            className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
               activeSubTab === 'tagged'
                 ? 'bg-[#1A1B25] text-white shadow-2xs'
                 : 'bg-[#F8F9FB] text-[#A4ABB8] hover:text-[#666D80] hover:bg-[#ECEFF3]'
@@ -1291,11 +1389,23 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
             Tagged
           </button>
           <button
+            id="heartboard-tab-collaboration"
+            onClick={() => setActiveSubTab('collaboration')}
+            className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+              activeSubTab === 'collaboration'
+                ? 'bg-[#1A1B25] text-white shadow-2xs'
+                : 'bg-[#F8F9FB] text-[#A4ABB8] hover:text-[#666D80] hover:bg-[#ECEFF3]'
+            }`}
+          >
+            Collaboration
+          </button>
+          <button
+            id="heartboard-tab-hearts"
             onClick={() => {
               setActiveSubTab('hearts');
               triggerHeartsCelebration();
             }}
-            className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
+            className={`px-5 py-2 rounded-full text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
               activeSubTab === 'hearts'
                 ? 'bg-[#1A1B25] text-white shadow-2xs'
                 : 'bg-[#F8F9FB] text-[#A4ABB8] hover:text-[#666D80] hover:bg-[#ECEFF3]'
@@ -1307,7 +1417,7 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
       </div>
 
       {/* Active Filter Banner when user selects an event filter on Heartboard */}
-      {activeSubTab === 'board' && selectedFilterId && selectedFilterId !== 'moment' && selectedFilterId !== 'all' && (
+      {activeSubTab !== 'hearts' && selectedFilterId && selectedFilterId !== 'moment' && selectedFilterId !== 'all' && (
         <div className="bg-[#FAF0EC] border border-orange-200/60 rounded-2xl p-3.5 mb-6 flex items-center justify-between gap-3 shadow-2xs">
           <div className="flex items-center gap-2 text-xs text-gray-900 font-bold">
             <SlidersHorizontal className="w-4 h-4 text-[#FE6349] shrink-0" />
@@ -1339,9 +1449,11 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={
               activeSubTab === 'board'
-                ? "Search boards by caption, recipient, or creator..."
+                ? "Search boards created by you by caption, recipient, or event..."
                 : activeSubTab === 'tagged'
-                ? "Search tagged boards by caption, recipient, or creator..."
+                ? "Search boards you were tagged in by caption, creator, or event..."
+                : activeSubTab === 'collaboration'
+                ? "Search boards you contributed to by caption, creator, or message..."
                 : heartFilter === 'received'
                 ? "Search received hearts by type or sender's name (e.g. Mercy24)..."
                 : "Search sent hearts by type or recipient's name (e.g. Cristiano)..."
@@ -1388,6 +1500,12 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
                 data={cat}
                 onShare={(catData) => {
                   setSelectedCategoryModal(catData);
+                  setShareModalData({
+                    type: 'board',
+                    boardTitle: `${catData.categoryName} Hearts`,
+                    boardTheme: catData.bubbleColor,
+                    url: `${window.location.origin}/?hearts=${encodeURIComponent(catData.id)}`
+                  });
                   setIsShareModalOpen(true);
                 }}
                 onClick={(catData) => {
@@ -1404,15 +1522,27 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
           </div>
           <h3 className="text-lg font-bold text-[#1A1B25]">
             {searchQuery.trim() 
-              ? `No ${activeSubTab === 'board' ? 'boards' : 'tagged boards'} found matching "${searchQuery}"`
-              : `No ${activeSubTab === 'board' ? 'boards' : 'tagged boards'} found`}
+              ? `No ${
+                  activeSubTab === 'board'
+                    ? 'created boards'
+                    : activeSubTab === 'tagged'
+                    ? 'tagged boards'
+                    : 'collaborated boards'
+                } found matching "${searchQuery}"`
+              : activeSubTab === 'board'
+                ? 'No boards created yet'
+                : activeSubTab === 'tagged'
+                ? 'No tagged boards yet'
+                : 'No collaborative boards yet'}
           </h3>
           <p className="text-xs text-gray-400 mt-1 max-w-sm">
             {searchQuery.trim()
-              ? `No ${activeSubTab === 'board' ? 'boards' : 'tagged boards'} matched "${searchQuery}". Try searching by caption, recipient name, or creator name.`
+              ? `No boards matched "${searchQuery}". Try searching by caption, recipient name, or creator name.`
               : activeSubTab === 'board'
-                ? "Messages and boards you create will appear here automatically."
-                : "Boards where you are tagged as a recipient will appear here automatically."}
+                ? "Messages and boards you create will appear here under your Board section."
+                : activeSubTab === 'tagged'
+                ? "Boards where you were tagged as a recipient will appear here."
+                : "Boards where you contributed tributes or messages will appear here."}
           </p>
         </div>
       ) : (
@@ -1497,6 +1627,12 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
                     {/* Share Button Pill */}
                     <button
                       onClick={() => {
+                        setShareModalData({
+                          type: 'board',
+                          boardTitle: `${activeCategoryModal.categoryName} Hearts`,
+                          boardTheme: activeCategoryModal.bubbleColor,
+                          url: `${window.location.origin}/?hearts=${encodeURIComponent(activeCategoryModal.id)}`
+                        });
                         setIsShareModalOpen(true);
                       }}
                       className="mt-2.5 px-4 py-1.5 rounded-full border border-gray-200 text-[#353849] font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-gray-50 active:scale-95 transition-all cursor-pointer bg-white shadow-2xs"
@@ -2004,13 +2140,20 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
           </>
         )}
       </AnimatePresence>
-      {/* Share Profile Overlay Modal */}
+      {/* Share Profile / Board Overlay Modal (Context-Aware) */}
       <ShareProfileModal
         isOpen={isShareModalOpen}
-        onClose={() => setIsShareModalOpen(false)}
-        userHandle={userHandle}
-        userName={userName}
-        profileImage={profileImage}
+        onClose={() => {
+          setIsShareModalOpen(false);
+          setShareModalData(null);
+        }}
+        shareData={shareModalData || {
+          type: 'profile',
+          userHandle: userHandle,
+          userName: userName,
+          profileImage: profileImage,
+          url: `${window.location.origin}/#${userHandle.replace('@', '')}`
+        }}
         onShowToast={showToast}
       />
     </div>

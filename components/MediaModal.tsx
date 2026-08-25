@@ -447,8 +447,13 @@ export const MediaModal: React.FC<MediaModalProps> = ({
     if (theme.includes('mint') || theme.includes('ECEFE6')) return '#ECEFE6';
     if (theme.includes('sunset') || theme.includes('FAF5E8')) return '#FAF5E8';
     if (theme.includes('lavender') || theme.includes('EEF1FA')) return '#EEF1FA';
+    if (theme.includes('blush') || theme.includes('FDE8E8')) return '#FDE8E8';
+    if (theme.includes('sky') || theme.includes('E0F2FE')) return '#E0F2FE';
+    if (theme.includes('emerald') || theme.includes('E6F4EA')) return '#E6F4EA';
+    if (theme.includes('amber') || theme.includes('FEF3C7')) return '#FEF3C7';
+    if (theme.includes('lilac') || theme.includes('F3E8FF')) return '#F3E8FF';
     if (theme.includes('peach') || theme.includes('F7F0ED') || theme.includes('FAF0EC')) return '#F7F0ED';
-    return '#FEA735'; // Warm golden orange default matching mockup
+    return '#F7F0ED';
   };
 
   const frameBgColor = getFrameBg();
@@ -1056,14 +1061,21 @@ export const MediaModal: React.FC<MediaModalProps> = ({
         </div>
       )}
 
-      {/* Share Modal Integration */}
+      {/* Share Modal Integration (Context-Aware for Message Board) */}
       {isShareModalOpen && (
         <ShareProfileModal
           isOpen={isShareModalOpen}
           onClose={() => setIsShareModalOpen(false)}
-          userHandle={post.authorName ? `@${post.authorName.toLowerCase().replace(/\s+/g, '')}` : '@curator'}
-          userName={post.authorName}
-          profileImage={post.authorAvatar || null}
+          shareData={{
+            type: 'board',
+            boardId: post.id,
+            boardTitle: post.title || (post.content && post.content.length <= 40 ? post.content : undefined) || (post.recipientName ? `Tribute for ${post.recipientName}` : undefined) || `${post.authorName || 'Curator'}'s Board`,
+            boardThumbnail: post.imageUrl || post.mediaUrl || post.authorAvatar,
+            boardTheme: post.theme || '#BEE27C',
+            boardAuthorName: post.authorName,
+            boardRecipientName: post.recipientName || (Array.isArray(post.recipients) ? post.recipients[0] : undefined),
+            url: `${window.location.origin}/?board=${encodeURIComponent(post.id)}`
+          }}
           onShowToast={(msg) => {
             setToastMessage(msg);
             setShowFlagToast(true);

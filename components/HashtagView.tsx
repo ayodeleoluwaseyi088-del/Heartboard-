@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { PostCard } from './PostCard';
 import { RegisteredUser, PostVisibility } from '../types';
+import { ShareProfileModal } from './ShareProfileModal';
 
 export interface HashtagViewProps {
   hashtag: string; // e.g. "#ronaldo" or "ronaldo"
@@ -25,7 +26,7 @@ export const HashtagView: React.FC<HashtagViewProps> = ({
   onPostClick
 }) => {
   const [searchQuery] = useState('');
-  const [isCopied, setIsCopied] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   // Format clean hashtag string
   const cleanHashtag = hashtag.trim().startsWith('#') ? hashtag.trim() : `#${hashtag.trim()}`;
@@ -70,11 +71,7 @@ export const HashtagView: React.FC<HashtagViewProps> = ({
     : matchingPosts;
 
   const handleShareHashtag = () => {
-    if (navigator.clipboard) {
-      navigator.clipboard.writeText(window.location.href);
-      setIsCopied(true);
-      setTimeout(() => setIsCopied(false), 2000);
-    }
+    setIsShareModalOpen(true);
   };
 
   // Mock engagement stats formatted like "1.2M Board | 800k Message | 30k Curator"
@@ -97,11 +94,6 @@ export const HashtagView: React.FC<HashtagViewProps> = ({
         </button>
 
         <div className="flex items-center gap-2">
-          {isCopied && (
-            <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200/60">
-              Link copied!
-            </span>
-          )}
           <button 
             aria-label="Share Hashtag Community"
             onClick={handleShareHashtag}
@@ -180,6 +172,18 @@ export const HashtagView: React.FC<HashtagViewProps> = ({
           </button>
         </div>
       )}
+
+      {/* Share Hashtag Community Board Modal */}
+      <ShareProfileModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        shareData={{
+          type: 'board',
+          boardTitle: `${cleanHashtag} Community`,
+          boardTheme: '#149B88',
+          url: `${window.location.origin}/#tag-${rawTag}`
+        }}
+      />
     </div>
   );
 };

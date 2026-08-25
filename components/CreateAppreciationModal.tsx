@@ -33,7 +33,8 @@ import {
   Search,
   UserX,
   Hash,
-  User
+  User,
+  Send
 } from 'lucide-react';
 import { refineText } from '../services/geminiService';
 import { VectorPicker, PHOSPHOR_VECTORS } from './VectorPicker';
@@ -221,9 +222,18 @@ const RenderCanvasElement: React.FC<RenderCanvasElementProps> = ({
         userSelect: 'none',
       }}
       className={`absolute pointer-events-auto flex items-center justify-center cursor-grab active:cursor-grabbing transition-transform duration-75 select-none ${
-        isSelected ? 'ring-2 ring-[#FF6B4A] ring-offset-2 z-20' : 'hover:opacity-95 z-10'
+        isSelected ? 'z-20' : 'hover:opacity-95 z-10'
       }`}
     >
+      {/* Global Check-mark badge on selected component */}
+      {isSelected && (
+        <div 
+          className="absolute -top-2.5 -right-2.5 w-5 h-5 rounded-full bg-[#3BB88C] text-white flex items-center justify-center shadow-xs z-30 pointer-events-none animate-in zoom-in-75 duration-150"
+        >
+          <Check className="w-3 h-3 stroke-[3]" />
+        </div>
+      )}
+
       {/* 1. Image Element */}
       {el.type === 'image' && el.imageUrl && (
         <img
@@ -258,20 +268,21 @@ const RenderCanvasElement: React.FC<RenderCanvasElementProps> = ({
 
       {/* 3. Text Element */}
       {el.type === 'text' && el.text && (
-        <div className="w-full p-2 rounded-xl border border-transparent bg-orange-50/10 pointer-events-none select-none">
+        <div className="w-full p-2 rounded-xl border border-transparent pointer-events-none select-none">
           <p 
             style={{ 
               color: el.color || '#1A1B25',
               fontFamily: el.fontFamily || (el.isCursive ? 'Playfair Display, cursive' : 'Nunito, sans-serif'),
-              textAlign: el.align || 'center'
+              textAlign: el.align || 'left',
+              whiteSpace: 'pre-wrap',
             }}
-            className={`font-bold leading-snug break-words ${
+            className={`font-bold leading-snug break-words whitespace-pre-wrap ${
               el.isCursive || el.fontFamily?.includes('Playfair') || el.fontFamily?.includes('Caveat') 
                 ? 'text-xl sm:text-2xl' 
                 : 'text-sm sm:text-base'
             }`}
           >
-            "{el.text}"
+            {el.text}
           </p>
         </div>
       )}
@@ -367,20 +378,21 @@ export const RenderCanvasElementReadOnly: React.FC<RenderCanvasElementReadOnlyPr
 
       {/* 3. Text Element */}
       {el.type === 'text' && el.text && (
-        <div className="w-full p-2 rounded-xl border border-transparent bg-orange-50/10 pointer-events-none select-none">
+        <div className="w-full p-2 rounded-xl border border-transparent pointer-events-none select-none">
           <p 
             style={{ 
               color: el.color || '#1A1B25',
               fontFamily: el.fontFamily || (el.isCursive ? 'Playfair Display, cursive' : 'Nunito, sans-serif'),
-              textAlign: el.align || 'center'
+              textAlign: el.align || 'left',
+              whiteSpace: 'pre-wrap',
             }}
-            className={`font-bold leading-snug break-words ${
+            className={`font-bold leading-snug break-words whitespace-pre-wrap ${
               el.isCursive || el.fontFamily?.includes('Playfair') || el.fontFamily?.includes('Caveat') 
                 ? 'text-xl' 
                 : 'text-sm'
             }`}
           >
-            "{el.text}"
+            {el.text}
           </p>
         </div>
       )}
@@ -534,9 +546,16 @@ export const CanvasReadOnlyCard: React.FC<CanvasReadOnlyCardProps> = ({
                 <img src={uploadedImage} alt="Uploaded attachment" className="max-w-[200px] max-h-[140px] rounded-xl object-contain shadow-xs my-auto" />
               )}
               {fallbackText ? (
-                <div className="w-full p-2 my-auto text-center">
-                  <p className="text-xl font-bold leading-snug break-words text-[#1A1B25]" style={{ fontFamily: 'Playfair Display, cursive' }}>
-                    "{fallbackText}"
+                <div className="w-full p-2 my-auto">
+                  <p 
+                    className="text-base sm:text-lg font-bold leading-snug break-words whitespace-pre-wrap text-[#1A1B25]" 
+                    style={{ 
+                      fontFamily: 'Nunito, sans-serif',
+                      textAlign: 'left',
+                      whiteSpace: 'pre-wrap'
+                    }}
+                  >
+                    {fallbackText}
                   </p>
                 </div>
               ) : !uploadedImage && (
@@ -594,6 +613,7 @@ export interface CreateAppreciationModalProps {
   onUpdateContribution?: (parentBoardId: string, updatedContrib: Contribution) => void;
   onDeletePost?: (postId: string) => void;
   onDeleteContribution?: (parentBoardId: string, contribId: string) => void;
+  currentUser?: RegisteredUser | null;
 }
 
 // Spacing System conforming to additional guide elements:
@@ -858,7 +878,8 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
   onUpdatePost,
   onUpdateContribution,
   onDeletePost,
-  onDeleteContribution
+  onDeleteContribution,
+  currentUser
 }) => {
   const [activeType, setActiveType] = useState<'text' | 'audio' | 'video'>(() => {
     if (editingContribution?.type) return editingContribution.type === 'image' ? 'text' : editingContribution.type as any;
@@ -963,13 +984,6 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
 
   const toggleAccordion = (section: 'font' | 'color' | 'template') => {
     setActiveAccordion(prev => prev === section ? null : section);
-  };
-
-  const hasElementContent = (el: CanvasElement) => {
-    if (el.type === 'text') return Boolean(el.text && el.text.trim());
-    if (el.type === 'image') return Boolean(el.imageUrl && el.imageUrl.trim());
-    if (el.type === 'vector') return Boolean(el.vectorId || el.emoji);
-    return false;
   };
 
   // Handlers for adding new elements on toolbar button clicks
@@ -1235,6 +1249,23 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
     }
   }, [recipient, isHashtagRecipient]);
 
+  const hasElementContent = (el: CanvasElement) => {
+    if (el.type === 'text') return Boolean(el.text && el.text.trim());
+    if (el.type === 'image') return Boolean(el.imageUrl && el.imageUrl.trim());
+    if (el.type === 'vector') return Boolean(el.vectorId || el.emoji);
+    return false;
+  };
+
+  // Check if Canva has any content
+  const hasCanvaContent = Boolean(
+    content.trim() ||
+    uploadedImage ||
+    caption.trim() ||
+    selectedSticker ||
+    canvasElements.some(hasElementContent) ||
+    (activeType !== 'text')
+  );
+
   const handleHeartToggle = (heartId: string) => {
     if (selectedHearts.includes(heartId)) {
       setSelectedHearts(prev => prev.filter(id => id !== heartId));
@@ -1319,10 +1350,15 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
           targetId: finalRecipientsString.replace('#', ''),
           targetType: isHashtagRecipient ? EntityType.WALL : EntityType.BOARD,
           imageUrl: uploadedImage || undefined,
-          theme: selectedFrame.id === 'slate' ? 'bg-[#272835] text-white' : 
-                 selectedFrame.id === 'mint' ? 'bg-[#ECEFE6]' :
-                 selectedFrame.id === 'sunset' ? 'bg-[#FAF5E8]' :
-                 selectedFrame.id === 'lavender' ? 'bg-[#EEF1FA]' : 'bg-[#FAF0EC]',
+          theme: selectedFrame.bgHex || (selectedFrame.id === 'slate' ? '#272835' : 
+                 selectedFrame.id === 'mint' ? '#ECEFE6' :
+                 selectedFrame.id === 'sunset' ? '#FAF5E8' :
+                 selectedFrame.id === 'lavender' ? '#EEF1FA' :
+                 selectedFrame.id === 'blush' ? '#FDE8E8' :
+                 selectedFrame.id === 'sky' ? '#E0F2FE' :
+                 selectedFrame.id === 'emerald' ? '#E6F4EA' :
+                 selectedFrame.id === 'amber' ? '#FEF3C7' :
+                 selectedFrame.id === 'lilac' ? '#F3E8FF' : '#F7F0ED'),
           sticker: selectedSticker ? selectedSticker.id : undefined,
           confetti: selectedConfetti || undefined,
           sponsor: boardCapacity === 'collaborative' ? "Community Coauthored" : undefined,
@@ -1342,11 +1378,14 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
 
       // 3. New Contribution Flow
       if (isContribution && parentBoard) {
+        const defaultName = currentUser?.name || 'Micky Mouse';
+        const defaultHandle = currentUser?.handle || '@mickymouse';
         const newContrib: any = {
           id: 'contrib-' + Math.random().toString(36).substring(2, 11),
-          authorName: effectiveVisibility === PostVisibility.ANONYMOUS ? 'Anon' : (authorName.trim() || 'Nancy98'),
-          authorHandle: authorName.trim() ? (authorName.startsWith('@') ? authorName.trim() : `@${authorName.trim().toLowerCase().replace(/\s+/g, '')}`) : '@nancy98',
-          authorAvatar: effectiveVisibility === PostVisibility.ANONYMOUS ? undefined : 'https://api.dicebear.com/7.x/avataaars/svg?seed=Nancy98',
+          authorName: effectiveVisibility === PostVisibility.ANONYMOUS ? 'Anon' : (authorName.trim() || defaultName),
+          authorHandle: authorName.trim() ? (authorName.startsWith('@') ? authorName.trim() : `@${authorName.trim().toLowerCase().replace(/\s+/g, '')}`) : defaultHandle,
+          authorAvatar: effectiveVisibility === PostVisibility.ANONYMOUS ? undefined : (currentUser?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(authorName.trim() || defaultName)}`),
+          authorId: currentUser?.id,
           content: safeTextCheck,
           caption: caption.trim() || undefined,
           type: activeType,
@@ -1370,10 +1409,15 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
         return;
       }
 
+      const defaultPostAuthor = currentUser?.name || 'Curator';
+      const defaultPostHandle = currentUser?.handle || '@curator';
       const newPost: any = {
         id: 'post-' + Math.random().toString(36).substring(2, 11),
         visibility: effectiveVisibility,
-        authorName: effectiveVisibility === PostVisibility.ANONYMOUS ? 'Anon' : (authorName.trim() || 'Curator'),
+        authorName: effectiveVisibility === PostVisibility.ANONYMOUS ? 'Anon' : (authorName.trim() || defaultPostAuthor),
+        authorHandle: authorName.trim() ? (authorName.startsWith('@') ? authorName.trim() : `@${authorName.trim().toLowerCase().replace(/\s+/g, '')}`) : defaultPostHandle,
+        authorAvatar: effectiveVisibility === PostVisibility.ANONYMOUS ? undefined : (currentUser?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(authorName.trim() || defaultPostAuthor)}`),
+        authorId: currentUser?.id,
         content: safeTextCheck,
         caption: caption.trim() || undefined,
         eventType: selectedEventType || 'Appreciation',
@@ -1393,10 +1437,15 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
         aspectRatio: 'portrait',
         imageUrl: uploadedImage || undefined,
         createdAt: new Date().toISOString(),
-        theme: selectedFrame.id === 'slate' ? 'bg-[#272835] text-white' : 
-               selectedFrame.id === 'mint' ? 'bg-[#ECEFE6]' :
-               selectedFrame.id === 'sunset' ? 'bg-[#FAF5E8]' :
-               selectedFrame.id === 'lavender' ? 'bg-[#EEF1FA]' : 'bg-[#FAF0EC]',
+        theme: selectedFrame.bgHex || (selectedFrame.id === 'slate' ? '#272835' : 
+               selectedFrame.id === 'mint' ? '#ECEFE6' :
+               selectedFrame.id === 'sunset' ? '#FAF5E8' :
+               selectedFrame.id === 'lavender' ? '#EEF1FA' :
+               selectedFrame.id === 'blush' ? '#FDE8E8' :
+               selectedFrame.id === 'sky' ? '#E0F2FE' :
+               selectedFrame.id === 'emerald' ? '#E6F4EA' :
+               selectedFrame.id === 'amber' ? '#FEF3C7' :
+               selectedFrame.id === 'lilac' ? '#F3E8FF' : '#F7F0ED'),
         sticker: selectedSticker ? selectedSticker.id : undefined,
         confetti: selectedConfetti || undefined,
         sponsor: boardCapacity === 'collaborative' ? "Community Coauthored" : undefined,
@@ -1426,7 +1475,7 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
       
       {/* Sticky Top Banner Header */}
       <div className="sticky top-0 z-50 bg-[#ffffff] border-b border-gray-100 shrink-0">
-        {/* Header (Drop a message & Close button) */}
+        {/* Header (Drop a message, Close button, and Send/Publish button) */}
         <div className="w-full px-6 py-4 flex items-center justify-between">
           <button 
             onClick={onClose}
@@ -1436,12 +1485,25 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
             <X className="w-6 h-6 stroke-[1.5]" />
           </button>
           
-          <h1 className="text-xl md:text-2xl font-bold text-[#1A1B25] tracking-tight text-center flex-grow -translate-x-3">
+          <h1 className="text-xl md:text-2xl font-bold text-[#1A1B25] tracking-tight text-center flex-grow">
             Drop a message
           </h1>
           
-          {/* Mirror spacer */}
-          <div className="w-8" />
+          {/* Top-right Publish action with Send icon */}
+          <button
+            type="button"
+            onClick={handlePublish}
+            disabled={!hasCanvaContent || isModerating}
+            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+              !hasCanvaContent || isModerating
+                ? 'bg-[#F1E4DF] text-[#A49893] cursor-not-allowed shadow-none opacity-60'
+                : 'bg-[#FE6349] hover:bg-[#e05234] text-white shadow-xs active:scale-95 cursor-pointer'
+            }`}
+            aria-label="Publish message"
+            title={!hasCanvaContent ? "Add content to the Canva to publish" : "Publish"}
+          >
+            <Send className="w-5 h-5 -translate-x-0.5" />
+          </button>
         </div>
       </div>
 
@@ -1534,24 +1596,6 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
           </div>
         </div>
 
-
-
-
-
-        {/* Core Send Trigger outside drawer when card text has contents */}
-        {content.trim() && (
-          <div className="flex flex-col items-center">
-            <button
-              onClick={handlePublish}
-              disabled={isModerating}
-              className="mt-2 bg-[#FE6349] text-white px-8 py-3.5 rounded-full text-xs font-bold leading-none tracking-wider uppercase hover:opacity-95 shadow-md flex items-center gap-2 active:scale-95 transition-all"
-            >
-              <span>Publish & Blast Love</span>
-              <Sparkles className="w-3.5 h-3.5 fill-white" />
-            </button>
-          </div>
-        )}
-
         {/* Send Heart Accordion Component - Styled precisely according to reference image */}
         <div 
           style={{ backgroundColor: selectedFrame.bgHex }}
@@ -1593,16 +1637,12 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                         onClick={() => {
                           setSelectedSendHeart(isSelected ? null : heart.id);
                         }}
-                        className={`p-3 rounded-2xl text-left transition-all duration-200 cursor-pointer flex flex-col justify-between h-20 relative overflow-hidden bg-white border-0 shadow-none outline-none ${
-                          isSelected 
-                            ? 'ring-2 ring-[#FE6349] bg-rose-50/40' 
-                            : 'hover:bg-white/90'
-                        }`}
+                        className="p-3 rounded-2xl text-left transition-all duration-200 cursor-pointer flex flex-col justify-between h-20 relative overflow-hidden bg-white hover:bg-white/90 border-0 shadow-none outline-none"
                       >
                         <div className="flex items-center justify-between w-full">
                           <HeartBubbleSvg color={heart.bubbleColor} size={36} />
                           {isSelected && (
-                            <div className="w-5 h-5 rounded-full bg-[#FE6349] text-white flex items-center justify-center">
+                            <div className="w-5 h-5 rounded-full bg-[#3BB88C] text-white flex items-center justify-center shadow-xs">
                               <Check className="w-3 h-3 stroke-[3]" />
                             </div>
                           )}
@@ -2284,8 +2324,12 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                 <button 
                   type="button"
                   onClick={handleFinalSubmitMessage}
-                  disabled={isModerating}
-                  className="h-9 inline-flex items-center justify-center bg-[#FE6349] hover:bg-[#e05234] text-white text-xs font-bold px-5 rounded-full shadow-xs transition-all cursor-pointer active:scale-95 gap-1.5 disabled:opacity-50"
+                  disabled={!hasCanvaContent || isModerating}
+                  className={`h-9 inline-flex items-center justify-center text-xs font-bold px-5 rounded-full shadow-xs transition-all gap-1.5 ${
+                    !hasCanvaContent || isModerating
+                      ? 'bg-[#F1E4DF] text-[#A49893] cursor-not-allowed shadow-none opacity-60'
+                      : 'bg-[#FE6349] hover:bg-[#e05234] text-white cursor-pointer active:scale-95'
+                  }`}
                 >
                   {isModerating ? (
                     <>
@@ -3145,7 +3189,40 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                   )}
 
                   {/* Input Box and Chips */}
-                  <div className="bg-[#F6F8FA] rounded-2xl px-4 py-3 flex items-center justify-between gap-2 border border-transparent focus-within:border-gray-200 transition-all">
+                  <div 
+                    className="bg-[#F6F8FA] rounded-2xl p-2.5 sm:p-3 flex flex-wrap items-center gap-1.5 sm:gap-2 border border-transparent focus-within:border-gray-200 transition-all min-h-[48px] h-auto overflow-hidden cursor-text"
+                    onClick={(e) => {
+                      const input = e.currentTarget.querySelector('input');
+                      if (input && e.target !== input) {
+                        input.focus();
+                      }
+                    }}
+                  >
+                    {recipients.map((rec) => (
+                      <span
+                        key={rec}
+                        className="bg-white text-xs font-medium text-[#1A1B25] px-2.5 py-1 rounded-full border border-gray-200/60 flex items-center gap-1 shadow-2xs shrink-0 max-w-full truncate animate-in fade-in duration-150"
+                      >
+                        <span className="truncate max-w-[160px]">{rec}</span>
+                        {rec !== '@you' && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const remaining = recipients.filter(r => r !== rec);
+                              setRecipients(remaining);
+                              if (recipient === rec) {
+                                const nextRec = remaining.find(r => r !== '@you' && !r.startsWith('#')) || '';
+                                setRecipient(nextRec);
+                              }
+                            }}
+                            className="text-gray-400 hover:text-gray-600 p-0.5 rounded-full shrink-0 cursor-pointer"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
+                      </span>
+                    ))}
                     <input
                       type="text"
                       value={newRecipientInput}
@@ -3158,35 +3235,9 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                         setTimeout(() => setIsRecipientSuggestionsOpen(false), 200);
                       }}
                       onKeyDown={handleRecipientKeyDown}
-                      placeholder="Add more recipient or #tag"
-                      className="flex-1 bg-transparent text-sm text-[#1A1B25] placeholder:text-gray-400 focus:outline-none border-none p-0 font-normal min-w-[100px]"
+                      placeholder="Add more recipient..."
+                      className="flex-1 min-w-[120px] bg-transparent text-sm text-[#1A1B25] placeholder:text-gray-400 focus:outline-none border-none p-1 font-normal"
                     />
-                    <div className="flex items-center gap-1.5 flex-wrap shrink-0">
-                      {recipients.map((rec) => (
-                        <span
-                          key={rec}
-                          className="bg-white text-xs font-medium text-[#1A1B25] px-2.5 py-1 rounded-full border border-gray-200/60 flex items-center gap-1 shadow-2xs"
-                        >
-                          {rec}
-                          {rec !== '@you' && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const remaining = recipients.filter(r => r !== rec);
-                                setRecipients(remaining);
-                                if (recipient === rec) {
-                                  const nextRec = remaining.find(r => r !== '@you' && !r.startsWith('#')) || '';
-                                  setRecipient(nextRec);
-                                }
-                              }}
-                              className="text-gray-400 hover:text-gray-600 p-0.5 rounded-full"
-                            >
-                              <X className="w-3 h-3" />
-                            </button>
-                          )}
-                        </span>
-                      ))}
-                    </div>
                   </div>
                 </div>
 

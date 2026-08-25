@@ -217,6 +217,7 @@ export interface Contribution {
   authorName: string;
   authorHandle?: string;
   authorAvatar?: string;
+  authorId?: string;
   content: string;
   caption?: string;
   createdAt: string;
@@ -236,10 +237,14 @@ export interface Contribution {
 export interface Post {
   id: string;
   authorName: string;
+  authorHandle?: string;
   authorAvatar?: string;
+  authorId?: string;
+  recipientName?: string;
+  recipientHandle?: string;
   content: string;
   caption?: string;
-  type: 'text' | 'image' | 'audio';
+  type: 'text' | 'image' | 'audio' | 'heart_token';
   mediaUrl?: string;
   imageUrl?: string;
   visibility: PostVisibility;
@@ -257,7 +262,12 @@ export interface Post {
   maxCapacity?: number;
   contributions?: Contribution[];
   isCreatedByUser?: boolean;
-  section?: 'board' | 'tagged' | string;
+  isTaggedForUser?: boolean;
+  hasUserContributed?: boolean;
+  collaborators?: string[];
+  collaboratorHandles?: string[];
+  collaboratorIds?: string[];
+  section?: 'board' | 'tagged' | 'collaboration' | 'hearts' | string;
   theme?: string;
   mediaType?: 'audio' | 'video' | 'image' | 'text' | 'note';
   sponsor?: string;
@@ -266,6 +276,14 @@ export interface Post {
   secondaryImage?: string;
   isBlurred?: boolean;
   statusBadge?: string;
+  isHeartToken?: boolean;
+  selectedHearts?: string[];
+  heartDetails?: {
+    id?: string;
+    label?: string;
+    emoji?: string;
+    bubbleColor?: string;
+  };
 }
 
 export interface AppreciationEntity {
