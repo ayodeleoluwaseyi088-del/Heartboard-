@@ -190,19 +190,6 @@ export const HeartCategoryCard: React.FC<{
         </div>
       </div>
 
-      {/* 3. Bottom Share Pill Button */}
-      <div className="w-full flex justify-center z-10">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            if (onShare) onShare(data);
-          }}
-          className="px-5 py-2 rounded-full border border-[#ECEFF3] text-[#A4ABB8] font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-gray-50 active:scale-95 transition-all cursor-pointer bg-white"
-        >
-          <Share2 className="w-3.5 h-3.5 stroke-[1.5] text-[#A4ABB8]" />
-          <span className="text-[#A4ABB8]">Share</span>
-        </button>
-      </div>
     </div>
   );
 };
@@ -1493,7 +1480,7 @@ export const HeartboardView: React.FC<HeartboardViewProps> = ({
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2.5 sm:gap-6 w-full">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-6 w-full">
             {displayHeartCategories.map((cat) => (
               <HeartCategoryCard
                 key={cat.id}

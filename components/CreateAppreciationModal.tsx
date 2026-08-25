@@ -225,15 +225,6 @@ const RenderCanvasElement: React.FC<RenderCanvasElementProps> = ({
         isSelected ? 'z-20' : 'hover:opacity-95 z-10'
       }`}
     >
-      {/* Global Check-mark badge on selected component */}
-      {isSelected && (
-        <div 
-          className="absolute -top-2.5 -right-2.5 w-5 h-5 rounded-full bg-[#3BB88C] text-white flex items-center justify-center shadow-xs z-30 pointer-events-none animate-in zoom-in-75 duration-150"
-        >
-          <Check className="w-3 h-3 stroke-[3]" />
-        </div>
-      )}
-
       {/* 1. Image Element */}
       {el.type === 'image' && el.imageUrl && (
         <img
@@ -268,7 +259,11 @@ const RenderCanvasElement: React.FC<RenderCanvasElementProps> = ({
 
       {/* 3. Text Element */}
       {el.type === 'text' && el.text && (
-        <div className="w-full p-2 rounded-xl border border-transparent pointer-events-none select-none">
+        <div className={`w-full p-2 rounded-xl transition-all pointer-events-none select-none ${
+          isSelected 
+            ? 'border-2 border-dashed border-[#FE6349] ring-2 ring-[#FE6349]/20 bg-white/10' 
+            : 'border border-transparent'
+        }`}>
           <p 
             style={{ 
               color: el.color || '#1A1B25',
@@ -2318,37 +2313,36 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
               {isEditingContributor ? 'Edit message' : isContributorFlow ? 'Add a message' : editMode === 'message' ? 'Edit message' : 'Drop a message'}
             </h2>
 
-            {/* Right Save / Publish Action */}
+            {/* Right Save / Publish Action - Send Icon Only */}
             <div className="flex items-center">
               {isContributorFlow ? (
                 <button 
                   type="button"
                   onClick={handleFinalSubmitMessage}
                   disabled={!hasCanvaContent || isModerating}
-                  className={`h-9 inline-flex items-center justify-center text-xs font-bold px-5 rounded-full shadow-xs transition-all gap-1.5 ${
+                  className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
                     !hasCanvaContent || isModerating
                       ? 'bg-[#F1E4DF] text-[#A49893] cursor-not-allowed shadow-none opacity-60'
-                      : 'bg-[#FE6349] hover:bg-[#e05234] text-white cursor-pointer active:scale-95'
+                      : 'bg-[#FE6349] hover:bg-[#e05234] text-white shadow-xs active:scale-95 cursor-pointer'
                   }`}
+                  aria-label="Publish message"
+                  title={!hasCanvaContent ? "Add content to the Canva to publish" : "Publish message"}
                 >
                   {isModerating ? (
-                    <>
-                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      <span>Publishing...</span>
-                    </>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   ) : (
-                    <>
-                      <span>Publish</span>
-                      <Sparkles className="w-3.5 h-3.5 fill-white" />
-                    </>
+                    <Send className="w-5 h-5 -translate-x-0.5" />
                   )}
                 </button>
               ) : (
                 <button 
+                  type="button"
                   onClick={() => setIsExpanded(false)}
-                  className="h-9 inline-flex items-center justify-center bg-[#1A1B25] hover:bg-[#272835] text-white text-xs font-bold px-5 rounded-full shadow-xs transition-all cursor-pointer active:scale-95"
+                  className="w-10 h-10 rounded-full flex items-center justify-center bg-[#FE6349] hover:bg-[#e05234] text-white shadow-xs active:scale-95 cursor-pointer transition-all"
+                  aria-label="Save message"
+                  title="Save message"
                 >
-                  Save
+                  <Send className="w-5 h-5 -translate-x-0.5" />
                 </button>
               )}
             </div>
@@ -2542,29 +2536,6 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                   {moderationError}
                 </div>
               )}
-
-              {/* Contributor Bottom Primary Publish Button */}
-              {isContributorFlow && (
-                <button
-                  type="button"
-                  onClick={handleFinalSubmitMessage}
-                  disabled={isModerating}
-                  className="w-full max-w-[280px] mt-1 py-3 bg-[#FE6349] hover:bg-[#e05234] text-white rounded-full font-bold text-sm shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-                >
-                  {isModerating ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      <span>Publishing...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Publish</span>
-                      <Sparkles className="w-4 h-4 fill-white" />
-                    </>
-                  )}
-                </button>
-              )}
-
             </div>
           )}
 

@@ -12,6 +12,7 @@ import { AuthView } from './components/AuthModal';
 import { WelcomeModal } from './components/WelcomeModal';
 import { EngagementPromptModal } from './components/EngagementPromptModal';
 import { useEngagementPrompt } from './hooks/useEngagementPrompt';
+import { HeroHeartAnimation } from './components/HeroHeartAnimation';
 import { 
   SlidersHorizontal, 
   Search, 
@@ -994,199 +995,41 @@ const HeroPulseFeed: React.FC<HeroPulseFeedProps> = ({ posts = [], onGiftVouchCl
   const currentActivity = liveActivities[activeMessageIndex] || liveActivities[0];
 
   return (
-    <div className="relative w-full overflow-visible bg-white py-[72px] md:py-[104px] flex flex-col items-center justify-center">
-      {/* Scattered Yellow Floating Hearts - Exactly like Mockup */}
-      <div className="absolute inset-0 pointer-events-none">
-        {/* Yellow Heart 1 (Top Left) */}
-        <motion.div 
-          className="absolute z-20"
-          style={{ top: '15%', left: '12%' }}
-          animate={{ 
-            y: [0, -12, 0], 
-            scale: [1, 1.05, 1], 
-            rotate: [0, 5, 0],
-            color: currentActivity.hexColor
-          }}
-          transition={{ 
-            y: { duration: 4, repeat: Infinity, ease: "easeInOut" },
-            scale: { duration: 4, repeat: Infinity, ease: "easeInOut" },
-            rotate: { duration: 4, repeat: Infinity, ease: "easeInOut" },
-            color: { duration: 0.8, ease: "easeInOut" }
-          }}
-        >
-          <svg className="w-8 h-8 fill-current" viewBox="0 0 24 24">
-            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-          </svg>
-        </motion.div>
-
-        {/* Yellow Heart 2 (Mid Left) */}
-        <motion.div 
-          className="absolute z-20"
-          style={{ top: '48%', left: '26%' }}
-          animate={{ 
-            y: [0, 10, 0], 
-            scale: [1, 1.08, 1], 
-            rotate: [0, -8, 0],
-            color: currentActivity.hexColor
-          }}
-          transition={{ 
-            y: { duration: 5, repeat: Infinity, ease: "easeInOut" },
-            scale: { duration: 5, repeat: Infinity, ease: "easeInOut" },
-            rotate: { duration: 5, repeat: Infinity, ease: "easeInOut" },
-            color: { duration: 0.8, ease: "easeInOut" }
-          }}
-        >
-          <svg className="w-10 h-10 fill-current" viewBox="0 0 24 24">
-            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-          </svg>
-        </motion.div>
-
-        {/* Yellow Heart 3 (Mid Right) */}
-        <motion.div 
-          className="absolute z-20"
-          style={{ top: '24%', left: '88%' }}
-          animate={{ 
-            y: [0, -8, 0], 
-            scale: [1, 1.03, 1], 
-            rotate: [0, 6, 0],
-            color: currentActivity.hexColor
-          }}
-          transition={{ 
-            y: { duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 1 },
-            scale: { duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 1 },
-            rotate: { duration: 3.5, repeat: Infinity, ease: "easeInOut", delay: 1 },
-            color: { duration: 0.8, ease: "easeInOut" }
-          }}
-        >
-          <svg className="w-7 h-7 fill-current" viewBox="0 0 24 24">
-            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-          </svg>
-        </motion.div>
-
-        {/* Yellow Heart 4 (Bottom Right) */}
-        <motion.div 
-          className="absolute z-20"
-          style={{ top: '51%', left: '72%' }}
-          animate={{ 
-            y: [0, 15, 0], 
-            scale: [1, 1.1, 1], 
-            rotate: [0, -10, 0],
-            color: currentActivity.hexColor
-          }}
-          transition={{ 
-            y: { duration: 6, repeat: Infinity, ease: "easeInOut", delay: 0.5 },
-            scale: { duration: 6, repeat: Infinity, ease: "easeInOut", delay: 0.5 },
-            rotate: { duration: 6, repeat: Infinity, ease: "easeInOut", delay: 0.5 },
-            color: { duration: 0.8, ease: "easeInOut" }
-          }}
-        >
-          <svg className="w-9 h-9 fill-current" viewBox="0 0 24 24">
-            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-          </svg>
-        </motion.div>
-      </div>
-
-      {/* Giant Central Yellow Speech Bubble + Smiley Heart */}
-      <div className="relative z-10 flex flex-col items-center">
-        <div className="relative flex items-center justify-center">
-          {/* Concentric Radial Rings Background (8% opacity stroke, centered around central heart icon) */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <motion.div 
-              animate={{ borderColor: currentActivity.hexColor }}
-              transition={{ duration: 0.8, ease: "easeInOut" }}
-              style={{ opacity: 0.08 }}
-              className="w-[640px] h-[640px] border rounded-full animate-ping absolute pointer-events-none"
-            />
-            {[
-              "w-[640px] h-[640px]",
-              "w-[760px] h-[760px]",
-              "w-[880px] h-[880px]",
-              "w-[1000px] h-[1000px]",
-              "w-[1120px] h-[1120px]",
-              "w-[1240px] h-[1240px]",
-              "w-[1360px] h-[1360px]",
-            ].map((sizeClass, idx) => (
-              <motion.div
-                key={idx}
-                animate={{ borderColor: currentActivity.hexColor }}
-                transition={{ duration: 0.8, ease: "easeInOut" }}
-                style={{ opacity: 0.08 }}
-                className={`${sizeClass} border rounded-full absolute bg-transparent pointer-events-none`}
-              />
-            ))}
-          </div>
-
-          <motion.div 
-            animate={{ backgroundColor: currentActivity.hexColor + "1A" }}
-            transition={{ duration: 0.8, ease: "easeInOut" }}
-            className="w-56 h-56 md:w-64 md:h-64 rounded-full flex items-center justify-center relative z-10"
-          >
-          {/* Yellow Speech Bubble */}
-          <motion.div 
-            animate={{ backgroundColor: currentActivity.hexColor }}
-            transition={{ duration: 0.8, ease: "easeInOut" }}
-            className="w-[140px] h-[140px] md:w-[170px] md:h-[170px] rounded-full flex items-center justify-center relative"
-          >
-            <motion.div 
-              animate={{ backgroundColor: currentActivity.hexColor }}
-              transition={{ duration: 0.8, ease: "easeInOut" }}
-              className="absolute -bottom-1 -left-1 w-9 h-9 rounded-br-2xl transform rotate-12"
-            />
-            
-            {/* Inner White Heart */}
-            <div className="w-20 h-20 md:w-24 md:h-24 fill-white flex items-center justify-center relative z-20">
-              <svg className="w-full h-full text-white fill-current" viewBox="0 0 24 24">
-                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
-              </svg>
-              {/* Smiling face inside the heart */}
-              <motion.div 
-                animate={{ color: currentActivity.hexColor }}
-                transition={{ duration: 0.8, ease: "easeInOut" }}
-                className="absolute top-[32%] md:top-[34%] left-1/2 -translate-x-1/2 flex flex-col items-center gap-1"
-              >
-                <div className="flex gap-2">
-                  <motion.span 
-                    animate={{ backgroundColor: currentActivity.hexColor }}
-                    transition={{ duration: 0.8, ease: "easeInOut" }}
-                    className="w-2 h-2 rounded-full inline-block"
-                  />
-                  <motion.span 
-                    animate={{ backgroundColor: currentActivity.hexColor }}
-                    transition={{ duration: 0.8, ease: "easeInOut" }}
-                    className="w-2 h-2 rounded-full inline-block"
-                  />
-                </div>
-                <svg className="w-7 h-4 fill-none" viewBox="0 0 20 10">
-                  <path d="M2,2 Q10,11 18,2" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-                </svg>
-              </motion.div>
-            </div>
-          </motion.div>
-        </motion.div>
-        </div>
+    <div className="relative w-full overflow-hidden bg-white py-10 md:py-16 flex flex-col items-center justify-center min-h-[380px] md:min-h-[440px]">
+      {/* Dynamic Organic Multi-Layer Hero Heart Animation Canvas */}
+      <div className="w-full max-w-4xl h-[260px] md:h-[300px] relative flex items-center justify-center">
+        <HeroHeartAnimation
+          activeColor={currentActivity.hexColor}
+          activeActivityKey={`${activeMessageIndex}-${currentActivity.sender}-${currentActivity.hexColor}`}
+          onCentralHeartClick={onGiftVouchClick}
+        />
       </div>
 
       {/* Highly Animated Real-Time Ticker */}
-      <div className="mt-8 relative min-h-[52px] h-auto w-full max-w-md overflow-hidden flex items-center justify-center">
+      <div className="mt-4 sm:mt-6 relative min-h-[52px] h-auto w-full max-w-md overflow-hidden flex items-center justify-center px-4 z-20">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeMessageIndex}
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -15 }}
-            transition={{ duration: 0.4 }}
-            className="bg-gray-25/90 backdrop-blur-sm py-4 px-3 rounded-full flex items-center gap-1 text-[13px] text-gray-800"
+            initial={{ opacity: 0, y: 15, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -15, scale: 0.95 }}
+            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            className="bg-[#F8F9FB] border border-[#ECEFF3] shadow-2xs py-3 px-5 rounded-full flex items-center justify-center gap-1.5 text-xs sm:text-sm text-[#1A1B25] max-w-full truncate cursor-pointer hover:bg-[#ECEFF3] transition-colors"
+            onClick={onGiftVouchClick}
           >
-            <span className="font-bold text-gray-900">{currentActivity.sender}</span>
-            <span>blew a</span>
-            <span className="font-bold select-none" style={{ color: currentActivity.hexColor }}>{currentActivity.heartType}</span>
-            <span>to</span>
-            <span className="font-bold text-gray-900">@{currentActivity.receiver}</span>
+            <span className="font-extrabold text-[#1A1B25]">{currentActivity.sender}</span>
+            <span className="text-[#666D80]">blew a</span>
+            <span 
+              className="font-extrabold select-none flex items-center gap-0.5" 
+              style={{ color: currentActivity.hexColor }}
+            >
+              {currentActivity.heartType}
+            </span>
+            <span className="text-[#666D80]">to</span>
+            <span className="font-extrabold text-[#1A1B25]">@{currentActivity.receiver}</span>
           </motion.div>
         </AnimatePresence>
       </div>
-
-
     </div>
   );
 };
