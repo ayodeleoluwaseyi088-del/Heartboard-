@@ -811,15 +811,173 @@ const STICKER_LIST: StickerItem[] = [
   { id: 'party_celebrate', emoji: '🎉', label: 'Tribute horn' },
 ];
 
-const TEXT_TEMPLATES = [
-  "So proud of your hard work and dedication! 🌟",
-  "Thank you for inspiring our team every single day! 🙌",
-  "Happy Birthday! Wishing you endless joy and success! 🎉",
-  "You are an absolute legend in our workspace! 🏆",
-  "Grateful for your endless guidance, kindness, and support. ❤️",
-  "Brought so much positive energy to this milestone! ✨",
-  "Reliable, brilliant, and an absolute pleasure to work with!"
+export interface TemplateCategory {
+  id: string;
+  name: string;
+  icon: string;
+  templates: string[];
+}
+
+export const TEMPLATE_CATEGORIES: TemplateCategory[] = [
+  {
+    id: 'love',
+    name: 'Love',
+    icon: '❤️',
+    templates: [
+      "I love you so much.",
+      "You mean the world to me.",
+      "Sending you all my love.",
+      "You make life more beautiful.",
+      "Forever grateful to have you in my life."
+    ]
+  },
+  {
+    id: 'appreciation',
+    name: 'Appreciation',
+    icon: '💐',
+    templates: [
+      "Thank you for everything.",
+      "I truly appreciate you.",
+      "You deserve to be celebrated.",
+      "Thank you for always being there.",
+      "Your kindness means so much to me."
+    ]
+  },
+  {
+    id: 'celebration',
+    name: 'Celebration',
+    icon: '🎉',
+    templates: [
+      "Congratulations! You did it!",
+      "This moment deserves to be celebrated.",
+      "So proud of you!",
+      "Cheers to this amazing achievement!",
+      "What a beautiful moment!"
+    ]
+  },
+  {
+    id: 'graduation',
+    name: 'Graduation',
+    icon: '🎓',
+    templates: [
+      "Congratulations on your graduation!",
+      "You did it! Your hard work paid off.",
+      "The beginning of an amazing new chapter.",
+      "So proud of everything you've achieved.",
+      "Here's to bigger dreams and brighter days ahead."
+    ]
+  },
+  {
+    id: 'birthday',
+    name: 'Birthday',
+    icon: '🎂',
+    templates: [
+      "Happy Birthday! Wishing you an amazing year ahead.",
+      "Wishing you love, happiness and beautiful memories.",
+      "Happy Birthday to someone truly special.",
+      "May this new year of your life be your best one yet.",
+      "Here's to another beautiful year!"
+    ]
+  },
+  {
+    id: 'gratitude',
+    name: 'Gratitude',
+    icon: '🙏',
+    templates: [
+      "I'm grateful for you.",
+      "Thank you for being part of my journey.",
+      "I appreciate everything you've done for me.",
+      "Your support means more than you know.",
+      "Forever thankful for you."
+    ]
+  },
+  {
+    id: 'encouragement',
+    name: 'Encouragement',
+    icon: '💪',
+    templates: [
+      "You've got this!",
+      "Keep going. You're closer than you think.",
+      "I believe in you.",
+      "Don't give up. Better days are ahead.",
+      "You're stronger than you realize."
+    ]
+  },
+  {
+    id: 'motivation',
+    name: 'Motivation',
+    icon: '🌟',
+    templates: [
+      "Keep pushing forward.",
+      "Believe in yourself and keep going.",
+      "Great things are ahead.",
+      "Your effort will be worth it.",
+      "This is only the beginning."
+    ]
+  },
+  {
+    id: 'friendship',
+    name: 'Friendship',
+    icon: '🤝',
+    templates: [
+      "I'm lucky to have you as a friend.",
+      "Thank you for being an amazing friend.",
+      "Life is better with friends like you.",
+      "Always grateful for our friendship.",
+      "Here's to many more memories together."
+    ]
+  },
+  {
+    id: 'sorry',
+    name: 'Sorry',
+    icon: '💔',
+    templates: [
+      "I'm truly sorry.",
+      "Please forgive me.",
+      "I didn't mean to hurt you.",
+      "I hope we can make things right.",
+      "I'm sorry for what happened."
+    ]
+  },
+  {
+    id: 'get-well-soon',
+    name: 'Get Well Soon',
+    icon: '❤️',
+    templates: [
+      "Wishing you a speedy recovery.",
+      "Sending you love and positive thoughts.",
+      "Take care of yourself and get well soon.",
+      "Thinking of you and wishing you better days.",
+      "Sending you strength and healing."
+    ]
+  },
+  {
+    id: 'condolences',
+    name: 'Condolences',
+    icon: '🕊️',
+    templates: [
+      "My deepest condolences.",
+      "Thinking of you and your family.",
+      "Sending you love and strength during this difficult time.",
+      "May you find comfort and peace.",
+      "My thoughts are with you."
+    ]
+  },
+  {
+    id: 'holidays',
+    name: 'Holidays',
+    icon: '🎄',
+    templates: [
+      "Wishing you a beautiful holiday season.",
+      "Happy Holidays!",
+      "Sending you love, joy and warm wishes.",
+      "May your holidays be filled with happiness.",
+      "Wishing you peace and beautiful moments."
+    ]
+  }
 ];
+
+const TEXT_TEMPLATES = TEMPLATE_CATEGORIES.flatMap(c => c.templates);
 
 const EVENT_TYPES = [
   'Graduation',
@@ -975,10 +1133,19 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
 
   // Text Element Redesign states
   const [activeAccordion, setActiveAccordion] = useState<'font' | 'color' | 'template' | null>(null);
+  const [selectedTemplateCategoryId, setSelectedTemplateCategoryId] = useState<string | null>(null);
   const [isRefining, setIsRefining] = useState(false);
 
   const toggleAccordion = (section: 'font' | 'color' | 'template') => {
-    setActiveAccordion(prev => prev === section ? null : section);
+    setActiveAccordion(prev => {
+      if (prev === section) {
+        return null;
+      }
+      if (section === 'template') {
+        setSelectedTemplateCategoryId(null);
+      }
+      return section;
+    });
   };
 
   // Handlers for adding new elements on toolbar button clicks
@@ -1373,14 +1540,37 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
 
       // 3. New Contribution Flow
       if (isContribution && parentBoard) {
-        const defaultName = currentUser?.name || 'Micky Mouse';
-        const defaultHandle = currentUser?.handle || '@mickymouse';
+        const isAnon = effectiveVisibility === PostVisibility.ANONYMOUS;
+        const isRegistered = Boolean(currentUser);
+
+        const finalAuthorName = isAnon
+          ? 'Anon'
+          : isRegistered
+            ? (authorName.trim() || currentUser!.name || 'Registered User')
+            : (authorName.trim() || 'Guest');
+
+        const finalAuthorHandle = isAnon
+          ? '@anon'
+          : isRegistered
+            ? (authorName.trim()
+                ? (authorName.startsWith('@') ? authorName.trim() : `@${authorName.trim().toLowerCase().replace(/\s+/g, '')}`)
+                : (currentUser!.handle || '@user'))
+            : (authorName.trim()
+                ? (authorName.startsWith('@') ? authorName.trim() : `@${authorName.trim().toLowerCase().replace(/\s+/g, '')}`)
+                : '@guest');
+
+        const finalAuthorAvatar = isAnon
+          ? undefined
+          : isRegistered
+            ? (currentUser!.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(finalAuthorName)}`)
+            : `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(finalAuthorName || 'Guest')}`;
+
         const newContrib: any = {
           id: 'contrib-' + Math.random().toString(36).substring(2, 11),
-          authorName: effectiveVisibility === PostVisibility.ANONYMOUS ? 'Anon' : (authorName.trim() || defaultName),
-          authorHandle: authorName.trim() ? (authorName.startsWith('@') ? authorName.trim() : `@${authorName.trim().toLowerCase().replace(/\s+/g, '')}`) : defaultHandle,
-          authorAvatar: effectiveVisibility === PostVisibility.ANONYMOUS ? undefined : (currentUser?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(authorName.trim() || defaultName)}`),
-          authorId: currentUser?.id,
+          authorName: finalAuthorName,
+          authorHandle: finalAuthorHandle,
+          authorAvatar: finalAuthorAvatar,
+          authorId: isRegistered ? currentUser!.id : 'guest',
           content: safeTextCheck,
           caption: caption.trim() || undefined,
           type: activeType,
@@ -2599,7 +2789,7 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
                   {editingElement.type === 'text' && (
                     <div className="flex flex-col gap-3.5">
                       {/* Main Text Input Box with internal Template & Refine toolbar */}
-                      <div className="bg-[#F6F8FA] rounded-2xl p-4 flex flex-col justify-between min-h-[210px] relative border border-transparent focus-within:border-gray-200/80 transition-all">
+                      <div className={`bg-[#F6F8FA] rounded-2xl p-4 flex flex-col justify-between relative border border-transparent focus-within:border-gray-200/80 transition-all ${activeAccordion === 'template' ? 'min-h-[330px]' : 'min-h-[210px]'}`}>
                         <textarea
                           value={editingElement.text || ''}
                           onChange={(e) => {
@@ -2618,33 +2808,122 @@ export const CreateAppreciationModal: React.FC<CreateAppreciationModalProps> = (
 
                         {/* Templates Popup Drawer */}
                         {activeAccordion === 'template' && (
-                          <div className="absolute inset-x-2 top-2 bottom-12 bg-white/95 backdrop-blur-md rounded-xl p-3 shadow-lg z-20 flex flex-col border border-gray-100 animate-in fade-in zoom-in-95 duration-150">
-                            <div className="flex items-center justify-between pb-2 mb-1 border-b border-gray-100">
-                              <span className="text-xs font-bold text-gray-800">Choose Text Template</span>
-                              <button
-                                type="button"
-                                onClick={() => setActiveAccordion(null)}
-                                className="text-gray-400 hover:text-gray-700 p-0.5 rounded-full"
-                              >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                            <div className="flex-grow overflow-y-auto space-y-1.5 pr-1">
-                              {TEXT_TEMPLATES.map((tmpl, idx) => (
-                                <button
-                                  key={idx}
-                                  type="button"
-                                  onClick={() => {
-                                    updateEditingElement({ text: tmpl });
-                                    setContent(tmpl);
-                                    setActiveAccordion(null);
-                                  }}
-                                  className="w-full text-left p-2 rounded-lg text-xs font-medium text-gray-800 hover:bg-orange-50 hover:text-[#FF6B4A] transition-colors cursor-pointer border border-transparent hover:border-orange-100"
-                                >
-                                  "{tmpl}"
-                                </button>
-                              ))}
-                            </div>
+                          <div className="absolute inset-0 bg-white/98 backdrop-blur-md rounded-2xl p-3 sm:p-4 shadow-xl z-30 flex flex-col border border-gray-100 animate-in fade-in zoom-in-95 duration-150">
+                            {!selectedTemplateCategoryId ? (
+                              /* Categories View (Show Categories First) */
+                              <div className="flex flex-col h-full">
+                                <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-100 shrink-0">
+                                  <div>
+                                    <h4 className="text-xs font-extrabold text-[#1A1B25]">
+                                      Message Templates
+                                    </h4>
+                                    <p className="text-[11px] text-[#666D80] font-medium">
+                                      Select a category to explore pre-written messages
+                                    </p>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => setActiveAccordion(null)}
+                                    className="text-gray-400 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100 transition-colors"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                </div>
+
+                                <div className="flex-grow overflow-y-auto pr-1 grid grid-cols-2 gap-2 scrollbar-thin">
+                                  {TEMPLATE_CATEGORIES.map((cat) => (
+                                    <button
+                                      key={cat.id}
+                                      type="button"
+                                      onClick={() => setSelectedTemplateCategoryId(cat.id)}
+                                      className="flex items-center justify-between p-2.5 rounded-xl bg-[#F8F9FB] hover:bg-[#ECEFF3] active:scale-[0.98] text-[#1A1B25] transition-all cursor-pointer text-left group border border-transparent hover:border-gray-200/50"
+                                    >
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <span className="text-base shrink-0">{cat.icon}</span>
+                                        <span className="text-xs font-bold truncate text-[#1A1B25]">{cat.name}</span>
+                                      </div>
+                                      <span className="text-[10px] font-bold text-[#666D80] bg-white px-1.5 py-0.5 rounded-full shadow-2xs group-hover:text-[#1A1B25] shrink-0">
+                                        {cat.templates.length}
+                                      </span>
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : (
+                              /* Selected Category View (List of Pre-Written Messages) */
+                              (() => {
+                                const activeCat = TEMPLATE_CATEGORIES.find(c => c.id === selectedTemplateCategoryId) || TEMPLATE_CATEGORIES[0];
+                                return (
+                                  <div className="flex flex-col h-full">
+                                    {/* Header with Back button and Category title */}
+                                    <div className="flex items-center justify-between pb-2 mb-2 border-b border-gray-100 shrink-0">
+                                      <button
+                                        type="button"
+                                        onClick={() => setSelectedTemplateCategoryId(null)}
+                                        className="flex items-center gap-1 text-xs font-bold text-[#FE6349] hover:text-[#e05234] transition-colors p-0.5 rounded-lg hover:bg-orange-50 cursor-pointer"
+                                      >
+                                        <ChevronLeft className="w-4 h-4" />
+                                        <span>All Categories</span>
+                                      </button>
+                                      
+                                      <div className="flex items-center gap-1.5 font-bold text-xs text-[#1A1B25]">
+                                        <span>{activeCat.icon}</span>
+                                        <span>{activeCat.name}</span>
+                                      </div>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => setActiveAccordion(null)}
+                                        className="text-gray-400 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100 transition-colors"
+                                      >
+                                        <X className="w-4 h-4" />
+                                      </button>
+                                    </div>
+
+                                    {/* Category horizontal switcher for quick jumping */}
+                                    <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-2 scrollbar-none shrink-0 border-b border-gray-100">
+                                      {TEMPLATE_CATEGORIES.map((cat) => (
+                                        <button
+                                          key={cat.id}
+                                          type="button"
+                                          onClick={() => setSelectedTemplateCategoryId(cat.id)}
+                                          className={`px-2.5 py-1 rounded-full text-[11px] font-bold whitespace-nowrap transition-all cursor-pointer shrink-0 flex items-center gap-1 ${
+                                            cat.id === activeCat.id
+                                              ? 'bg-[#1A1B25] text-white shadow-xs'
+                                              : 'bg-[#F8F9FB] text-[#666D80] hover:bg-[#ECEFF3] hover:text-[#1A1B25]'
+                                          }`}
+                                        >
+                                          <span>{cat.icon}</span>
+                                          <span>{cat.name}</span>
+                                        </button>
+                                      ))}
+                                    </div>
+
+                                    {/* Messages under this category */}
+                                    <div className="flex-grow overflow-y-auto space-y-2 pr-1 scrollbar-thin">
+                                      {activeCat.templates.map((tmpl, idx) => (
+                                        <button
+                                          key={idx}
+                                          type="button"
+                                          onClick={() => {
+                                            updateEditingElement({ text: tmpl });
+                                            setContent(tmpl);
+                                            setActiveAccordion(null);
+                                          }}
+                                          className="w-full text-left p-3 rounded-xl text-xs font-medium text-[#1A1B25] bg-[#F8F9FB] hover:bg-orange-50/90 hover:text-[#FE6349] transition-all cursor-pointer border border-transparent hover:border-orange-200 flex items-start gap-2.5 group shadow-2xs"
+                                        >
+                                          <span className="text-[#FE6349] font-serif font-bold text-sm shrink-0 leading-none mt-0.5">“</span>
+                                          <span className="flex-1 leading-relaxed">{tmpl}</span>
+                                          <span className="text-[10px] font-bold text-[#FE6349] bg-orange-100/70 px-2 py-0.5 rounded-full shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            Use
+                                          </span>
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                );
+                              })()
+                            )}
                           </div>
                         )}
 

@@ -1422,7 +1422,14 @@ const App: React.FC = () => {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'signup'>('login');
   const [authModalPrompt, setAuthModalPrompt] = useState<string | undefined>(undefined);
-  const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(false);
+  const [isWelcomeModalOpen, setIsWelcomeModalOpen] = useState(() => {
+    try {
+      const hasSeen = localStorage.getItem('heartboard_welcome_dismissed');
+      return !hasSeen;
+    } catch (e) {
+      return false;
+    }
+  });
 
   const isAnyModalOpen = isAuthModalOpen || isCreateModalOpen || isFilterModalOpen || isWelcomeModalOpen || selectedPostIndex !== null;
 
@@ -1485,8 +1492,17 @@ const App: React.FC = () => {
     setViewingHashtag(null);
   };
 
-  const handleWelcomeSendMessageNow = () => {
+  const handleCloseWelcomeModal = () => {
     setIsWelcomeModalOpen(false);
+    try {
+      localStorage.setItem('heartboard_welcome_dismissed', 'true');
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  const handleWelcomeLeaveMessage = () => {
+    handleCloseWelcomeModal();
     setContributionParentPost(null);
     setEditingPost(null);
     setEditingContribution(null);
@@ -1495,14 +1511,6 @@ const App: React.FC = () => {
     setCreateModalHashtag(undefined);
     setCreateModalMode('create_message');
     setIsCreateModalOpen(true);
-  };
-
-  const handleWelcomeCheckOutMoments = () => {
-    setIsWelcomeModalOpen(false);
-    setActiveNavTab('home');
-    setSelectedFilterId('moment');
-    setActiveFilter('all');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // Profile and Hashtag view states
@@ -2044,8 +2052,8 @@ const App: React.FC = () => {
                 prevPosts.map((p) => {
                   if (p.id !== parentBoardId) return p;
                   const currentContribs = p.contributions || [];
-                  const userHandle = currentUser?.handle || '@mickymouse';
-                  const userId = currentUser?.id || 'u9';
+                  const userHandle = currentUser?.handle || newContrib.authorHandle || '@guest';
+                  const userId = currentUser?.id || newContrib.authorId || `guest-${Math.random().toString(36).substring(2, 7)}`;
                   const userCollabs = p.collaboratorHandles || [];
                   const updatedCollabs = userCollabs.includes(userHandle) ? userCollabs : [...userCollabs, userHandle];
                   const userCollabIds = p.collaboratorIds || [];
@@ -2096,10 +2104,6 @@ const App: React.FC = () => {
               handleSelectHashtag(tag);
             }}
             onAddContributionClick={(parentPost) => {
-              if (!currentUser) {
-                handleOpenAuth('login', 'Please sign in or create an account to add a contribution.');
-                return;
-              }
               setContributionParentPost(parentPost);
               setCreateModalRecipient(undefined);
               setCreateModalHashtag(undefined);
@@ -2181,10 +2185,8 @@ const App: React.FC = () => {
         {/* Welcome Onboarding Modal */}
         <WelcomeModal
           isOpen={isWelcomeModalOpen}
-          user={currentUser}
-          onClose={() => setIsWelcomeModalOpen(false)}
-          onSendMessageNow={handleWelcomeSendMessageNow}
-          onCheckOutMoments={handleWelcomeCheckOutMoments}
+          onClose={handleCloseWelcomeModal}
+          onLeaveMessage={handleWelcomeLeaveMessage}
         />
 
         {/* Heartboard Engagement Prompt Modal */}
